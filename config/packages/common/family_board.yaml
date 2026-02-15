@@ -1,0 +1,4 @@
+input_text:
+    family_board_active_tab:
+        name: Family Board Active Tab
+        initial: now

@@ -1,0 +1,14 @@
+template:
+    - sensor:
+          - name: 'Family Board Home Controls Unavailable'
+            unique_id: family_board_home_controls_unavailable
+            variables:
+                controls: !include ../../includes/home_controls.yaml
+            state: >
+                {% set ns = namespace(count=0) %}
+                {% for e in controls %}
+                  {% if states(e) in ['unknown','unavailable','none'] %}
+                    {% set ns.count = ns.count + 1 %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.count }}

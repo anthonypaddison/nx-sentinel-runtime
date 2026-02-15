@@ -1,0 +1,20 @@
+default_config:
+
+homeassistant:
+    packages: !include packages/_packages.yaml
+
+lovelace:
+    resource_mode: yaml
+
+    resources: !include lovelace/resources.yaml
+
+    dashboards:
+        family-board:
+            mode: yaml
+            title: Family Board
+            icon: mdi:calendar-multiselect
+            show_in_sidebar: true
+            require_admin: false
+            filename: lovelace/family-board.yaml
+
+family_board:

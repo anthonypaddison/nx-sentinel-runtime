@@ -1,0 +1,14 @@
+# Home Assistant runtime/state (never version)
+config/.storage/
+config/home-assistant_v2.db
+config/home-assistant_v2.db-*
+config/*.log
+config/*.log.*
+
+# Secrets (template stays versioned)
+config/secrets.yaml
+config/secrets.lab.yaml
+config/secrets.live.yaml
+
+# macOS
+.DS_Store

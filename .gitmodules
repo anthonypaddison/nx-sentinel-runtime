@@ -1,3 +1,0 @@
-[submodule "config/www/family-board"]
-	path = config/www/family-board
-	url = git@github.com:anthonypaddison/nx-displaygrid.git

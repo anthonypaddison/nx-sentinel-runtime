@@ -1,0 +1,153 @@
+/* Family Board - config helpers
+ * SPDX-License-Identifier: MIT
+ */
+import { debugLog } from './family-board.util.js';
+
+export function applyConfigHelpers(FamilyBoardCard) {
+    Object.assign(FamilyBoardCard.prototype, {
+        async _updateConfigPartial(patch) {
+            if (!patch) return;
+            debugLog(this._debug, 'updateConfigPartial', { patch });
+            const deviceKeys = new Set([
+                'day_start_hour',
+                'day_end_hour',
+                'px_per_hour',
+                'refresh_interval_ms',
+                'cache_max_age_ms',
+                'background_theme',
+                'debug',
+                'people_display',
+            ]);
+            const devicePatch = {};
+            const sharedPatch = {};
+            for (const [key, value] of Object.entries(patch)) {
+                if (deviceKeys.has(key)) devicePatch[key] = value;
+                else sharedPatch[key] = value;
+            }
+
+            if (Object.keys(devicePatch).length) {
+                debugLog(this._debug, 'device config patch', { devicePatch });
+                if (devicePatch.day_start_hour !== undefined)
+                    this._deviceDayStartHour = Number(devicePatch.day_start_hour);
+                if (devicePatch.day_end_hour !== undefined)
+                    this._deviceDayEndHour = Number(devicePatch.day_end_hour);
+                if (devicePatch.px_per_hour !== undefined)
+                    this._devicePxPerHour = Number(devicePatch.px_per_hour);
+                if (devicePatch.refresh_interval_ms !== undefined)
+                    this._deviceRefreshMs = Number(devicePatch.refresh_interval_ms);
+                if (devicePatch.cache_max_age_ms !== undefined)
+                    this._deviceCacheMaxAgeMs = Number(devicePatch.cache_max_age_ms);
+                if (devicePatch.background_theme !== undefined)
+                    this._deviceBackgroundTheme = devicePatch.background_theme || '';
+                if (devicePatch.debug !== undefined)
+                    this._deviceDebug = Boolean(devicePatch.debug);
+                if (devicePatch.people_display !== undefined)
+                    this._devicePeopleDisplay = Array.isArray(devicePatch.people_display)
+                        ? devicePatch.people_display
+                        : [];
+                this._savePrefs();
+            }
+
+            const sharedBase = this._sharedConfig || this._config || {};
+            const nextShared = { ...sharedBase, ...sharedPatch };
+            this._sharedConfig = nextShared;
+            debugLog(this._debug, 'shared config patch', { sharedPatch, nextShared });
+            this._applyConfigImmediate(nextShared, { useDefaults: false });
+            await this._refreshAll();
+            if (Object.keys(sharedPatch).length) {
+                const result = await this._persistConfig(nextShared);
+                if (result?.mode === 'local') {
+                    this._showToast('Saved', 'Saved on this device');
+                } else {
+                    this._showToast('Saved');
+                }
+            } else {
+                this._showToast('Saved', 'Saved on this device');
+            }
+            this.requestUpdate();
+        },
+
+        _buildYamlConfig(cfg) {
+            const draft = cfg || {};
+            const lines = [];
+            const push = (l) => lines.push(l);
+            push(`type: custom:family-board`);
+            if (draft.title) push(`title: ${draft.title}`);
+            if (draft.debug !== undefined) push(`debug: ${draft.debug ? 'true' : 'false'}`);
+            push(`days_to_show: 5`);
+            if (draft.day_start_hour !== undefined) push(`day_start_hour: ${draft.day_start_hour}`);
+            if (draft.day_end_hour !== undefined) push(`day_end_hour: ${draft.day_end_hour}`);
+            if (draft.slot_minutes !== undefined) push(`slot_minutes: ${draft.slot_minutes}`);
+            if (draft.px_per_hour !== undefined) push(`px_per_hour: ${draft.px_per_hour}`);
+            if (draft.refresh_interval_ms !== undefined)
+                push(`refresh_interval_ms: ${draft.refresh_interval_ms}`);
+            if (draft.background_theme) push(`background_theme: '${draft.background_theme}'`);
+
+            const people = Array.isArray(draft.people) ? draft.people : [];
+            if (people.length) {
+                push(`people:`);
+                for (const p of people) {
+                    push(`  - id: ${p.id}`);
+                    if (p.name) push(`    name: ${p.name}`);
+                    if (p.color) push(`    color: '${p.color}'`);
+                    if (p.text_color) push(`    text_color: '${p.text_color}'`);
+                    if (p.role) push(`    role: ${p.role}`);
+                    if (p.header_row) push(`    header_row: ${p.header_row}`);
+                }
+            }
+            const peopleDisplay = Array.isArray(draft.people_display) ? draft.people_display : [];
+            if (peopleDisplay.length) {
+                push(`people_display:`);
+                for (const id of peopleDisplay) {
+                    push(`  - ${id}`);
+                }
+            }
+
+            if (draft.admin_pin !== undefined) {
+                push(`admin_pin: '${draft.admin_pin}'`);
+            }
+
+            const calendars = Array.isArray(draft.calendars) ? draft.calendars : [];
+            if (calendars.length) {
+                push(`calendars:`);
+                for (const c of calendars) {
+                    push(`  - entity: ${c.entity}`);
+                    if (c.person_id) push(`    person_id: ${c.person_id}`);
+                    if (c.role) push(`    role: ${c.role}`);
+                }
+            }
+
+            const todos = Array.isArray(draft.todos) ? draft.todos : [];
+            if (todos.length) {
+                push(`todos:`);
+                for (const t of todos) {
+                    push(`  - entity: ${t.entity}`);
+                    if (t.name) push(`    name: ${t.name}`);
+                    if (t.person_id) push(`    person_id: ${t.person_id}`);
+                }
+            }
+
+            const shopping = draft.shopping?.entity ? draft.shopping : null;
+            if (shopping) {
+                push(`shopping:`);
+                push(`  entity: ${shopping.entity}`);
+                if (shopping.name) push(`  name: ${shopping.name}`);
+            }
+
+            const homeControls = Array.isArray(draft.home_controls) ? draft.home_controls : [];
+            if (homeControls.length) {
+                push(`home_controls:`);
+                for (const eid of homeControls) {
+                    push(`  - ${eid}`);
+                }
+            }
+
+            return lines.join('\n');
+        },
+
+        _applySetupDraft(draft) {
+            this._applyConfigImmediate({ ...this._config, ...draft }, { useDefaults: false });
+            this._refreshAll();
+        },
+    });
+}
