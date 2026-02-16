@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { slugifyId } from '../src/family-board.util.js';
+import { slugifyId } from '../src/nx-displaygrid.util.js';
 
 test('slugifyId normalizes ids', () => {
     assert.equal(slugifyId('Person One'), 'person_one');

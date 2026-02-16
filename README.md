@@ -11,7 +11,7 @@ Guardrails:
 - Never version `config/.storage/`.
 - Never commit real secrets.
 - Keep `config/secrets.yaml.template` in git.
-- Keep Family Board paths stable (`/local/family-board/...`) during migration.
+- Keep nx-displaygrid paths stable (`/local/nx-displaygrid/...`) during migration.
 
 ## Lab vs Live workflow
 Directory layout:
@@ -20,7 +20,7 @@ Directory layout:
 - `config/packages/live/` live-only package YAML
 - `config/packages/_env.yaml` environment selector include (`lab` or `live`)
 - `config/packages/_packages.yaml` merges `common + selected env`
-- `config/lovelace/family-board.yaml` dashboard YAML
+- `config/lovelace/nx-displaygrid.yaml` dashboard YAML
 - `config/lovelace/resources.yaml` Lovelace resources YAML include
 
 `configuration.yaml` keeps:
@@ -75,9 +75,9 @@ Deploy behavior:
 ## How to update nx-displaygrid submodule
 ```bash
 git submodule update --init --recursive
-git -C config/www/family-board fetch origin
-git -C config/www/family-board checkout <commit-or-tag>
-git add config/www/family-board
+git -C config/www/nx-displaygrid fetch origin
+git -C config/www/nx-displaygrid checkout <commit-or-tag>
+git add config/www/nx-displaygrid
 git commit -m "chore: bump nx-displaygrid submodule"
 ```
 
@@ -86,7 +86,7 @@ Update the query string in:
 - `config/lovelace/resources.yaml`
 
 Current format:
-- `/local/family-board/family-board.js?v=YYYYMMDD-HHMMSS`
+- `/local/nx-displaygrid/nx-displaygrid.js?v=YYYYMMDD-HHMMSS`
 
 After changing JS assets, bump `v=` and deploy.
 

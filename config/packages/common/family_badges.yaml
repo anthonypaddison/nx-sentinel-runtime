@@ -1,7 +1,7 @@
 template:
     - sensor:
-          - name: 'Family Board Home Controls Unavailable'
-            unique_id: family_board_home_controls_unavailable
+          - name: 'nx-displaygrid Home Controls Unavailable'
+            unique_id: nx_displaygrid_home_controls_unavailable
             variables:
                 controls: !include ../../includes/home_controls.yaml
             state: >

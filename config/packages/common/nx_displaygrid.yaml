@@ -1,0 +1,4 @@
+input_text:
+    nx_displaygrid_active_tab:
+        name: nx-displaygrid Active Tab
+        initial: now

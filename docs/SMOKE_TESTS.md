@@ -2,7 +2,7 @@
 
 Run these quick checks after changes to ensure core flows still work.
 
-1) Load the Family Board dashboard and confirm the schedule renders.
+1) Load the nx-displaygrid dashboard and confirm the schedule renders.
 2) Add a calendar event via the add dialog and confirm it appears.
 3) Edit an existing event and confirm the change persists.
 4) Mark a chore complete and confirm it updates (and repeats, if configured).

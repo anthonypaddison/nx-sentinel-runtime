@@ -1,0 +1,61 @@
+# Resource: /local/nx-displaygrid/nx-displaygrid.js?v=20260108-164520
+title: nx-displaygrid
+views:
+    - title: nx-displaygrid
+      path: nx-displaygrid
+      icon: mdi:calendar-multiselect
+      panel: true
+
+      cards:
+          - type: custom:nx-displaygrid
+            title: nx-displaygrid
+            debug: false
+
+            # Layout tuning
+            day_start_hour: 6
+            day_end_hour: 22
+            slot_minutes: 30
+            px_per_hour: 120
+            refresh_interval_ms: 300000
+
+            # People palette
+            people:
+                - id: person_one
+                  name: Person One
+                  color: '#36B37E'
+                  header_row: 1
+                - id: person_two
+                  name: Person Two
+                  color: '#7E57C2'
+                  header_row: 1
+                - id: person_three
+                  name: Person Three
+                  color: '#F4B400'
+                  header_row: 2
+
+            calendars:
+                - entity: calendar.person_one
+                  person_id: person_one
+                - entity: calendar.person_two
+                  person_id: person_two
+                - entity: calendar.family
+                  person_id: person_one
+                  role: family
+                - entity: calendar.routine
+                  person_id: person_one
+                  role: routine
+
+            todos:
+                - entity: todo.person_one
+                  name: Person One
+                  person_id: person_one
+                - entity: todo.person_two
+                  name: Person Two
+                  person_id: person_two
+
+            shopping:
+                entity: todo.shopping_list_2
+                name: Shopping
+
+            # Home controls: entities shown on Home Controls screen
+            home_controls: !include ../includes/home_controls.yaml

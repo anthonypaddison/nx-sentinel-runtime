@@ -1,19 +1,13 @@
-# config/packages/home_infra.yaml
+# config/packages/nx_sentinel_watchtower.yaml
 ############################
-# HOME INFRA - SENSORS
+# NX-SENTINEL-WATCHTOWER - SENSORS
 ############################
 
 binary_sensor:
-    - &tcp_defaults
-      platform: tcp
-      host: !secret media_host_ip
-      payload: ''
-      timeout: 3
-      scan_interval: 30
-    # Gluetun health endpoint (plain text "Healthy" expected)
+    # nx-bastion health endpoint (plain text "Healthy" expected)
     - platform: rest
-      name: Gluetun VPN Health
-      unique_id: home_infra_gluetun_vpn_health
+      name: nx-bastion VPN Health
+      unique_id: nx_sentinel_watchtower_nx_bastion_vpn_health
       device_class: connectivity
       resource: !secret gluetun_health_url
       timeout: 5
@@ -22,115 +16,159 @@ binary_sensor:
           {{ 'healthy' in (value | default('') | lower) }}
 
     # Port checks (LAN bindings)
-    - <<: *tcp_defaults
-      name: qBittorrent WebUI Port
-      port: 8080
+    - platform: tcp
+      name: nx-transmit Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
       scan_interval: 15
+      port: 8080
 
-    - <<: *tcp_defaults
-      name: Sonarr Port
+    - platform: tcp
+      name: nx-beacon-sonar Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 8989
 
-    - <<: *tcp_defaults
-      name: Radarr Port
+    - platform: tcp
+      name: nx-beacon-radar Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 7878
 
-    - <<: *tcp_defaults
-      name: Prowlarr Port
+    - platform: tcp
+      name: nx-beacon-prowlarr Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 9696
 
-    - <<: *tcp_defaults
-      name: Jellyfin Port
+    - platform: tcp
+      name: nx-spectrum Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 8096
 
-    - <<: *tcp_defaults
-      name: Jellyseerr Port
+    - platform: tcp
+      name: nx-observer Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 5055
 
-    - <<: *tcp_defaults
-      name: Uptime Kuma Port
+    - platform: tcp
+      name: nx-watchtower Port
+      host: !secret media_host_ip
+      payload: ''
+      timeout: 3
+      scan_interval: 30
       port: 3001
 
 ############################
-# HOME INFRA - ARR SENSORS
+# NX-SENTINEL-WATCHTOWER - ARR SENSORS
 ############################
 # Requires secrets: sonarr_api_key, radarr_api_key, and the URL secrets below.
 
 sensor:
-    - &arr_rest_defaults
-      platform: rest
+    # -------- nx-beacon-sonar --------
+    - platform: rest
       method: GET
       timeout: 8
       headers:
           X-Api-Key: !secret sonarr_api_key
       value_template: >-
           {{ value_json.totalRecords | default(0) | int }}
-    # -------- Sonarr --------
-    - <<: *arr_rest_defaults
-      name: Sonarr Queue Count
-      unique_id: home_infra_sonarr_queue_count
+      name: nx-beacon-sonar Queue Count
+      unique_id: nx_sentinel_watchtower_nx_beacon_sonar_queue_count
       resource: !secret sonarr_queue_url
       scan_interval: 300
 
-    - <<: *arr_rest_defaults
-      name: Sonarr Missing Episodes
-      unique_id: home_infra_sonarr_missing_episodes
+    - platform: rest
+      method: GET
+      timeout: 8
+      headers:
+          X-Api-Key: !secret sonarr_api_key
+      value_template: >-
+          {{ value_json.totalRecords | default(0) | int }}
+      name: nx-beacon-sonar Missing Episodes
+      unique_id: nx_sentinel_watchtower_nx_beacon_sonar_missing_episodes
       resource: !secret sonarr_missing_url
       scan_interval: 900
 
-    - <<: *arr_rest_defaults
-      name: Sonarr Cutoff Unmet
-      unique_id: home_infra_sonarr_cutoff_unmet
+    - platform: rest
+      method: GET
+      timeout: 8
+      headers:
+          X-Api-Key: !secret sonarr_api_key
+      value_template: >-
+          {{ value_json.totalRecords | default(0) | int }}
+      name: nx-beacon-sonar Cutoff Unmet
+      unique_id: nx_sentinel_watchtower_nx_beacon_sonar_cutoff_unmet
       resource: !secret sonarr_cutoff_url
       scan_interval: 1800
 
-    # -------- Radarr --------
-    - <<: *arr_rest_defaults
-      name: Radarr Queue Count
-      unique_id: home_infra_radarr_queue_count
+    # -------- nx-beacon-radar --------
+    - platform: rest
+      method: GET
+      timeout: 8
+      headers:
+          X-Api-Key: !secret radarr_api_key
+      value_template: >-
+          {{ value_json.totalRecords | default(0) | int }}
+      name: nx-beacon-radar Queue Count
+      unique_id: nx_sentinel_watchtower_nx_beacon_radar_queue_count
       resource: !secret radarr_queue_url
       scan_interval: 300
-      headers: &radarr_headers
-          X-Api-Key: !secret radarr_api_key
 
-    - <<: *arr_rest_defaults
-      name: Radarr Missing Movies
-      unique_id: home_infra_radarr_missing_movies
+    - platform: rest
+      method: GET
+      timeout: 8
+      headers:
+          X-Api-Key: !secret radarr_api_key
+      value_template: >-
+          {{ value_json.totalRecords | default(0) | int }}
+      name: nx-beacon-radar Missing Movies
+      unique_id: nx_sentinel_watchtower_nx_beacon_radar_missing_movies
       resource: !secret radarr_missing_url
       scan_interval: 1800
-      headers: *radarr_headers
 
 ############################
-# HOME INFRA - DISK FREE (via SSH)
+# NX-SENTINEL-WATCHTOWER - DISK FREE (via SSH)
 ############################
-# Requires secret: media_box_ssh_target (example: "user@192.168.1.154").
+# Requires secret: media_box_ssh_target in /config/secrets.yaml
+# (example: "user@192.168.1.154").
 
 command_line:
-    - sensor: &disk_free_common
+    - sensor:
+          name: Downloads Free GB
+          unique_id: nx_sentinel_watchtower_downloads_free_gb
           unit_of_measurement: 'GB'
           scan_interval: 300
           value_template: '{{ value | int(0) }}'
-
-    - sensor:
-          <<: *disk_free_common
-          name: Downloads Free GB
-          unique_id: home_infra_downloads_free_gb
           command: >-
               bash /config/scripts/disk_free.sh
-              !secret media_box_ssh_target
               /srv/downloads
 
     - sensor:
-          <<: *disk_free_common
           name: Media Free GB
-          unique_id: home_infra_media_free_gb
+          unique_id: nx_sentinel_watchtower_media_free_gb
+          unit_of_measurement: 'GB'
+          scan_interval: 300
+          value_template: '{{ value | int(0) }}'
           command: >-
               bash /config/scripts/disk_free.sh
-              !secret media_box_ssh_target
               /srv/media
 
 ############################
-# HOME INFRA - ALERT THRESHOLDS
+# NX-SENTINEL-WATCHTOWER - ALERT THRESHOLDS
 ############################
 
 input_number:
@@ -151,16 +189,16 @@ input_number:
         initial: 100
 
 ############################
-# HOME INFRA - AUTOMATIONS
+# NX-SENTINEL-WATCHTOWER - AUTOMATIONS
 ############################
 
 automation:
-    - id: home_infra_gluetun_down
-      alias: Home Infra - Gluetun Down
+    - id: nx_sentinel_watchtower_nx_bastion_down
+      alias: nx-sentinel-watchtower - nx-bastion Down
       mode: single
       trigger:
           - platform: state
-            entity_id: binary_sensor.gluetun_vpn_health
+            entity_id: binary_sensor.nx_bastion_vpn_health
             to:
                 - 'off'
                 - 'unavailable'
@@ -171,16 +209,16 @@ automation:
           - service: notify.home_infra_alerts_anthony_paddison_8006541880
             data:
                 message: |-
-                    🔴 **GLUETUN VPN DOWN**
+                    🔴 **NX-BASTION VPN DOWN**
                     Docker outbound blocked (kill-switch active).
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
-    - id: home_infra_gluetun_restored
-      alias: Home Infra - Gluetun Restored
+    - id: nx_sentinel_watchtower_nx_bastion_restored
+      alias: nx-sentinel-watchtower - nx-bastion Restored
       mode: single
       trigger:
           - platform: state
-            entity_id: binary_sensor.gluetun_vpn_health
+            entity_id: binary_sensor.nx_bastion_vpn_health
             to: 'on'
             for:
                 seconds: 30
@@ -188,44 +226,44 @@ automation:
           - service: notify.home_infra_alerts_anthony_paddison_8006541880
             data:
                 message: |-
-                    🟢 **GLUETUN VPN UP**
+                    🟢 **NX-BASTION VPN UP**
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
     - &queue_stuck_template
-      id: home_infra_sonarr_queue_stuck
-      alias: Home Infra - Sonarr Queue Stuck
+      id: nx_sentinel_watchtower_nx_beacon_sonar_queue_stuck
+      alias: nx-sentinel-watchtower - nx-beacon-sonar Queue Stuck
       mode: single
       trigger:
           - platform: numeric_state
-            entity_id: sensor.sonarr_queue_count
+            entity_id: sensor.nx_beacon_sonar_queue_count
             above: 0
             for:
                 minutes: 60
       action:
-          - service: script.home_infra_queue_stuck_notify
+          - service: script.nx_sentinel_watchtower_queue_stuck_notify
             data:
-                service_name: Sonarr
-                queue_sensor: sensor.sonarr_queue_count
-                missing_sensor: sensor.sonarr_missing_episodes
+                service_name: nx-beacon-sonar
+                queue_sensor: sensor.nx_beacon_sonar_queue_count
+                missing_sensor: sensor.nx_beacon_sonar_missing_episodes
 
     - <<: *queue_stuck_template
-      id: home_infra_radarr_queue_stuck
-      alias: Home Infra - Radarr Queue Stuck
+      id: nx_sentinel_watchtower_nx_beacon_radar_queue_stuck
+      alias: nx-sentinel-watchtower - nx-beacon-radar Queue Stuck
       trigger:
           - platform: numeric_state
-            entity_id: sensor.radarr_queue_count
+            entity_id: sensor.nx_beacon_radar_queue_count
             above: 0
             for:
                 minutes: 60
       action:
-          - service: script.home_infra_queue_stuck_notify
+          - service: script.nx_sentinel_watchtower_queue_stuck_notify
             data:
-                service_name: Radarr
-                queue_sensor: sensor.radarr_queue_count
-                missing_sensor: sensor.radarr_missing_movies
+                service_name: nx-beacon-radar
+                queue_sensor: sensor.nx_beacon_radar_queue_count
+                missing_sensor: sensor.nx_beacon_radar_missing_movies
 
-    - id: home_infra_downloads_low_disk
-      alias: Home Infra - Downloads Low Disk
+    - id: nx_sentinel_watchtower_downloads_low_disk
+      alias: nx-sentinel-watchtower - Downloads Low Disk
       mode: single
       trigger:
           - platform: template
@@ -243,8 +281,8 @@ automation:
                     Threshold: {{ states('input_number.downloads_free_gb_warn') }} GB
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
-    - id: home_infra_media_low_disk
-      alias: Home Infra - Media Low Disk
+    - id: nx_sentinel_watchtower_media_low_disk
+      alias: nx-sentinel-watchtower - Media Low Disk
       mode: single
       trigger:
           - platform: template
@@ -263,8 +301,8 @@ automation:
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
 script:
-    home_infra_queue_stuck_notify:
-        alias: Home Infra - Queue Stuck Notify
+    nx_sentinel_watchtower_queue_stuck_notify:
+        alias: nx-sentinel-watchtower - Queue Stuck Notify
         mode: queued
         fields:
             service_name:

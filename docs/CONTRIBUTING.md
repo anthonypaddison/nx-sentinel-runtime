@@ -7,4 +7,4 @@
 
 ## Notes
 - Keep UI strings in plain ASCII for reliability.
-- Use the helper modules under `config/www/family-board/` for new features.
+- Use the helper modules under `config/www/nx-displaygrid/` for new features.

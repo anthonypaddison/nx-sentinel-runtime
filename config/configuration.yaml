@@ -9,12 +9,12 @@ lovelace:
     resources: !include lovelace/resources.yaml
 
     dashboards:
-        family-board:
+        nx-displaygrid:
             mode: yaml
-            title: Family Board
+            title: nx-displaygrid
             icon: mdi:calendar-multiselect
             show_in_sidebar: true
             require_admin: false
-            filename: lovelace/family-board.yaml
+            filename: lovelace/nx-displaygrid.yaml
 
-family_board:
+nx_displaygrid:
