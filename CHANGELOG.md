@@ -7,3 +7,5 @@
 - Renamed Home Infra sensor and automation naming to `nx-sentinel-watchtower` with service checks aligned to container naming conventions.
 - Hardened YAML serialization escaping, date parsing validation, and dialog draft hydration/reset behavior.
 - Added broader regression tests for service parsing, calendar normalization, discovery mapping, YAML escaping, and utility behavior.
+- Fixed config merge persistence to honour explicit empty `people`, `calendars`, `todos`, and `home_controls` arrays.
+- Added persistence merge regression tests to lock behaviour for empty-array overrides and missing-key fallback.

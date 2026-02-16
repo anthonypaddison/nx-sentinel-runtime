@@ -96,12 +96,39 @@ export function applyPersistence(FamilyBoardCard) {
 
         _mergeConfig(base, override) {
             const merged = { ...base, ...override };
-            if (override.people) merged.people = override.people;
-            if (override.calendars) merged.calendars = override.calendars;
-            if (override.todos) merged.todos = override.todos;
-            if (override.shopping)
-                merged.shopping = { ...(base.shopping || {}), ...override.shopping };
-            if (override.home_controls) merged.home_controls = override.home_controls;
+            const hasOwn = (key) => Object.prototype.hasOwnProperty.call(override, key);
+            if (hasOwn('people') && override.people !== null && override.people !== undefined) {
+                merged.people = override.people;
+            }
+            if (
+                hasOwn('calendars') &&
+                override.calendars !== null &&
+                override.calendars !== undefined
+            ) {
+                merged.calendars = override.calendars;
+            }
+            if (hasOwn('todos') && override.todos !== null && override.todos !== undefined) {
+                merged.todos = override.todos;
+            }
+            if (hasOwn('shopping') && override.shopping !== null && override.shopping !== undefined) {
+                if (
+                    typeof override.shopping === 'object' &&
+                    !Array.isArray(override.shopping)
+                ) {
+                    merged.shopping = Object.keys(override.shopping).length
+                        ? { ...(base.shopping || {}), ...override.shopping }
+                        : {};
+                } else {
+                    merged.shopping = override.shopping;
+                }
+            }
+            if (
+                hasOwn('home_controls') &&
+                override.home_controls !== null &&
+                override.home_controls !== undefined
+            ) {
+                merged.home_controls = override.home_controls;
+            }
             if (override.title !== undefined) merged.title = override.title;
             if (override.admin_pin !== undefined) merged.admin_pin = override.admin_pin;
             return merged;
