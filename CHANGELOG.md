@@ -9,3 +9,5 @@
 - Added broader regression tests for service parsing, calendar normalization, discovery mapping, YAML escaping, and utility behavior.
 - Fixed config merge persistence to honour explicit empty `people`, `calendars`, `todos`, and `home_controls` arrays.
 - Added persistence merge regression tests to lock behaviour for empty-array overrides and missing-key fallback.
+- Replaced first-load setup with a 4-step wizard (People, Calendars, Integrations, Review) including step save/continue and finish flow.
+- Added onboarding gating flags (`onboardingComplete`, `schemaVersion`) to persisted shared config and used them to decide setup visibility.

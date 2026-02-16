@@ -578,7 +578,7 @@ class FamilyBoardCard extends LitElement {
         const isAdmin = this._hasAdminAccess();
         const hasPin = Boolean(this._config?.admin_pin);
         const showSettings = isAdmin || hasPin;
-        const needsSetup = !Array.isArray(this._config?.people) || this._config.people.length === 0;
+        const needsSetup = this._onboardingRequired?.(this._config) ?? true;
         const personFilterSig = Array.from(this._personFilterSet || []).sort().join(',');
         const shoppingFavSig = Array.isArray(this._shoppingFavourites)
             ? this._shoppingFavourites.join('|')

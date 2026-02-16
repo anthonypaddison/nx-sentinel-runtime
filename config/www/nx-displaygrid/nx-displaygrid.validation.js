@@ -90,6 +90,7 @@ export function applyValidation(FamilyBoardCard) {
         },
 
         _runStartupChecks(config) {
+            if (this._onboardingRequired?.(config)) return;
             const calendars = Array.isArray(config?.calendars) ? config.calendars : [];
             const todos = Array.isArray(config?.todos) ? config.todos : [];
             const hasShopping = Boolean(config?.shopping?.entity);
@@ -105,6 +106,7 @@ export function applyValidation(FamilyBoardCard) {
         },
 
         _reportIntegrationIssues(config) {
+            if (this._onboardingRequired?.(config)) return;
             const errors = this._validateIntegrationSupport(config);
             if (!errors.length) return;
             if (this._shouldNotifyError?.('integration-sanity', 120_000)) {
