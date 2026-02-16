@@ -42,3 +42,17 @@ test('mergeConfig keeps base calendars when calendars key is missing', () => {
     assert.deepEqual(merged.calendars, base.calendars);
     assert.deepEqual(merged.people, override.people);
 });
+
+test('mergeConfig handles null or undefined override safely', () => {
+    const card = new TestCard();
+    const base = {
+        calendars: [{ entity: 'calendar.family' }],
+        people: [{ id: 'alex', name: 'Alex' }],
+    };
+
+    const mergedFromNull = card._mergeConfig(base, null);
+    assert.deepEqual(mergedFromNull, base);
+
+    const mergedFromUndefined = card._mergeConfig(base, undefined);
+    assert.deepEqual(mergedFromUndefined, base);
+});

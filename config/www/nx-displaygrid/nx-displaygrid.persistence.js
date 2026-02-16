@@ -127,7 +127,7 @@ export function applyPersistence(FamilyBoardCard) {
         },
 
         async _callWsGet() {
-            const types = ['nx_displaygrid/config/get', 'family_board/config/get'];
+            const types = ['family_board/config/get', 'nx_displaygrid/config/get'];
             for (const type of types) {
                 try {
                     const result = await this._hass.callWS({ type });
@@ -183,7 +183,7 @@ export function applyPersistence(FamilyBoardCard) {
         },
 
         async _callWsSet(config) {
-            const types = ['nx_displaygrid/config/set', 'family_board/config/set'];
+            const types = ['family_board/config/set', 'nx_displaygrid/config/set'];
             for (const type of types) {
                 try {
                     await this._hass.callWS({ type, config });
