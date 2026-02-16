@@ -83,13 +83,6 @@ export function applyPersistence(FamilyBoardCard) {
                 this._persistMode = 'local';
                 return local;
             }
-            if (!skipWs) {
-                const wsFallback = await this._callWsGet();
-                if (wsFallback) {
-                    this._persistMode = 'ws';
-                    return wsFallback;
-                }
-            }
             this._persistMode = 'none';
             return null;
         },
@@ -128,15 +121,24 @@ export function applyPersistence(FamilyBoardCard) {
 
         async _callWsGet() {
             const types = ['family_board/config/get', 'nx_displaygrid/config/get'];
+            let hadError = false;
             for (const type of types) {
                 try {
                     const result = await this._hass.callWS({ type });
                     return result?.config || null;
                 } catch {
+                    hadError = true;
                     // Try the next known namespace.
                 }
             }
+            if (hadError) this._notifyWsConfigFallbackOnce();
             return null;
+        },
+
+        _notifyWsConfigFallbackOnce() {
+            if (this._wsConfigFallbackNotified) return;
+            this._wsConfigFallbackNotified = true;
+            this._showToast?.('Backend config unavailable', 'Using device storage');
         },
 
         _localConfigKey() {
@@ -184,14 +186,17 @@ export function applyPersistence(FamilyBoardCard) {
 
         async _callWsSet(config) {
             const types = ['family_board/config/set', 'nx_displaygrid/config/set'];
+            let hadError = false;
             for (const type of types) {
                 try {
                     await this._hass.callWS({ type, config });
                     return true;
                 } catch {
+                    hadError = true;
                     // Try the next known namespace.
                 }
             }
+            if (hadError) this._notifyWsConfigFallbackOnce();
             return false;
         },
 
