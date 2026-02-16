@@ -23,6 +23,7 @@ export function applyPersistence(FamilyBoardCard) {
             if (this._storageLoaded || !this._hass) return this._storageLoadPromise;
             if (this._storageLoadPromise) return this._storageLoadPromise;
             this._storageLoadPromise = (async () => {
+                this._wsConfigLoadInProgress = true;
                 const stored = await this._getStoredConfig({ skipWs: true });
                 this._storageLoaded = true;
                 if (stored) {
@@ -38,6 +39,7 @@ export function applyPersistence(FamilyBoardCard) {
                 }
                 this._resolveConfig({ refresh: true });
                 this._refreshStoredConfig();
+                this._wsConfigLoadInProgress = false;
                 return stored;
             })();
             return this._storageLoadPromise;
@@ -137,8 +139,9 @@ export function applyPersistence(FamilyBoardCard) {
 
         _notifyWsConfigFallbackOnce() {
             if (this._wsConfigFallbackNotified) return;
+            if (!this._wsConfigLoadInProgress) return;
             this._wsConfigFallbackNotified = true;
-            this._showToast?.('Backend config unavailable', 'Using device storage');
+            this._showToast?.('Running in local mode');
         },
 
         _localConfigKey() {
@@ -186,17 +189,14 @@ export function applyPersistence(FamilyBoardCard) {
 
         async _callWsSet(config) {
             const types = ['family_board/config/set', 'nx_displaygrid/config/set'];
-            let hadError = false;
             for (const type of types) {
                 try {
                     await this._hass.callWS({ type, config });
                     return true;
                 } catch {
-                    hadError = true;
                     // Try the next known namespace.
                 }
             }
-            if (hadError) this._notifyWsConfigFallbackOnce();
             return false;
         },
 
