@@ -1,0 +1,5 @@
+developer_instructions = """
+Follow AGENTS.md strictly.
+Use repo scripts/config as source of truth for formatting and linting.
+Do not change lint/format configs unless asked.
+"""
