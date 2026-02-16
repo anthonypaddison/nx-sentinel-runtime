@@ -18,6 +18,8 @@ export class FbSettingsView extends LitElement {
         _pinSetValue: { state: true },
         _dragPersonId: { state: true },
         _resetStep: { state: true },
+        _resetDashboardStep: { state: true },
+        _resetDashboardBusy: { state: true },
         _personWizardOpen: { state: true },
         _personWizardStep: { state: true },
         _personWizardDraft: { state: true },
@@ -1819,6 +1821,18 @@ export class FbSettingsView extends LitElement {
                                     >
                                         Reset all defaults
                                     </button>
+                                    <button
+                                        class="btn"
+                                        @click=${() => {
+                                            this._resetDashboardStep = 1;
+                                        }}
+                                    >
+                                        Reset dashboard
+                                    </button>
+                                </div>
+                                <div class="muted">
+                                    Reset dashboard clears configured people/sources and local caches for
+                                    this device.
                                 </div>
                             </div>
                         </div>
@@ -2115,6 +2129,69 @@ export class FbSettingsView extends LitElement {
                                   }}
                               >
                                   ${this._resetStep === 1 ? 'Yes' : 'Yes, reset'}
+                              </button>
+                          </div>
+                      </div>
+                  </div>`
+                : html``}
+            ${this._resetDashboardStep
+                ? html`<div
+                      class="infoBackdrop"
+                      @click=${(e) =>
+                          !this._resetDashboardBusy &&
+                          e.target === e.currentTarget &&
+                          (this._resetDashboardStep = 0)}
+                  >
+                      <div class="infoDlg">
+                          <div class="infoHead">
+                              <div>
+                                  ${this._resetDashboardStep === 1
+                                      ? 'Reset dashboard?'
+                                      : 'Confirm dashboard reset'}
+                              </div>
+                          </div>
+                          <div class="muted">
+                              ${this._resetDashboardStep === 1
+                                  ? 'This clears dashboard config for this device and resets onboarding.'
+                                  : 'This is destructive. Config, prefs, and cached data will be cleared for this user/device.'}
+                          </div>
+                          <div class="actions">
+                              <button
+                                  class="btn"
+                                  ?disabled=${this._resetDashboardBusy}
+                                  @click=${() => (this._resetDashboardStep = 0)}
+                              >
+                                  Cancel
+                              </button>
+                              <button
+                                  class="btn"
+                                  ?disabled=${this._resetDashboardBusy}
+                                  @click=${async () => {
+                                      if (this._resetDashboardStep === 1) {
+                                          this._resetDashboardStep = 2;
+                                          return;
+                                      }
+                                      this._resetDashboardBusy = true;
+                                      try {
+                                          const userId = card?._hass?.user?.id || '';
+                                          const result = await card._resetAll?.(userId);
+                                          if (!result?.ok) {
+                                              card._showErrorToast?.(
+                                                  'Reset dashboard failed',
+                                                  'Please try again.'
+                                              );
+                                          }
+                                      } finally {
+                                          this._resetDashboardBusy = false;
+                                          this._resetDashboardStep = 0;
+                                      }
+                                  }}
+                              >
+                                  ${this._resetDashboardBusy
+                                      ? 'Resetting...'
+                                      : this._resetDashboardStep === 1
+                                      ? 'Yes'
+                                      : 'Yes, reset dashboard'}
                               </button>
                           </div>
                       </div>

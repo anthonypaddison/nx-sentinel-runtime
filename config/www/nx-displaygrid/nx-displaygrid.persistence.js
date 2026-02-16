@@ -95,42 +95,34 @@ export function applyPersistence(FamilyBoardCard) {
         },
 
         _mergeConfig(base, override) {
-            const merged = { ...base, ...override };
-            const hasOwn = (key) => Object.prototype.hasOwnProperty.call(override, key);
-            if (hasOwn('people') && override.people !== null && override.people !== undefined) {
-                merged.people = override.people;
+            const source = override && typeof override === 'object' ? override : {};
+            const merged = { ...base, ...source };
+            const hasOwn = (key) => Object.prototype.hasOwnProperty.call(source, key);
+            if (hasOwn('people') && source.people !== null && source.people !== undefined) {
+                merged.people = source.people;
             }
             if (
                 hasOwn('calendars') &&
-                override.calendars !== null &&
-                override.calendars !== undefined
+                source.calendars !== null &&
+                source.calendars !== undefined
             ) {
-                merged.calendars = override.calendars;
+                merged.calendars = source.calendars;
             }
-            if (hasOwn('todos') && override.todos !== null && override.todos !== undefined) {
-                merged.todos = override.todos;
+            if (hasOwn('todos') && source.todos !== null && source.todos !== undefined) {
+                merged.todos = source.todos;
             }
-            if (hasOwn('shopping') && override.shopping !== null && override.shopping !== undefined) {
-                if (
-                    typeof override.shopping === 'object' &&
-                    !Array.isArray(override.shopping)
-                ) {
-                    merged.shopping = Object.keys(override.shopping).length
-                        ? { ...(base.shopping || {}), ...override.shopping }
-                        : {};
-                } else {
-                    merged.shopping = override.shopping;
-                }
+            if (hasOwn('shopping') && source.shopping !== null && source.shopping !== undefined) {
+                merged.shopping = { ...(base.shopping || {}), ...source.shopping };
             }
             if (
                 hasOwn('home_controls') &&
-                override.home_controls !== null &&
-                override.home_controls !== undefined
+                source.home_controls !== null &&
+                source.home_controls !== undefined
             ) {
-                merged.home_controls = override.home_controls;
+                merged.home_controls = source.home_controls;
             }
-            if (override.title !== undefined) merged.title = override.title;
-            if (override.admin_pin !== undefined) merged.admin_pin = override.admin_pin;
+            if (source.title !== undefined) merged.title = source.title;
+            if (source.admin_pin !== undefined) merged.admin_pin = source.admin_pin;
             return merged;
         },
 
@@ -230,6 +222,92 @@ export function applyPersistence(FamilyBoardCard) {
             const key = this._localConfigKey();
             const stored = await idbGet('config', key);
             return stored && typeof stored === 'object' ? stored : null;
+        },
+
+        async _resetAll(userId, device) {
+            const resolvedUserId = userId || this._hass?.user?.id || 'unknown';
+            const resolvedDevice = device || getDeviceKind();
+            const configKey = `nx-displaygrid:config:${resolvedUserId}:${resolvedDevice}`;
+            const prefsKey = `nx-displaygrid:prefs:${resolvedUserId}:${resolvedDevice}`;
+            const dataKey = `nx-displaygrid:data:${resolvedUserId}:${resolvedDevice}`;
+            const emptyConfig = {
+                people: [],
+                calendars: [],
+                todos: [],
+                onboardingComplete: false,
+                schemaVersion: Number(this._onboardingSchemaVersion?.() || 1),
+            };
+            let wsOk = false;
+
+            try {
+                localStorage.removeItem(configKey);
+            } catch {
+                // Ignore storage errors.
+            }
+            try {
+                localStorage.removeItem(prefsKey);
+            } catch {
+                // Ignore storage errors.
+            }
+            try {
+                localStorage.removeItem(dataKey);
+            } catch {
+                // Ignore storage errors.
+            }
+            await Promise.all([
+                idbDelete('config', configKey),
+                idbDelete('prefs', prefsKey),
+                idbDelete('cache', dataKey),
+            ]);
+
+            wsOk = await this._callWsSet(emptyConfig);
+            if (!wsOk) {
+                await this._saveIdbConfig(emptyConfig);
+                this._saveLocalConfig(emptyConfig);
+            }
+
+            this._storedConfig = emptyConfig;
+            this._storageLoaded = true;
+            this._storageLoadPromise = null;
+            this._persistMode = wsOk ? 'ws' : 'local';
+            this._sharedConfig = this._yamlConfig
+                ? this._mergeConfig(this._yamlConfig, emptyConfig)
+                : emptyConfig;
+
+            this._prefsLoaded = false;
+            this._prefsHydrated = false;
+            this._personFilterSet = new Set();
+            this._adminUnlocked = false;
+            this._deviceDayStartHour = null;
+            this._deviceDayEndHour = null;
+            this._devicePxPerHour = null;
+            this._deviceRefreshMs = null;
+            this._deviceCacheMaxAgeMs = null;
+            this._deviceBackgroundTheme = null;
+            this._deviceDebug = null;
+            this._devicePeopleDisplay = null;
+
+            this._eventsByEntity = {};
+            this._calendarEventsMerged = [];
+            this._eventsVersion = (this._eventsVersion || 0) + 1;
+            this._todoItems = {};
+            this._todoVersion = (this._todoVersion || 0) + 1;
+            this._shoppingItems = [];
+            this._shoppingVersion = (this._shoppingVersion || 0) + 1;
+            this._dataCache = null;
+            this._dataCacheLoaded = false;
+
+            this._applyConfigImmediate(this._sharedConfig, { useDefaults: false, refresh: false });
+            this._screen = 'schedule';
+            this._mainMode = 'schedule';
+            this.requestUpdate();
+
+            if (wsOk) {
+                this._showToast('Dashboard reset');
+            } else {
+                this._showToast('Dashboard reset', 'Backend unavailable; saved on this device');
+            }
+            return { ok: true, wsOk, keys: { configKey, prefsKey, dataKey } };
         },
     });
 }
