@@ -90,6 +90,25 @@ export async function idbDelete(store, key) {
     }
 }
 
+export async function idbKeysByPrefix(store, prefix = '') {
+    try {
+        const db = await openDb();
+        const keys = await new Promise((resolve, reject) => {
+            const tx = db.transaction(store, 'readonly');
+            const objectStore = tx.objectStore(store);
+            const req = objectStore.getAllKeys();
+            req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+            req.onerror = () => reject(req.error);
+        });
+        const value = String(prefix || '');
+        if (!value) return keys;
+        return keys.filter((key) => String(key || '').startsWith(value));
+    } catch {
+        markFailure(new Error('IndexedDB keys failed'));
+        return [];
+    }
+}
+
 export function idbFailureState() {
     return _idbFailure ? { failed: true, message: _idbFailure.message } : null;
 }

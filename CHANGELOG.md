@@ -14,3 +14,4 @@
 - Added a destructive Settings action `Reset dashboard` that clears local config/prefs/cache keys, resets stored dashboard config, and returns users to onboarding.
 - Hardened websocket persistence calls to prefer the implemented backend namespace (`family_board/config/*`) before compatibility fallback (`nx_displaygrid/config/*`) to reduce silent first-attempt failures.
 - Reduced websocket config noise by removing duplicate GET retries during config load and showing a one-time fallback toast when backend config endpoints are unavailable.
+- Switched config/prefs/data persistence keys to user-scoped storage with one-time migration from legacy device-scoped keys and reset cleanup for both key formats.

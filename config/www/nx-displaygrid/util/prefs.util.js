@@ -14,10 +14,15 @@ export function getDeviceKind() {
 
 export function loadPrefs(userId) {
     if (!userId) return {};
-    const key = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
+    const key = `${KEY_PREFIX}:${userId}`;
+    const legacyKey = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
     try {
         const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : {};
+        if (raw) return JSON.parse(raw);
+        const legacy = localStorage.getItem(legacyKey);
+        if (!legacy) return {};
+        localStorage.setItem(key, legacy);
+        return JSON.parse(legacy);
     } catch {
         return {};
     }
@@ -25,14 +30,21 @@ export function loadPrefs(userId) {
 
 export async function loadPrefsAsync(userId) {
     if (!userId) return {};
-    const key = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
+    const key = `${KEY_PREFIX}:${userId}`;
+    const legacyKey = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
     const prefs = await idbGet(PREFS_STORE, key);
-    return prefs && typeof prefs === 'object' ? prefs : {};
+    if (prefs && typeof prefs === 'object') return prefs;
+    const legacy = await idbGet(PREFS_STORE, legacyKey);
+    if (legacy && typeof legacy === 'object') {
+        await idbSet(PREFS_STORE, key, legacy || {});
+        return legacy;
+    }
+    return {};
 }
 
 export function savePrefs(userId, prefs) {
     if (!userId) return;
-    const key = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
+    const key = `${KEY_PREFIX}:${userId}`;
     try {
         localStorage.setItem(key, JSON.stringify(prefs || {}));
     } catch {
@@ -50,7 +62,7 @@ export function updatePrefs(userId, patch) {
 
 export async function clearPrefs(userId) {
     if (!userId) return;
-    const key = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
+    const key = `${KEY_PREFIX}:${userId}`;
     try {
         localStorage.removeItem(key);
     } catch {
