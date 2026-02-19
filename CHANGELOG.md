@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-02-19
+
+- Fixed Home Controls tile overlap by switching to an auto-fit responsive grid and adding shrink-safe tile sizing so controls do not collide across viewport widths.
+
 ## 2026-02-16
 
 - Renamed the Home Assistant dashboard/custom card surface from `family-board` to `nx-displaygrid` across Lovelace config, resources, card type, and frontend assets.

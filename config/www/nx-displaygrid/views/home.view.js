@@ -5,6 +5,7 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
+import { isControllableEntity } from '../nx-displaygrid.util.js';
 export class FbHomeView extends LitElement {
     static properties = { card: { type: Object } };
 
@@ -14,9 +15,12 @@ export class FbHomeView extends LitElement {
         css`
         .grid {
             display: grid;
-            gap: 8px;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 25%));
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             align-items: stretch;
+        }
+        .grid > * {
+            min-width: 0;
         }
         .banner {
             border: 1px dashed var(--fb-border);
@@ -32,12 +36,15 @@ export class FbHomeView extends LitElement {
             gap: 12px;
             justify-content: space-between;
             width: 100%;
+            min-width: 0;
             min-height: var(--fb-touch);
+            box-sizing: border-box;
         }
         .name {
             font-weight: 700;
             overflow-wrap: anywhere;
             white-space: normal;
+            word-break: break-word;
         }
         button {
             border: 0;
@@ -113,7 +120,8 @@ export class FbHomeView extends LitElement {
         const controls = Array.isArray(card._config?.home_controls)
             ? card._config.home_controls
             : [];
-        const validControls = controls.filter((eid) => hass?.states?.[eid]);
+        const validControls = controls.filter((eid) => isControllableEntity(hass, eid));
+        const hiddenCount = Math.max(0, controls.length - validControls.length);
 
         return html`
             <div class="wrap scroll">
@@ -124,6 +132,9 @@ export class FbHomeView extends LitElement {
                               ? html`Add entities in Settings -> Home controls.`
                               : html`Ask an admin to configure home controls.`}
                       </div>`
+                    : html``}
+                ${hiddenCount > 0
+                    ? html`<div class="muted">Some controls were hidden because they are unavailable.</div>`
                     : html``}
                 <div class="grid">
                     ${validControls.map((eid) => {
