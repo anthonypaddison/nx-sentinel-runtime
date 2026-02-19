@@ -5,9 +5,17 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles } from './shared.styles.js';
-import { slugifyId } from '../nx-displaygrid.util.js';
 
 const WIZARD_STEPS = ['People', 'Calendars', 'Integrations', 'Review'];
+const DEFAULT_PEOPLE_COLOURS = ['#36B37E', '#7E57C2', '#F4B400', '#EC407A', '#42A5F5', '#00897B'];
+const PEOPLE_COLOUR_OPTIONS = [
+    { name: 'Mint', color: '#36B37E', text: '#FFFFFF' },
+    { name: 'Violet', color: '#7E57C2', text: '#FFFFFF' },
+    { name: 'Amber', color: '#F4B400', text: '#1A1A1A' },
+    { name: 'Rose', color: '#EC407A', text: '#FFFFFF' },
+    { name: 'Sky', color: '#42A5F5', text: '#FFFFFF' },
+    { name: 'Teal', color: '#00897B', text: '#FFFFFF' },
+];
 
 export class FbSetupView extends LitElement {
     static properties = {
@@ -18,8 +26,12 @@ export class FbSetupView extends LitElement {
         _saveError: { state: true },
         _stepIndex: { state: true },
         _stepError: { state: true },
+        _calendarStepSkipped: { state: true },
+        _todoStepSkipped: { state: true },
         _detectedCalendar: { state: true },
         _detectedTodo: { state: true },
+        _editMode: { state: true },
+        _initialConfigSnapshot: { state: true },
     };
 
     static styles = [
@@ -142,7 +154,18 @@ export class FbSetupView extends LitElement {
     _initDraft() {
         if (this._ready) return;
         const cfg = this.card?._config || {};
+        const defaultColour = DEFAULT_PEOPLE_COLOURS[0];
         const clone = (list) => (Array.isArray(list) ? list.map((item) => ({ ...item })) : []);
+        const cloneObj = (obj) => {
+            try {
+                return JSON.parse(JSON.stringify(obj || {}));
+            } catch {
+                return { ...(obj || {}) };
+            }
+        };
+        const onboardingRequired = Boolean(this.card?._onboardingRequired?.(cfg));
+        this._editMode = Boolean(this.card?._forceSetupWizard && !onboardingRequired);
+        this._initialConfigSnapshot = cloneObj(this.card?._sharedConfig || cfg);
         this._draft = {
             ...cfg,
             people: clone(cfg.people),
@@ -153,10 +176,17 @@ export class FbSetupView extends LitElement {
             schemaVersion: this._schemaVersion(),
         };
         if (!this._draft.people.length) {
-            this._draft.people.push({ id: '', name: '', color: '', header_row: 1 });
+            this._draft.people.push({ id: '', name: '', color: defaultColour, header_row: 1 });
+        } else {
+            this._draft.people = this._draft.people.map((person) => ({
+                ...person,
+                color: String(person?.color || '').trim() || defaultColour,
+            }));
         }
         this._stepIndex = 0;
         this._stepError = '';
+        this._calendarStepSkipped = false;
+        this._todoStepSkipped = false;
         this._saveError = '';
         this._detectedCalendar = '';
         this._detectedTodo = '';
@@ -169,30 +199,60 @@ export class FbSetupView extends LitElement {
         navigator.clipboard?.writeText?.(yaml);
     }
 
+    _personIdSeed(name) {
+        const lower = String(name || '').trim().toLowerCase();
+        const underscored = lower.replace(/\s+/g, '_');
+        const cleaned = underscored.replace(/[^a-z0-9_]/g, '').replace(/_+/g, '_');
+        return cleaned.replace(/^_+|_+$/g, '');
+    }
+
     _uniquePersonId(baseId, people, currentIndex) {
-        let candidate = slugifyId(baseId);
-        if (!candidate) candidate = `person_${currentIndex + 1}`;
+        let candidate = this._personIdSeed(baseId);
+        if (!candidate) candidate = `person${currentIndex + 1}`;
         const seen = new Set(
             people
                 .map((p, idx) => (idx === currentIndex ? '' : String(p?.id || '').trim()))
+                .map((id) => id.toLowerCase())
                 .filter(Boolean)
         );
         if (!seen.has(candidate)) return candidate;
-        let i = 2;
-        while (seen.has(`${candidate}_${i}`)) i += 1;
-        return `${candidate}_${i}`;
+        let i = 1;
+        while (seen.has(`${candidate}${i}`)) i += 1;
+        return `${candidate}${i}`;
+    }
+
+    _peopleColourOptions(people) {
+        const options = [...PEOPLE_COLOUR_OPTIONS];
+        const seen = new Set(options.map((item) => item.color));
+        for (const person of Array.isArray(people) ? people : []) {
+            const color = String(person?.color || '').trim();
+            if (!color || seen.has(color)) continue;
+            options.push({ name: `Custom ${color}`, color, text: '' });
+            seen.add(color);
+        }
+        return options;
     }
 
     _normalisePeople(people) {
+        const defaultColour = DEFAULT_PEOPLE_COLOURS[0];
+        const nameCounts = new Map();
         return people.map((person, idx) => {
-            const name = String(person?.name || '').trim();
-            const idSeed = String(person?.id || '').trim() || name;
-            const id = this._uniquePersonId(idSeed, people, idx);
+            const baseName = String(person?.name || '').trim();
+            let name = baseName;
+            if (baseName) {
+                const key = baseName.toLowerCase();
+                const seen = (nameCounts.get(key) || 0) + 1;
+                nameCounts.set(key, seen);
+                if (seen > 1) name = `${baseName} ${seen}`;
+            }
+            const id = this._uniquePersonId(baseName, people, idx);
             return {
                 ...(person || {}),
                 name,
                 id,
-                header_row: Number(person?.header_row) === 2 ? 2 : 1,
+                color: String(person?.color || '').trim() || defaultColour,
+                text_color: String(person?.text_color || '').trim(),
+                header_row: 1,
             };
         });
     }
@@ -201,33 +261,43 @@ export class FbSetupView extends LitElement {
         const people = Array.isArray(draft.people) ? draft.people : [];
         if (stepIndex === 0) {
             const names = people.map((p) => String(p?.name || '').trim());
-            const nonEmpty = names.filter(Boolean);
-            if (!nonEmpty.length) return 'Add at least one person name to continue.';
-            if (names.some((name) => !name)) return 'Each person row needs a name or should be removed.';
+            if (!names.length) return 'Add at least one person name to continue.';
+            if (names.some((name) => !name))
+                return 'Each person must have a name (blank or whitespace-only names are not allowed).';
             return '';
         }
 
         if (stepIndex === 1) {
+            const calendarOptions = this._calendarEntityOptions();
+            if (!calendarOptions.length || this._calendarStepSkipped) return '';
             const calendars = Array.isArray(draft.calendars) ? draft.calendars : [];
+            const selectedByPerson = new Map();
             for (const c of calendars) {
                 const entity = String(c?.entity || '').trim();
-                if (!entity) return 'Calendar rows need an entity id or should be removed.';
-                if (!entity.startsWith('calendar.')) {
-                    return `Calendar entity must start with calendar.: ${entity}`;
-                }
+                const personId = String(c?.person_id || '').trim();
+                if (!entity || !personId) continue;
+                if (!entity.startsWith('calendar.')) return `Calendar entity must start with calendar.: ${entity}`;
+                if (!selectedByPerson.has(personId)) selectedByPerson.set(personId, entity);
             }
+            const missing = people.some((p) => !selectedByPerson.get(String(p?.id || '').trim()));
+            if (missing) return 'Select one calendar for each person, or skip this step.';
             return '';
         }
 
         if (stepIndex === 2) {
+            const todoOptions = this._todoEntityOptions();
+            if (!todoOptions.length || this._todoStepSkipped) return '';
             const todos = Array.isArray(draft.todos) ? draft.todos : [];
+            const selectedByPerson = new Map();
             for (const t of todos) {
                 const entity = String(t?.entity || '').trim();
-                if (!entity) return 'Todo rows need an entity id or should be removed.';
-                if (!entity.startsWith('todo.')) {
-                    return `Todo entity must start with todo.: ${entity}`;
-                }
+                const personId = String(t?.person_id || '').trim();
+                if (!entity || !personId) continue;
+                if (!entity.startsWith('todo.')) return `Todo entity must start with todo.: ${entity}`;
+                if (!selectedByPerson.has(personId)) selectedByPerson.set(personId, entity);
             }
+            const missing = people.some((p) => !selectedByPerson.get(String(p?.id || '').trim()));
+            if (missing) return 'Select one todo list for each person, or skip this step.';
             return '';
         }
 
@@ -305,6 +375,9 @@ export class FbSetupView extends LitElement {
         try {
             const payload = this._buildPersistDraft({ finish });
             this._draft = payload;
+            if (this._editMode && !finish) {
+                return true;
+            }
             const result = await this.card?._applySetupDraft?.(payload, {
                 stepIndex: this._stepIndex,
                 stepCount: WIZARD_STEPS.length,
@@ -337,15 +410,32 @@ export class FbSetupView extends LitElement {
         await this._nextStep();
     }
 
+    async _skipTodoStep() {
+        this._todoStepSkipped = true;
+        await this._nextStep();
+    }
+
     async _finishSetup() {
         const ok = await this._persistStep({ finish: true });
         if (!ok) return;
         this._stepIndex = WIZARD_STEPS.length - 1;
     }
 
+    _cancelSetup() {
+        if (!this.card?._forceSetupWizard) return;
+        const snapshot = this._initialConfigSnapshot;
+        if (this._editMode && snapshot && typeof this.card?._applyConfigImmediate === 'function') {
+            this.card._sharedConfig = { ...snapshot };
+            this.card._applyConfigImmediate(snapshot, { useDefaults: false });
+        }
+        this.card._forceSetupWizard = false;
+        this.card._screen = 'settings';
+        this.card.requestUpdate?.();
+    }
+
     _addPerson() {
         this._draft.people = Array.isArray(this._draft.people) ? this._draft.people : [];
-        this._draft.people.push({ id: '', name: '', color: '', header_row: 1 });
+        this._draft.people.push({ id: '', name: '', color: DEFAULT_PEOPLE_COLOURS[0], header_row: 1 });
         this.requestUpdate();
     }
 
@@ -354,6 +444,134 @@ export class FbSetupView extends LitElement {
         const firstPersonId = this._draft.people?.[0]?.id || '';
         this._draft.calendars.push({ entity: '', person_id: firstPersonId, role: '' });
         this.requestUpdate();
+    }
+
+    _calendarEntityOptions() {
+        const states = this.card?._hass?.states || {};
+        const selectedIds = new Set(
+            (Array.isArray(this._draft?.calendars) ? this._draft.calendars : [])
+                .map((entry) => String(entry?.entity || '').trim())
+                .filter(Boolean)
+        );
+        const options = Object.keys(states)
+            .filter((id) => this._isGoogleCalendarEntity(id))
+            .sort()
+            .map((id) => ({
+                id,
+                label: String(states[id]?.attributes?.friendly_name || id),
+            }));
+        for (const entityId of selectedIds) {
+            if (!entityId.startsWith('calendar.')) continue;
+            if (!states[entityId]) continue;
+            if (options.some((item) => item.id === entityId)) continue;
+            options.unshift({
+                id: entityId,
+                label: String(states[entityId]?.attributes?.friendly_name || entityId),
+            });
+        }
+        return options;
+    }
+
+    _personCalendarEntity(personId) {
+        const pid = String(personId || '').trim();
+        const calendars = Array.isArray(this._draft?.calendars) ? this._draft.calendars : [];
+        const found = calendars.find((c) => String(c?.person_id || '').trim() === pid);
+        return found ? String(found.entity || '').trim() : '';
+    }
+
+    _setPersonCalendarEntity(personId, entityId) {
+        const pid = String(personId || '').trim();
+        const eid = String(entityId || '').trim();
+        const current = Array.isArray(this._draft?.calendars) ? this._draft.calendars : [];
+        const next = current.filter((c) => String(c?.person_id || '').trim() !== pid);
+        if (eid) next.push({ entity: eid, person_id: pid });
+        this._draft.calendars = next;
+        this._calendarStepSkipped = false;
+        this.requestUpdate();
+    }
+
+    _todoEntityOptions() {
+        const states = this.card?._hass?.states || {};
+        const selectedIds = new Set(
+            (Array.isArray(this._draft?.todos) ? this._draft.todos : [])
+                .map((entry) => String(entry?.entity || '').trim())
+                .filter(Boolean)
+        );
+        const options = Object.keys(states)
+            .filter((id) => this._isTodoistEntity(id))
+            .sort()
+            .map((id) => ({
+                id,
+                label: String(states[id]?.attributes?.friendly_name || id),
+            }));
+        for (const entityId of selectedIds) {
+            if (!entityId.startsWith('todo.')) continue;
+            if (!states[entityId]) continue;
+            if (options.some((item) => item.id === entityId)) continue;
+            options.unshift({
+                id: entityId,
+                label: String(states[entityId]?.attributes?.friendly_name || entityId),
+            });
+        }
+        return options;
+    }
+
+    _entitySignals(entityId) {
+        const id = String(entityId || '').trim();
+        if (!id) return '';
+        const hass = this.card?._hass || {};
+        const state = hass.states?.[id];
+        const reg = hass.entities?.[id] || {};
+        return [
+            id,
+            reg.platform,
+            reg.integration,
+            reg.original_name,
+            reg.icon,
+            state?.attributes?.friendly_name,
+            state?.attributes?.attribution,
+            state?.attributes?.source,
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+    }
+
+    _isGoogleCalendarEntity(entityId) {
+        const id = String(entityId || '').trim();
+        if (!id.startsWith('calendar.')) return false;
+        const haystack = this._entitySignals(id);
+        return /(^|[^a-z0-9])(google|gmail)([^a-z0-9]|$)/.test(haystack);
+    }
+
+    _isTodoistEntity(entityId) {
+        const id = String(entityId || '').trim();
+        if (!id.startsWith('todo.')) return false;
+        const haystack = this._entitySignals(id);
+        return /(^|[^a-z0-9])todoist([^a-z0-9]|$)/.test(haystack);
+    }
+
+    _personTodoEntity(personId) {
+        const pid = String(personId || '').trim();
+        const todos = Array.isArray(this._draft?.todos) ? this._draft.todos : [];
+        const found = todos.find((t) => String(t?.person_id || '').trim() === pid);
+        return found ? String(found.entity || '').trim() : '';
+    }
+
+    _setPersonTodoEntity(personId, entityId) {
+        const pid = String(personId || '').trim();
+        const eid = String(entityId || '').trim();
+        const current = Array.isArray(this._draft?.todos) ? this._draft.todos : [];
+        const next = current.filter((t) => String(t?.person_id || '').trim() !== pid);
+        if (eid) next.push({ entity: eid, person_id: pid });
+        this._draft.todos = next;
+        this._todoStepSkipped = false;
+        this.requestUpdate();
+    }
+
+    async _skipCalendarsStep() {
+        this._calendarStepSkipped = true;
+        await this._nextStep();
     }
 
     _addTodoRow() {
@@ -403,11 +621,14 @@ export class FbSetupView extends LitElement {
         const people = Array.isArray(draft.people) ? draft.people : [];
         const calendars = Array.isArray(draft.calendars) ? draft.calendars : [];
         const todos = Array.isArray(draft.todos) ? draft.todos : [];
-        const stateIds = Object.keys(card?._hass?.states || {});
-        const calendarEntities = stateIds.filter((id) => id.startsWith('calendar.')).sort();
-        const todoEntities = stateIds.filter((id) => id.startsWith('todo.')).sort();
+        const calendarOptions = this._calendarEntityOptions();
+        const hasCalendarEntities = calendarOptions.length > 0;
+        const todoOptions = this._todoEntityOptions();
+        const hasTodoEntities = todoOptions.length > 0;
         const stepIndex = Number(this._stepIndex || 0);
         const isLastStep = stepIndex === WIZARD_STEPS.length - 1;
+        const canCancel = Boolean(card._forceSetupWizard);
+        const peopleColourOptions = this._peopleColourOptions(people);
 
         return html`
             <div class="wrap scroll setup">
@@ -432,26 +653,44 @@ export class FbSetupView extends LitElement {
                               <div class="section">
                                   <div style="font-weight:700">Step 1: Add people</div>
                                   <div class="note">
-                                      Add at least one person. Names are required and IDs are auto-generated.
+                                      What's their name?
                                   </div>
                                   ${people.map(
                                       (p, idx) => html`
                                           <div class="row people">
                                               <input
-                                                  placeholder="Name"
+                                                  placeholder="What's their name?"
                                                   .value=${p.name || ''}
                                                   @input=${(e) => {
                                                       p.name = e.target.value;
-                                                      if (!String(p.id || '').trim()) {
-                                                          p.id = slugifyId(e.target.value);
+                                                      if (!String(p.color || '').trim()) {
+                                                          p.color =
+                                                              peopleColourOptions[0]?.color ||
+                                                              DEFAULT_PEOPLE_COLOURS[0];
                                                       }
+                                                      this.requestUpdate();
                                                   }}
                                               />
-                                              <input
-                                                  placeholder="id"
-                                                  .value=${p.id || ''}
-                                                  @input=${(e) => (p.id = e.target.value)}
-                                              />
+                                              <select
+                                                  .value=${String(p.color || '').trim() ||
+                                                  peopleColourOptions[0]?.color ||
+                                                  DEFAULT_PEOPLE_COLOURS[0]}
+                                                  @change=${(e) => {
+                                                      const next = peopleColourOptions.find(
+                                                          (item) => item.color === e.target.value
+                                                      );
+                                                      p.color = next?.color || e.target.value;
+                                                      p.text_color = next?.text || '';
+                                                      this.requestUpdate();
+                                                  }}
+                                              >
+                                                  ${peopleColourOptions.map(
+                                                      (item) =>
+                                                          html`<option value=${item.color}>
+                                                              ${item.name}
+                                                          </option>`
+                                                  )}
+                                              </select>
                                               <button
                                                   class="btn sm"
                                                   @click=${() => {
@@ -475,54 +714,38 @@ export class FbSetupView extends LitElement {
                         ? html`
                               <div class="section">
                                   <div style="font-weight:700">Step 2: Add calendar sources (optional)</div>
-                                  <div class="note">
-                                      Add calendar entity IDs (for example, calendar.family). You can skip this
-                                      and configure only people.
-                                  </div>
-                                  ${calendars.map(
-                                      (c, idx) => html`
-                                          <div class="row">
-                                              <input
-                                                  list="setup-calendar-entities"
-                                                  placeholder="calendar.entity_id"
-                                                  .value=${c.entity || ''}
-                                                  @input=${(e) => (c.entity = e.target.value)}
-                                              />
-                                              <select
-                                                  .value=${c.person_id || ''}
-                                                  @change=${(e) => (c.person_id = e.target.value)}
-                                              >
-                                                  <option value="">Unassigned</option>
-                                                  ${people.map(
-                                                      (p) => html`<option value=${p.id}>${p.name || p.id}</option>`
-                                                  )}
-                                              </select>
-                                              <select
-                                                  .value=${c.role || ''}
-                                                  @change=${(e) => (c.role = e.target.value)}
-                                              >
-                                                  <option value="">Role</option>
-                                                  <option value="family">Family</option>
-                                                  <option value="routine">Routine</option>
-                                              </select>
-                                              <button
-                                                  class="btn sm"
-                                                  @click=${() => {
-                                                      calendars.splice(idx, 1);
-                                                      this.requestUpdate();
-                                                  }}
-                                              >
-                                                  Delete
-                                              </button>
-                                          </div>
-                                      `
-                                  )}
-                                  <datalist id="setup-calendar-entities">
-                                      ${calendarEntities.map((id) => html`<option value=${id}></option>`)}
-                                  </datalist>
-                                  <div class="row small">
-                                      <button class="btn" @click=${this._addCalendarRow}>Add calendar</button>
-                                  </div>
+                                  ${hasCalendarEntities
+                                      ? html`
+                                            <div class="note">
+                                                Select one Google Calendar entity per person.
+                                            </div>
+                                            ${people.map(
+                                                (p) => html`
+                                                    <div class="row small">
+                                                        <div>${p.name || p.id}</div>
+                                                        <select
+                                                            .value=${this._personCalendarEntity(p.id)}
+                                                            @change=${(e) =>
+                                                                this._setPersonCalendarEntity(p.id, e.target.value)}
+                                                        >
+                                                            <option value="">Select calendar</option>
+                                                            ${calendarOptions.map(
+                                                                (item) =>
+                                                                    html`<option value=${item.id}>
+                                                                        ${item.label}
+                                                                    </option>`
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                `
+                                            )}
+                                        `
+                                      : html`
+                                            <div class="note">
+                                                No Google Calendar entities were found. Set up Google Calendar in
+                                                Home Assistant, then return to this step.
+                                            </div>
+                                        `}
                               </div>
                           `
                         : html``}
@@ -539,87 +762,38 @@ export class FbSetupView extends LitElement {
                                       Todoist prerequisite: install Todoist integration and create todo lists.
                                       Docs: https://www.home-assistant.io/integrations/todoist/
                                   </div>
-
-                                  <div class="note" style="margin-top:12px">
-                                      Detected calendar entities: ${calendarEntities.length}
-                                  </div>
-                                  <div class="row small">
-                                      <select
-                                          .value=${this._detectedCalendar || ''}
-                                          @change=${(e) => (this._detectedCalendar = e.target.value)}
-                                      >
-                                          <option value="">Select detected calendar</option>
-                                          ${calendarEntities.map((id) => html`<option value=${id}>${id}</option>`)}
-                                      </select>
-                                      <button
-                                          class="btn"
-                                          @click=${() => this._addDetectedCalendar(this._detectedCalendar)}
-                                      >
-                                          Add detected calendar
-                                      </button>
-                                  </div>
-
-                                  <div class="note" style="margin-top:12px">
-                                      Detected todo entities: ${todoEntities.length}
-                                  </div>
-                                  <div class="row small">
-                                      <select
-                                          .value=${this._detectedTodo || ''}
-                                          @change=${(e) => (this._detectedTodo = e.target.value)}
-                                      >
-                                          <option value="">Select detected todo</option>
-                                          ${todoEntities.map((id) => html`<option value=${id}>${id}</option>`)}
-                                      </select>
-                                      <button
-                                          class="btn"
-                                          @click=${() => this._addDetectedTodo(this._detectedTodo)}
-                                      >
-                                          Add detected todo
-                                      </button>
-                                  </div>
-
-                                  <div style="font-weight:700;margin-top:10px">Selected todos</div>
-                                  ${todos.map(
-                                      (t, idx) => html`
-                                          <div class="row">
-                                              <input
-                                                  list="setup-todo-entities"
-                                                  placeholder="todo.entity_id"
-                                                  .value=${t.entity || ''}
-                                                  @input=${(e) => (t.entity = e.target.value)}
-                                              />
-                                              <input
-                                                  placeholder="Name (optional)"
-                                                  .value=${t.name || ''}
-                                                  @input=${(e) => (t.name = e.target.value)}
-                                              />
-                                              <select
-                                                  .value=${t.person_id || ''}
-                                                  @change=${(e) => (t.person_id = e.target.value)}
-                                              >
-                                                  <option value="">Unassigned</option>
-                                                  ${people.map(
-                                                      (p) => html`<option value=${p.id}>${p.name || p.id}</option>`
-                                                  )}
-                                              </select>
-                                              <button
-                                                  class="btn sm"
-                                                  @click=${() => {
-                                                      todos.splice(idx, 1);
-                                                      this.requestUpdate();
-                                                  }}
-                                              >
-                                                  Delete
-                                              </button>
-                                          </div>
-                                      `
-                                  )}
-                                  <datalist id="setup-todo-entities">
-                                      ${todoEntities.map((id) => html`<option value=${id}></option>`)}
-                                  </datalist>
-                                  <div class="row small">
-                                      <button class="btn" @click=${this._addTodoRow}>Add todo manually</button>
-                                  </div>
+                                  ${hasTodoEntities
+                                      ? html`
+                                            <div class="note" style="margin-top:12px">
+                                                Select one Todoist todo list per person.
+                                            </div>
+                                            ${people.map(
+                                                (p) => html`
+                                                    <div class="row small">
+                                                        <div>${p.name || p.id}</div>
+                                                        <select
+                                                            .value=${this._personTodoEntity(p.id)}
+                                                            @change=${(e) =>
+                                                                this._setPersonTodoEntity(p.id, e.target.value)}
+                                                        >
+                                                            <option value="">Select todo list</option>
+                                                            ${todoOptions.map(
+                                                                (item) =>
+                                                                    html`<option value=${item.id}>
+                                                                        ${item.label}
+                                                                    </option>`
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                `
+                                            )}
+                                        `
+                                      : html`
+                                            <div class="note" style="margin-top:12px">
+                                                No Todoist todo entities were found. Set up Todoist in Home
+                                                Assistant, then return.
+                                            </div>
+                                        `}
                               </div>
                           `
                         : html``}
@@ -674,9 +848,19 @@ export class FbSetupView extends LitElement {
                         <button class="btn" ?disabled=${stepIndex === 0 || this._saving} @click=${this._previousStep}>
                             Back
                         </button>
+                        ${canCancel
+                            ? html`<button class="btn" ?disabled=${this._saving} @click=${this._cancelSetup}>
+                                  Cancel
+                              </button>`
+                            : html``}
+                        ${stepIndex === 1
+                            ? html`<button class="btn" ?disabled=${this._saving} @click=${this._skipCalendarsStep}>
+                                  Skip this step
+                              </button>`
+                            : html``}
                         ${stepIndex === 2
-                            ? html`<button class="btn" ?disabled=${this._saving} @click=${this._skipIntegrations}>
-                                  Skip step
+                            ? html`<button class="btn" ?disabled=${this._saving} @click=${this._skipTodoStep}>
+                                  Skip this step
                               </button>`
                             : html``}
                         ${isLastStep

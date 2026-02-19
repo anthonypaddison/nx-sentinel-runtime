@@ -7,6 +7,9 @@
 - Removed the legacy Settings "People wizard" path to avoid conflicting onboarding UX and keep people/source setup in the first-run wizard.
 - Bumped Lovelace resource version for `/local/nx-displaygrid/nx-displaygrid.js` to force frontend cache refresh.
 - Added a non-destructive Settings action to open the first-run setup wizard on demand, without requiring dashboard reset.
+- Updated onboarding wizard Step 1 colour selection to named options with existing selections prepopulated.
+- Restricted onboarding calendar/todo selectors to Google Calendar and Todoist entities, while preserving existing selected mappings in edit mode.
+- Added wizard cancel for edit mode and prevented mid-wizard partial saves from overwriting existing completed setups.
 
 ## 2026-02-16
 
