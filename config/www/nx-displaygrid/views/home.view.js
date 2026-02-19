@@ -18,9 +18,11 @@ export class FbHomeView extends LitElement {
             gap: 12px;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             align-items: stretch;
+            width: 100%;
         }
         .grid > * {
             min-width: 0;
+            max-width: 100%;
         }
         .banner {
             border: 1px dashed var(--fb-border);
@@ -31,14 +33,19 @@ export class FbHomeView extends LitElement {
         }
         .tile {
             --fb-card-padding: 8px 10px;
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
             gap: 12px;
-            justify-content: space-between;
             width: 100%;
             min-width: 0;
             min-height: var(--fb-touch);
             box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+        .content {
+            min-width: 0;
         }
         .name {
             font-weight: 700;
@@ -55,6 +62,7 @@ export class FbHomeView extends LitElement {
             display: inline-block;
             width: 52px;
             height: 28px;
+            min-width: 52px;
         }
         .toggle input {
             opacity: 0;
@@ -144,7 +152,7 @@ export class FbHomeView extends LitElement {
                         const isOn = state === 'on';
                         return html`
                             <div class="tile fb-card padded">
-                                <div style="flex:1;min-width:0">
+                                <div class="content">
                                     <div class="name">${label}</div>
                                 </div>
                                 <label class="toggle">

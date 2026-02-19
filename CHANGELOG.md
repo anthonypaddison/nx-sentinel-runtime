@@ -3,6 +3,7 @@
 ## 2026-02-19
 
 - Fixed Home Controls tile overlap by switching to an auto-fit responsive grid and adding shrink-safe tile sizing so controls do not collide across viewport widths.
+- Hardened Home Controls tile containment (`position: relative`, `overflow: hidden`, shrink-safe content column) to prevent visual stacking from overflowing inner content.
 
 ## 2026-02-16
 
