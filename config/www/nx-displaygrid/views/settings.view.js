@@ -5,7 +5,7 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import { slugifyId } from '../nx-displaygrid.util.js';
+import { isControllableEntity, slugifyId } from '../nx-displaygrid.util.js';
 export class FbSettingsView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -475,6 +475,12 @@ export class FbSettingsView extends LitElement {
                 ? this._binRotationAnchor
                 : binRotation.anchor_date || '';
         const entityIds = Object.keys(card._hass?.states || {}).sort();
+        const controllableEntityIds = entityIds.filter((eid) =>
+            isControllableEntity(card._hass, eid)
+        );
+        const invalidHomeControls = homeControls.filter(
+            (eid) => !isControllableEntity(card._hass, eid)
+        );
         const addValue = this._homeControlAdd || '';
         const hasPeopleDisplay = Array.isArray(cfg.people_display);
         const peopleDisplay = hasPeopleDisplay
@@ -665,32 +671,15 @@ export class FbSettingsView extends LitElement {
                                           ${people.map((p) => html`<li>${p.name || p.id}</li>`)}
                                       </ul>`
                                     : html``}
-                                <div class="subTitle">People wizard</div>
+                                <div class="subTitle">People</div>
                                 <div class="muted">
-                                    Step-by-step add or update people and assign calendars/todos.
-                                </div>
-                                <div class="actions">
-                                    <button
-                                        class="btn"
-                                        @click=${() => this._openPersonWizard()}
-                                    >
-                                        Add person
-                                    </button>
+                                    People and source mapping are configured through first-run setup.
+                                    Use Reset dashboard to re-run onboarding.
                                 </div>
                                 ${people.length
-                                    ? people.map(
-                                          (p) => html`
-                                              <div class="row">
-                                                  <div>${p.name || p.id}</div>
-                                                  <button
-                                                      class="btn sm"
-                                                      @click=${() => this._openPersonWizard(p)}
-                                                  >
-                                                      Edit
-                                                  </button>
-                                              </div>
-                                          `
-                                      )
+                                    ? html`<ul>
+                                          ${people.map((p) => html`<li>${p.name || p.id}</li>`)}
+                                      </ul>`
                                     : html`<div class="muted">No people configured yet.</div>`}
                                 <div class="row">
                                     <div>Shopping entity</div>
@@ -805,7 +794,7 @@ export class FbSettingsView extends LitElement {
                                             @change=${(e) => (this._homeControlAdd = e.target.value)}
                                         >
                                             <option value="">Select entity</option>
-                                            ${entityIds.map(
+                                            ${controllableEntityIds.map(
                                                 (eid) =>
                                                     html`<option value=${eid}>${eid}</option>`
                                             )}
@@ -815,7 +804,7 @@ export class FbSettingsView extends LitElement {
                                             ?disabled=${!addValue}
                                             @click=${async () => {
                                                 if (!addValue) return;
-                                                if (!entityIds.includes(addValue)) return;
+                                                if (!controllableEntityIds.includes(addValue)) return;
                                                 if (homeControls.includes(addValue)) return;
                                                 const next = [...homeControls, addValue];
                                                 await card._updateConfigPartial({
@@ -829,11 +818,40 @@ export class FbSettingsView extends LitElement {
                                         </button>
                                     </div>
                                 </div>
+                                ${invalidHomeControls.length
+                                    ? html`
+                                          <div class="row">
+                                              <div class="muted">
+                                                  ${invalidHomeControls.length} invalid home control${invalidHomeControls.length === 1 ? '' : 's'} selected
+                                              </div>
+                                              <button
+                                                  class="btn"
+                                                  @click=${async () => {
+                                                      const next = homeControls.filter(
+                                                          (eid) =>
+                                                              !invalidHomeControls.includes(eid)
+                                                      );
+                                                      await card._updateConfigPartial({
+                                                          home_controls: next,
+                                                      });
+                                                      this.requestUpdate();
+                                                  }}
+                                              >
+                                                  Remove invalid
+                                              </button>
+                                          </div>
+                                      `
+                                    : html``}
                                 ${homeControls.length
                                     ? homeControls.map(
                                           (eid) => html`
                                               <div class="row">
-                                                  <div>${eid}</div>
+                                                  <div>
+                                                      ${eid}
+                                                      ${invalidHomeControls.includes(eid)
+                                                          ? html` <span class="muted">(Unavailable)</span>`
+                                                          : html``}
+                                                  </div>
                                                   <button
                                                       class="btn"
                                                       @click=${async () => {
@@ -1839,258 +1857,6 @@ export class FbSettingsView extends LitElement {
                     </div>
                 </div>
             </div>
-            ${this._personWizardOpen
-                ? html`<div
-                      class="infoBackdrop"
-                      @click=${(e) =>
-                          e.target === e.currentTarget && this._closePersonWizard()}
-                  >
-                      <div class="wizardDlg">
-                          <div class="infoHead">
-                              <div>
-                                  ${this._personWizardMode === 'edit'
-                                      ? 'Edit person'
-                                      : 'Add person'}
-                              </div>
-                              <button class="btn" @click=${() => this._closePersonWizard()}>
-                                  Close
-                              </button>
-                          </div>
-                          <div class="wizardSteps">
-                              ${wizardSteps.map(
-                                  (step, idx) => html`
-                                      <div
-                                          class="wizardStep ${wizardStep === idx ? 'active' : ''}"
-                                      >
-                                          ${idx + 1}. ${step}
-                                      </div>
-                                  `
-                              )}
-                          </div>
-                          ${wizardStep === 0
-                              ? html`
-                                    <div class="wizardGrid">
-                                        <div>
-                                            <div class="muted">Name</div>
-                                            <input
-                                                class="input"
-                                                placeholder="Name"
-                                                .value=${wizard.name || ''}
-                                                @input=${(e) => {
-                                                    const name = e.target.value;
-                                                    const next = { ...wizard, name };
-                                                    if (this._personWizardAutoId) {
-                                                        next.id = slugifyId(name);
-                                                    }
-                                                    this._personWizardDraft = next;
-                                                }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div class="muted">Id</div>
-                                            <input
-                                                class="input"
-                                                placeholder="person_id"
-                                                .value=${wizard.id || ''}
-                                                @input=${(e) => {
-                                                    this._personWizardAutoId = false;
-                                                    this._personWizardDraft = {
-                                                        ...wizard,
-                                                        id: e.target.value,
-                                                    };
-                                                }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div class="muted">Colour</div>
-                                            <input
-                                                class="input"
-                                                placeholder="#36B37E"
-                                                .value=${wizard.color || ''}
-                                                @input=${(e) =>
-                                                    (this._personWizardDraft = {
-                                                        ...wizard,
-                                                        color: e.target.value,
-                                                    })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div class="muted">Header row</div>
-                                            <select
-                                                class="input"
-                                                .value=${wizard.header_row || 1}
-                                                @change=${(e) =>
-                                                    (this._personWizardDraft = {
-                                                        ...wizard,
-                                                        header_row: Number(e.target.value),
-                                                    })}
-                                            >
-                                                <option value="1">Row 1</option>
-                                                <option value="2">Row 2</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                `
-                              : html``}
-                          ${wizardStep === 1
-                              ? html`
-                                    <div class="wizardGrid full">
-                                        ${calendars.length
-                                            ? calendars.map((c) => {
-                                                  const selected = Array.isArray(
-                                                      wizard.calendarIds
-                                                  )
-                                                      ? wizard.calendarIds.includes(c.entity)
-                                                      : false;
-                                                  return html`
-                                                      <label class="row">
-                                                          <div>${c.entity}</div>
-                                                          <input
-                                                              type="checkbox"
-                                                              .checked=${selected}
-                                                              @change=${(e) => {
-                                                                  const current = Array.isArray(
-                                                                      wizard.calendarIds
-                                                                  )
-                                                                      ? wizard.calendarIds
-                                                                      : [];
-                                                                  const next = e.target.checked
-                                                                      ? [...current, c.entity]
-                                                                      : current.filter(
-                                                                            (id) =>
-                                                                                id !== c.entity
-                                                                        );
-                                                                  this._personWizardDraft = {
-                                                                      ...wizard,
-                                                                      calendarIds: next,
-                                                                  };
-                                                              }}
-                                                          />
-                                                      </label>
-                                                  `;
-                                              })
-                                            : html`<div class="muted">
-                                                  No calendars configured yet.
-                                              </div>`}
-                                    </div>
-                                `
-                              : html``}
-                          ${wizardStep === 2
-                              ? html`
-                                    <div class="wizardGrid full">
-                                        ${todos.length
-                                            ? todos.map((t) => {
-                                                  const selected = Array.isArray(wizard.todoIds)
-                                                      ? wizard.todoIds.includes(t.entity)
-                                                      : false;
-                                                  return html`
-                                                      <label class="row">
-                                                          <div>${t.entity}</div>
-                                                          <input
-                                                              type="checkbox"
-                                                              .checked=${selected}
-                                                              @change=${(e) => {
-                                                                  const current = Array.isArray(
-                                                                      wizard.todoIds
-                                                                  )
-                                                                      ? wizard.todoIds
-                                                                      : [];
-                                                                  const next = e.target.checked
-                                                                      ? [...current, t.entity]
-                                                                      : current.filter(
-                                                                            (id) =>
-                                                                                id !== t.entity
-                                                                        );
-                                                                  this._personWizardDraft = {
-                                                                      ...wizard,
-                                                                      todoIds: next,
-                                                                  };
-                                                              }}
-                                                          />
-                                                      </label>
-                                                  `;
-                                              })
-                                            : html`<div class="muted">
-                                                  No todo lists configured yet.
-                                              </div>`}
-                                    </div>
-                                `
-                              : html``}
-                          ${wizardStep === 3
-                              ? html`
-                                    <div class="wizardGrid full">
-                                        <div class="row">
-                                            <div>Name</div>
-                                            <div class="muted">${wizard.name || '—'}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div>Id</div>
-                                            <div class="muted">${wizard.id || '—'}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div>Colour</div>
-                                            <div class="muted">${wizard.color || '—'}</div>
-                                        </div>
-                                        <div class="row">
-                                            <div>Header row</div>
-                                            <div class="muted">
-                                                ${wizard.header_row || 1}
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div>Calendars</div>
-                                            <div class="muted">
-                                                ${(wizard.calendarIds || []).length}
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div>Todos</div>
-                                            <div class="muted">
-                                                ${(wizard.todoIds || []).length}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `
-                              : html``}
-                          ${this._personWizardError
-                              ? html`<div class="wizardError">
-                                    ${this._personWizardError}
-                                </div>`
-                              : html``}
-                          <div class="wizardNav">
-                              <button
-                                  class="btn"
-                                  ?disabled=${wizardStep === 0}
-                                  @click=${() => {
-                                      this._personWizardError = '';
-                                      this._personWizardStep = Math.max(0, wizardStep - 1);
-                                  }}
-                              >
-                                  Back
-                              </button>
-                              ${wizardStep < wizardSteps.length - 1
-                                  ? html`<button
-                                        class="btn"
-                                        @click=${() => {
-                                            this._personWizardError = '';
-                                            this._personWizardStep = Math.min(
-                                                wizardSteps.length - 1,
-                                                wizardStep + 1
-                                            );
-                                        }}
-                                    >
-                                        Next
-                                    </button>`
-                                  : html`<button
-                                        class="btn"
-                                        @click=${() => this._applyPersonWizard()}
-                                    >
-                                        Save
-                                    </button>`}
-                          </div>
-                      </div>
-                  </div>`
-                : html``}
             ${this._resetStep
                 ? html`<div
                       class="infoBackdrop"
