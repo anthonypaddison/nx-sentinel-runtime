@@ -668,6 +668,7 @@ class FamilyBoardCard extends LitElement {
                             @fb-person-toggle=${this._onPersonToggle}
                             @fb-open-sources=${() => this._openManageSources()}
                             @fb-add=${this._onFab}
+                            @fb-nav=${this._onNav}
                         ></fb-topbar>
                     </div>
 

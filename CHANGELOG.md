@@ -10,6 +10,7 @@
 - Updated onboarding wizard Step 1 colour selection to named options with existing selections prepopulated.
 - Restricted onboarding calendar/todo selectors to Google Calendar and Todoist entities, while preserving existing selected mappings in edit mode.
 - Added wizard cancel for edit mode and prevented mid-wizard partial saves from overwriting existing completed setups.
+- Improved mobile navigation usability by adding screen navigation actions to the topbar overflow menu (Schedule/Important/Chores/Shopping/Home/Settings).
 
 ## 2026-02-16
 

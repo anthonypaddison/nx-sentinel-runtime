@@ -237,6 +237,11 @@ export class FbTopbar extends LitElement {
             display: grid;
             gap: 4px;
         }
+        .menuSection {
+            border-top: 1px solid var(--fb-grid);
+            margin-top: 4px;
+            padding-top: 4px;
+        }
         .menuItem {
             --fb-btn-bg: transparent;
             --fb-btn-border-width: 0;
@@ -244,6 +249,10 @@ export class FbTopbar extends LitElement {
             --fb-btn-padding: 8px 10px;
             --fb-btn-font-size: 13px;
             text-align: left;
+        }
+        .menuItem.active {
+            --fb-btn-bg: var(--fb-surface-2);
+            font-weight: 700;
         }
         .menuItem:hover {
             --fb-btn-bg: var(--fb-surface-2);
@@ -509,6 +518,16 @@ export class FbTopbar extends LitElement {
         );
     }
 
+    _navTo(target) {
+        this.dispatchEvent(
+            new CustomEvent('fb-nav', {
+                detail: { target },
+                bubbles: true,
+                composed: true,
+            })
+        );
+    }
+
     _togglePerson(id) {
         this.dispatchEvent(
             new CustomEvent('fb-person-toggle', {
@@ -648,6 +667,33 @@ export class FbTopbar extends LitElement {
                 ${this._menuOpen
                     ? html`
                           <div class="menu" @click=${(e) => e.stopPropagation()}>
+                              <div>
+                                  ${[
+                                      { key: 'schedule', label: 'Schedule' },
+                                      { key: 'important', label: 'Important' },
+                                      { key: 'chores', label: 'Chores' },
+                                      { key: 'shopping', label: 'Shopping' },
+                                      { key: 'home', label: 'Home' },
+                                      ...(this.isAdmin
+                                          ? [{ key: 'settings', label: 'Settings' }]
+                                          : []),
+                                  ].map(
+                                      (item) => html`
+                                          <button
+                                              class="btn menuItem ${screen === item.key
+                                                  ? 'active'
+                                                  : ''}"
+                                              @click=${() => {
+                                                  this._closeMenu();
+                                                  this._navTo(item.key);
+                                              }}
+                                          >
+                                              ${item.label}
+                                          </button>
+                                      `
+                                  )}
+                              </div>
+                              <div class="menuSection">
                               <button
                                   class="btn menuItem"
                                   ?disabled=${this.syncing}
@@ -658,6 +704,7 @@ export class FbTopbar extends LitElement {
                               >
                                   ${this.syncing ? 'Syncing…' : 'Sync'}
                               </button>
+                              </div>
                           </div>
                       `
                     : html``}
@@ -743,11 +790,13 @@ export class FbTopbar extends LitElement {
                     ? html`<div class="actionInline">
                           ${shoppingChip}
                           ${addButton}
+                          ${menu}
                           ${statusExtras}
                           ${statusNote}
                       </div>`
                     : html`<div class="actionInline">
                           ${addButton}
+                          ${menu}
                           ${statusExtras}
                           ${statusNote}
                       </div>`}
