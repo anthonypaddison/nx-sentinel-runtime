@@ -674,7 +674,12 @@ export class FbSettingsView extends LitElement {
                                 <div class="subTitle">People</div>
                                 <div class="muted">
                                     People and source mapping are configured through first-run setup.
-                                    Use Reset dashboard to re-run onboarding.
+                                    Use Open setup wizard to re-run onboarding without reset.
+                                </div>
+                                <div class="actions">
+                                    <button class="btn" @click=${() => card._openSetupWizard?.()}>
+                                        Open setup wizard
+                                    </button>
                                 </div>
                                 ${people.length
                                     ? html`<ul>

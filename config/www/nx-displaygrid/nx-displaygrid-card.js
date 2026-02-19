@@ -91,6 +91,7 @@ class FamilyBoardCard extends LitElement {
         _calendarStale: { state: true },
         _calendarError: { state: true },
         _calendarFetchInFlight: { state: true },
+        _forceSetupWizard: { state: true },
     };
 
     static async getConfigElement() {
@@ -280,6 +281,7 @@ class FamilyBoardCard extends LitElement {
         this._calendarStale = false;
         this._calendarError = false;
         this._calendarFetchInFlight = false;
+        this._forceSetupWizard = false;
         this._calendarLastSuccessTs = 0;
         this._calendarRetryTimer = null;
         this._calendarRetryMs = 0;
@@ -578,7 +580,8 @@ class FamilyBoardCard extends LitElement {
         const isAdmin = this._hasAdminAccess();
         const hasPin = Boolean(this._config?.admin_pin);
         const showSettings = isAdmin || hasPin;
-        const needsSetup = this._onboardingRequired?.(this._config) ?? true;
+        const needsSetup =
+            this._forceSetupWizard || (this._onboardingRequired?.(this._config) ?? true);
         const personFilterSig = Array.from(this._personFilterSet || []).sort().join(',');
         const shoppingFavSig = Array.isArray(this._shoppingFavourites)
             ? this._shoppingFavourites.join('|')

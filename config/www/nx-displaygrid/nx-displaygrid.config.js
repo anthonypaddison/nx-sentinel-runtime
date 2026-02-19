@@ -158,6 +158,12 @@ export function applyConfigHelpers(FamilyBoardCard) {
             return lines.join('\n');
         },
 
+        _openSetupWizard() {
+            this._forceSetupWizard = true;
+            this._screen = 'schedule';
+            this.requestUpdate();
+        },
+
         async _applySetupDraft(draft, { stepIndex = 0, stepCount = 1 } = {}) {
             const sharedBase = this._sharedConfig || this._config || {};
             const isFinished = stepIndex >= Math.max(0, Number(stepCount) - 1);
@@ -173,6 +179,7 @@ export function applyConfigHelpers(FamilyBoardCard) {
                 await this._refreshAll();
                 const result = await this._persistConfig(nextShared);
                 const title = isFinished ? 'Setup saved' : 'Setup step saved';
+                if (isFinished) this._forceSetupWizard = false;
                 if (result?.mode === 'local') {
                     this._showToast(title, 'Saved on this device');
                 } else {
