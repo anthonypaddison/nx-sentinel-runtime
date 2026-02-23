@@ -40,6 +40,7 @@ import { applyHandlers } from './nx-displaygrid.handlers.js';
 import { applyValidation } from './nx-displaygrid.validation.js';
 import { applyTodoHelpers } from './nx-displaygrid.todo.js';
 import { applyFood } from './nx-displaygrid.food.js';
+import { applyIntent } from './nx-displaygrid.intent.js';
 
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
 
@@ -55,6 +56,8 @@ import './views/home.view.js';
 import './views/chores.view.js';
 import './views/shopping.view.js';
 import './views/food.view.js';
+import './views/intent.view.js';
+import './views/ambient.view.js';
 import './views/settings.view.js';
 import './views/setup.view.js';
 import './views/important.view.js';
@@ -623,6 +626,7 @@ class FamilyBoardCard extends LitElement {
         const settingsRenderKey = `${this._configVersion || 0}|${this._prefsVersion || 0}`;
         const extraScreens = this._v2NavScreens?.() || [];
         const foodSig = JSON.stringify(this._config?.food_v2 || {});
+        const ambientSig = `${this._eventsVersion || 0}|${this._todoVersion || 0}|${this._shoppingVersion || 0}|${this._lastRefreshTs || 0}`;
 
         return html`
             <div class="app" style="--fb-sidebar-width:${sidebarWidth}">
@@ -709,6 +713,16 @@ class FamilyBoardCard extends LitElement {
                                   .card=${this}
                                   .renderKey=${`${foodSig}|${shoppingItemsSig}`}
                               ></fb-food-view>`
+                            : screen === 'intent'
+                            ? html`<fb-intent-view
+                                  .card=${this}
+                                  .renderKey=${ambientSig}
+                              ></fb-intent-view>`
+                            : screen === 'ambient'
+                            ? html`<fb-ambient-view
+                                  .card=${this}
+                                  .renderKey=${ambientSig}
+                              ></fb-ambient-view>`
                             : screen === 'settings'
                             ? html`<fb-settings-view
                                   .card=${this}
@@ -855,6 +869,7 @@ applyServices(FamilyBoardCard);
 applyHandlers(FamilyBoardCard);
 applyValidation(FamilyBoardCard);
 applyFood(FamilyBoardCard);
+applyIntent(FamilyBoardCard);
 customElements.define('nx-displaygrid', FamilyBoardCard);
 
 window.customCards = window.customCards || [];

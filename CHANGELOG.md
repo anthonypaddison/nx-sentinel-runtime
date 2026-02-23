@@ -29,6 +29,7 @@
 - Added a V2 `Food` view (weekly menu + in-house pantry/fridge inventory) with saved shopping lists and meal-to-shopping helpers.
 - Added V2 extended event details in the event dialog (location/description) with calendar update support for those fields.
 - Added a V2 Settings person wizard UI for add/edit flows with step navigation, cancel, and confirm.
+- Added V2 `Intent` and `Ambient` views, including adaptive action prioritization based on time/house mode/recent board state.
 
 ## 2026-02-19
 
