@@ -3,6 +3,7 @@
  */
 import { debugLog } from './nx-displaygrid.util.js';
 import { serializeNxDisplaygridCardConfig } from './util/config-yaml.util.js';
+import { configHasPeople } from './util/source-validation.util.js';
 
 export function applyConfigHelpers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -13,8 +14,13 @@ export function applyConfigHelpers(FamilyBoardCard) {
         _onboardingRequired(config = this._config) {
             const schemaVersion = Number(config?.schemaVersion || 0);
             const onboardingComplete = config?.onboardingComplete === true;
-            const hasPeople = Array.isArray(config?.people) && config.people.length > 0;
-            return !config || !hasPeople || !onboardingComplete || schemaVersion !== this._onboardingSchemaVersion();
+            const hasPeople = configHasPeople(config);
+            return (
+                !config ||
+                !hasPeople ||
+                !onboardingComplete ||
+                schemaVersion !== this._onboardingSchemaVersion()
+            );
         },
 
         async _updateConfigPartial(patch) {

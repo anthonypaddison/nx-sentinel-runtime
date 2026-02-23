@@ -21,6 +21,7 @@
 - Continued `settings.view.js` decomposition by extracting admin-locked and footer dialog rendering into class helpers without changing settings behavior.
 - Added shared source-validation utility helpers (`configHasSources`, `configHasSourceData`) and reused them in startup checks/manage-sources code paths.
 - Added a restore runbook (`docs/RESTORE.md`) for full `/config` rollbacks vs focused `nx-displaygrid` restores using the new backup/export scripts.
+- Further reduced `settings.view.js` render complexity by extracting the Preferences debug/cache-status subsection and added tests for Home Controls entity eligibility checks.
 
 ## 2026-02-19
 

@@ -549,6 +549,108 @@ export class FbSettingsView extends LitElement {
         `;
     }
 
+    _renderPreferencesDebugCacheStatus({ card, hasAdminAccess, formatAge, formatTs, refreshReasonLabel }) {
+        if (!(hasAdminAccess && card._debug)) return html``;
+        return html`
+            <div class="subTitle">Cache status</div>
+            <div class="row">
+                <div>Calendar</div>
+                <div class="muted">
+                    ${formatAge(card._calendarLastSuccessTs)} (${formatTs(card._calendarLastSuccessTs)})
+                </div>
+            </div>
+            <div class="row">
+                <div>Todos</div>
+                <div class="muted">
+                    ${formatAge(card._todoLastSuccessTs)} (${formatTs(card._todoLastSuccessTs)})
+                </div>
+            </div>
+            <div class="row">
+                <div>Shopping</div>
+                <div class="muted">
+                    ${formatAge(card._shoppingLastSuccessTs)} (${formatTs(card._shoppingLastSuccessTs)})
+                </div>
+            </div>
+            <div class="row">
+                <div>Cache write</div>
+                <div class="muted">
+                    ${formatAge(card._dataCache?.meta?.updatedAt)} (${formatTs(
+                        card._dataCache?.meta?.updatedAt
+                    )})
+                </div>
+            </div>
+            <div class="row">
+                <div>Last refresh</div>
+                <div class="muted">
+                    ${refreshReasonLabel} · ${formatAge(card._lastRefreshTs)} (${formatTs(
+                        card._lastRefreshTs
+                    )})
+                </div>
+            </div>
+            <div class="row">
+                <div>IndexedDB</div>
+                <div class="muted">
+                    ${card._idbFailed ? card._idbError || 'Unavailable' : 'Available'}
+                </div>
+            </div>
+            <div class="row">
+                <div>Cache tools</div>
+                <div class="unitRow">
+                    <button
+                        class="btn"
+                        @click=${() => {
+                            const ok = window.confirm('Clear cached data for this device?');
+                            if (ok) card._clearDataCacheAndRefresh?.();
+                        }}
+                    >
+                        Clear data cache
+                    </button>
+                    <button
+                        class="btn"
+                        @click=${() => {
+                            const ok = window.confirm('Clear cached config for this device?');
+                            if (ok) card._clearConfigCacheAndReload?.();
+                        }}
+                    >
+                        Clear config cache
+                    </button>
+                    <button
+                        class="btn"
+                        @click=${() => {
+                            const ok = window.confirm('Clear cached preferences for this device?');
+                            if (ok) card._clearPrefsCache?.();
+                        }}
+                    >
+                        Clear prefs cache
+                    </button>
+                </div>
+            </div>
+            <div class="muted">Clears local caches on this device and forces a refresh.</div>
+            <div class="row">
+                <div>State</div>
+                <div class="muted">
+                    ${card._calendarError
+                        ? 'Calendar error'
+                        : card._calendarStale
+                        ? 'Calendar stale'
+                        : 'Calendar ok'}
+                    ·
+                    ${card._todoError
+                        ? 'Chores error'
+                        : card._todoStale
+                        ? 'Chores stale'
+                        : 'Chores ok'}
+                    ·
+                    ${card._shoppingError
+                        ? 'Shopping error'
+                        : card._shoppingStale
+                        ? 'Shopping stale'
+                        : 'Shopping ok'}
+                </div>
+            </div>
+        `;
+    }
+
     _renderDialogs(card) {
         return html`
             ${this._resetStep
@@ -1745,124 +1847,13 @@ export class FbSettingsView extends LitElement {
                                 <div class="muted">
                                     Debug adds console logs and persists in the card config.
                                 </div>
-                                ${hasAdminAccess && card._debug
-                                    ? html`
-                                          <div class="subTitle">Cache status</div>
-                                          <div class="row">
-                                              <div>Calendar</div>
-                                              <div class="muted">
-                                                  ${formatAge(card._calendarLastSuccessTs)} (${formatTs(
-                                                      card._calendarLastSuccessTs
-                                                  )})
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Todos</div>
-                                              <div class="muted">
-                                                  ${formatAge(card._todoLastSuccessTs)} (${formatTs(
-                                                      card._todoLastSuccessTs
-                                                  )})
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Shopping</div>
-                                              <div class="muted">
-                                                  ${formatAge(
-                                                      card._shoppingLastSuccessTs
-                                                  )} (${formatTs(card._shoppingLastSuccessTs)})
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Cache write</div>
-                                              <div class="muted">
-                                                  ${formatAge(card._dataCache?.meta?.updatedAt)} (${formatTs(
-                                                      card._dataCache?.meta?.updatedAt
-                                                  )})
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Last refresh</div>
-                                              <div class="muted">
-                                                  ${refreshReasonLabel} · ${formatAge(
-                                                      card._lastRefreshTs
-                                                  )} (${formatTs(card._lastRefreshTs)})
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>IndexedDB</div>
-                                              <div class="muted">
-                                                  ${card._idbFailed
-                                                      ? card._idbError || 'Unavailable'
-                                                      : 'Available'}
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Cache tools</div>
-                                              <div class="unitRow">
-                                                  <button
-                                                      class="btn"
-                                                      @click=${() => {
-                                                          const ok = window.confirm(
-                                                              'Clear cached data for this device?'
-                                                          );
-                                                          if (ok)
-                                                              card._clearDataCacheAndRefresh?.();
-                                                      }}
-                                                  >
-                                                      Clear data cache
-                                                  </button>
-                                                  <button
-                                                      class="btn"
-                                                      @click=${() => {
-                                                          const ok = window.confirm(
-                                                              'Clear cached config for this device?'
-                                                          );
-                                                          if (ok)
-                                                              card._clearConfigCacheAndReload?.();
-                                                      }}
-                                                  >
-                                                      Clear config cache
-                                                  </button>
-                                                  <button
-                                                      class="btn"
-                                                      @click=${() => {
-                                                          const ok = window.confirm(
-                                                              'Clear cached preferences for this device?'
-                                                          );
-                                                          if (ok) card._clearPrefsCache?.();
-                                                      }}
-                                                  >
-                                                      Clear prefs cache
-                                                  </button>
-                                              </div>
-                                          </div>
-                                          <div class="muted">
-                                              Clears local caches on this device and forces a refresh.
-                                          </div>
-                                          <div class="row">
-                                              <div>State</div>
-                                              <div class="muted">
-                                                  ${card._calendarError
-                                                      ? 'Calendar error'
-                                                      : card._calendarStale
-                                                      ? 'Calendar stale'
-                                                      : 'Calendar ok'}
-                                                  ·
-                                                  ${card._todoError
-                                                      ? 'Chores error'
-                                                      : card._todoStale
-                                                      ? 'Chores stale'
-                                                      : 'Chores ok'}
-                                                  ·
-                                                  ${card._shoppingError
-                                                      ? 'Shopping error'
-                                                      : card._shoppingStale
-                                                      ? 'Shopping stale'
-                                                      : 'Shopping ok'}
-                                              </div>
-                                          </div>
-                                      `
-                                    : html``}
+                                ${this._renderPreferencesDebugCacheStatus({
+                                    card,
+                                    hasAdminAccess,
+                                    formatAge,
+                                    formatTs,
+                                    refreshReasonLabel,
+                                })}
                                 <div class="row">
                                     <div>Time slots (this device)</div>
                                     <select
