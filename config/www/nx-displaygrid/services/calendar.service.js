@@ -137,7 +137,11 @@ export class CalendarService {
         };
     }
 
-    async createEvent(hass, entityId, { summary, start, end, allDay = false } = {}) {
+    async createEvent(
+        hass,
+        entityId,
+        { summary, start, end, allDay = false, location = '', description = '' } = {}
+    ) {
         if (!summary) throw new Error('Missing summary');
         if (!start) throw new Error('Missing start');
         if (!end) throw new Error('Missing end');
@@ -149,6 +153,8 @@ export class CalendarService {
             end_date_time: allDay ? undefined : end.toISOString(),
             start_date: allDay ? start.toISOString().slice(0, 10) : undefined,
             end_date: allDay ? end.toISOString().slice(0, 10) : undefined,
+            location: location || undefined,
+            description: description || undefined,
         };
 
         Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
@@ -156,7 +162,12 @@ export class CalendarService {
         await hass.callService('calendar', 'create_event', data);
     }
 
-    async updateEvent(hass, entityId, event, { summary, start, end, allDay = false } = {}) {
+    async updateEvent(
+        hass,
+        entityId,
+        event,
+        { summary, start, end, allDay = false, location = '', description = '' } = {}
+    ) {
         if (!summary) throw new Error('Missing summary');
         if (!start) throw new Error('Missing start');
         if (!end) throw new Error('Missing end');
@@ -173,6 +184,8 @@ export class CalendarService {
             end_date_time: allDay ? undefined : end.toISOString(),
             start_date: allDay ? start.toISOString().slice(0, 10) : undefined,
             end_date: allDay ? end.toISOString().slice(0, 10) : undefined,
+            location: location || undefined,
+            description: description || undefined,
         };
 
         Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);

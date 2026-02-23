@@ -752,6 +752,9 @@ class FamilyBoardCard extends LitElement {
                             .open=${this._eventDialogOpen}
                             .event=${this._eventDialogEvent}
                             .entityId=${this._eventDialogEntity}
+                            .showExtendedDetails=${this._v2FeatureEnabled?.(
+                                'event_details_extended'
+                            )}
                             .supportsUpdate=${this._calendarSupports(
                                 this._eventDialogEntity,
                                 CALENDAR_FEATURES.UPDATE

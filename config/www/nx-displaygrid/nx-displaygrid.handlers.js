@@ -133,23 +133,43 @@ export function applyHandlers(FamilyBoardCard) {
         },
 
         _onEventUpdate: async function (ev) {
-            const { entityId, event, summary, start, end, allDay } = ev?.detail || {};
+            const { entityId, event, summary, start, end, allDay, location, description } =
+                ev?.detail || {};
             if (!entityId || !event) return;
             if (!this._calendarSupports(entityId, CALENDAR_FEATURES.UPDATE)) return;
-            debugLog(this._debug, 'eventUpdate', { entityId, summary, start, end, allDay });
+            debugLog(this._debug, 'eventUpdate', {
+                entityId,
+                summary,
+                start,
+                end,
+                allDay,
+                hasLocation: Boolean(location),
+                hasDescription: Boolean(description),
+            });
             const previous = {
                 summary: event.summary,
                 start: event._start,
                 end: event._end,
                 allDay: event.all_day,
+                location: event.location || '',
+                description: event.description || '',
             };
-            this._optimisticCalendarUpdate(entityId, event, { summary, start, end, allDay });
+            this._optimisticCalendarUpdate(entityId, event, {
+                summary,
+                start,
+                end,
+                allDay,
+                location,
+                description,
+            });
             try {
                 await this._calendarService.updateEvent(this._hass, entityId, event, {
                     summary,
                     start,
                     end,
                     allDay,
+                    location,
+                    description,
                 });
             } catch (error) {
                 this._optimisticCalendarUpdate(entityId, event, {
@@ -157,6 +177,8 @@ export function applyHandlers(FamilyBoardCard) {
                     start: previous.start,
                     end: previous.end,
                     allDay: previous.allDay,
+                    location: previous.location,
+                    description: previous.description,
                 });
                 this._reportError?.('Edit event', error);
             } finally {

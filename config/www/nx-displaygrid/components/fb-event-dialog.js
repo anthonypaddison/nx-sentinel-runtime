@@ -15,10 +15,13 @@ export class FbEventDialog extends LitElement {
         supportsUpdate: { type: Boolean },
         supportsDelete: { type: Boolean },
         supportsCreate: { type: Boolean },
+        showExtendedDetails: { type: Boolean },
         _summary: { state: true },
         _start: { state: true },
         _end: { state: true },
         _allDay: { state: true },
+        _location: { state: true },
+        _description: { state: true },
     };
 
     static styles = [
@@ -69,6 +72,17 @@ export class FbEventDialog extends LitElement {
             background: var(--fb-surface);
             color: var(--fb-text);
         }
+        textarea {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--fb-grid);
+            font-size: 16px;
+            background: var(--fb-surface);
+            color: var(--fb-text);
+            min-height: 88px;
+            resize: vertical;
+            font-family: inherit;
+        }
         .actions {
             display: flex;
             gap: 10px;
@@ -94,6 +108,8 @@ export class FbEventDialog extends LitElement {
             this._allDay = Boolean(ev.all_day);
             this._start = this._toLocalInput(ev._start);
             this._end = this._toLocalInput(ev._end);
+            this._location = ev.location || '';
+            this._description = ev.description || '';
         }
     }
 
@@ -119,6 +135,8 @@ export class FbEventDialog extends LitElement {
                     start: this._start ? new Date(this._start) : this.event._start,
                     end: this._end ? new Date(this._end) : this.event._end,
                     allDay: this._allDay,
+                    location: this._location || '',
+                    description: this._description || '',
                 },
                 bubbles: true,
                 composed: true,
@@ -152,6 +170,7 @@ export class FbEventDialog extends LitElement {
         const canDelete = Boolean(this.supportsDelete && eventId);
         const providerUrl = this.event?.url || this.event?.htmlLink;
         const showReadOnlyNote = !canUpdate || !canDelete;
+        const showExtended = Boolean(this.showExtendedDetails);
 
         return html`
             <div class="backdrop" @click=${(e) => e.target === e.currentTarget && this._close()}>
@@ -187,6 +206,36 @@ export class FbEventDialog extends LitElement {
                             @input=${(e) => (this._end = e.target.value)}
                         />
                     </div>
+                    ${showExtended
+                        ? html`
+                              <div class="row">
+                                  <label>Location</label>
+                                  <input
+                                      .value=${this._location || ''}
+                                      ?disabled=${!canUpdate}
+                                      @input=${(e) => (this._location = e.target.value)}
+                                  />
+                              </div>
+                              <div class="row">
+                                  <label>Description</label>
+                                  <textarea
+                                      ?disabled=${!canUpdate}
+                                      @input=${(e) => (this._description = e.target.value)}
+                                      >${this._description || ''}</textarea
+                                  >
+                              </div>
+                          `
+                        : html``}
+                    ${showExtended && (this.event?.location || this.event?.description) && !canUpdate
+                        ? html`
+                              ${this.event?.location
+                                  ? html`<div class="note">Location: ${this.event.location}</div>`
+                                  : html``}
+                              ${this.event?.description
+                                  ? html`<div class="note">${this.event.description}</div>`
+                                  : html``}
+                          `
+                        : html``}
 
                     <div class="actions">
                         ${providerUrl
