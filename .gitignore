@@ -4,6 +4,8 @@ config/home-assistant_v2.db
 config/home-assistant_v2.db-*
 config/*.log
 config/*.log.*
+config/custom_components/**/__pycache__/
+config/custom_components/**/*.pyc
 
 # Secrets (template stays versioned)
 config/secrets.yaml

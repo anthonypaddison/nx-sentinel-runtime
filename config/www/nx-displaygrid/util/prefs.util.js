@@ -3,6 +3,14 @@
  */
 
 import { idbGet, idbSet, idbDelete } from './idb.util.js';
+import {
+    makeScopedKey,
+    makeLegacyScopedKey,
+    migrateScopedStoreKey,
+    readJsonLocal,
+    writeJsonLocal,
+    removeLocalKey,
+} from './scoped-storage.util.js';
 
 const KEY_PREFIX = 'nx-displaygrid:prefs';
 const PREFS_STORE = 'prefs';
@@ -14,24 +22,29 @@ export function getDeviceKind() {
 
 export function loadPrefs(userId) {
     if (!userId) return {};
-    const key = `${KEY_PREFIX}:${userId}`;
-    const legacyKey = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
-    try {
-        const raw = localStorage.getItem(key);
-        if (raw) return JSON.parse(raw);
-        const legacy = localStorage.getItem(legacyKey);
-        if (!legacy) return {};
-        localStorage.setItem(key, legacy);
-        return JSON.parse(legacy);
-    } catch {
-        return {};
+    const key = makeScopedKey(KEY_PREFIX, userId);
+    const legacyKey = makeLegacyScopedKey(KEY_PREFIX, userId, getDeviceKind());
+    const current = readJsonLocal(key, null);
+    if (current && typeof current === 'object') return current;
+    const legacy = readJsonLocal(legacyKey, null);
+    if (legacy && typeof legacy === 'object') {
+        writeJsonLocal(key, legacy);
+        return legacy;
     }
+    return {};
 }
 
 export async function loadPrefsAsync(userId) {
     if (!userId) return {};
-    const key = `${KEY_PREFIX}:${userId}`;
-    const legacyKey = `${KEY_PREFIX}:${userId}:${getDeviceKind()}`;
+    const key = makeScopedKey(KEY_PREFIX, userId);
+    const legacyKey = makeLegacyScopedKey(KEY_PREFIX, userId, getDeviceKind());
+    await migrateScopedStoreKey({
+        key,
+        legacyKey,
+        idbStore: PREFS_STORE,
+        idbGetFn: idbGet,
+        idbSetFn: idbSet,
+    });
     const prefs = await idbGet(PREFS_STORE, key);
     if (prefs && typeof prefs === 'object') return prefs;
     const legacy = await idbGet(PREFS_STORE, legacyKey);
@@ -44,12 +57,8 @@ export async function loadPrefsAsync(userId) {
 
 export function savePrefs(userId, prefs) {
     if (!userId) return;
-    const key = `${KEY_PREFIX}:${userId}`;
-    try {
-        localStorage.setItem(key, JSON.stringify(prefs || {}));
-    } catch {
-        // Ignore storage errors.
-    }
+    const key = makeScopedKey(KEY_PREFIX, userId);
+    writeJsonLocal(key, prefs || {});
     idbSet(PREFS_STORE, key, prefs || {}).catch(() => {});
 }
 
@@ -62,11 +71,7 @@ export function updatePrefs(userId, patch) {
 
 export async function clearPrefs(userId) {
     if (!userId) return;
-    const key = `${KEY_PREFIX}:${userId}`;
-    try {
-        localStorage.removeItem(key);
-    } catch {
-        // Ignore storage errors.
-    }
+    const key = makeScopedKey(KEY_PREFIX, userId);
+    removeLocalKey(key);
     await idbDelete(PREFS_STORE, key);
 }

@@ -4,6 +4,14 @@
 import { addDays, startOfDay, endOfDay, debugLog } from './nx-displaygrid.util.js';
 import { getDeviceKind } from './util/prefs.util.js';
 import { idbGet, idbSet, idbDelete } from './util/idb.util.js';
+import {
+    makeScopedKey,
+    makeLegacyScopedKey,
+    migrateScopedStoreKey,
+    readJsonLocal,
+    writeJsonLocal,
+    removeLocalKey,
+} from './util/scoped-storage.util.js';
 
 export function applyRefresh(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -25,11 +33,11 @@ export function applyRefresh(FamilyBoardCard) {
 
         _dataCacheKey() {
             const userId = this._hass?.user?.id || 'unknown';
-            return `nx-displaygrid:data:${userId}`;
+            return makeScopedKey('nx-displaygrid:data', userId);
         },
 
         _legacyDataCacheKey(userId = this._hass?.user?.id || 'unknown', device = getDeviceKind()) {
-            return `nx-displaygrid:data:${userId}:${device}`;
+            return makeLegacyScopedKey('nx-displaygrid:data', userId, device);
         },
 
         async _migrateDataCacheStorage() {
@@ -37,49 +45,26 @@ export function applyRefresh(FamilyBoardCard) {
             this._dataCacheStorageMigrated = true;
             const key = this._dataCacheKey();
             const legacyKey = this._legacyDataCacheKey();
-
-            try {
-                const currentRaw = localStorage.getItem(key);
-                if (currentRaw === null) {
-                    const legacyRaw = localStorage.getItem(legacyKey);
-                    if (legacyRaw !== null) localStorage.setItem(key, legacyRaw);
-                }
-            } catch {
-                // Ignore storage errors.
-            }
-
-            const currentIdb = await idbGet('cache', key);
-            if (currentIdb && typeof currentIdb === 'object') return;
-            const legacyIdb = await idbGet('cache', legacyKey);
-            if (legacyIdb && typeof legacyIdb === 'object') {
-                await idbSet('cache', key, legacyIdb);
-            }
+            await migrateScopedStoreKey({
+                key,
+                legacyKey,
+                idbStore: 'cache',
+                idbGetFn: idbGet,
+                idbSetFn: idbSet,
+            });
         },
 
         _loadLocalDataCache(key) {
-            try {
-                const raw = localStorage.getItem(key);
-                return raw ? JSON.parse(raw) : null;
-            } catch {
-                return null;
-            }
+            return readJsonLocal(key, null);
         },
 
         _saveLocalDataCache(key, data) {
-            try {
-                localStorage.setItem(key, JSON.stringify(data || {}));
-            } catch {
-                // Ignore storage errors.
-            }
+            writeJsonLocal(key, data || {});
         },
 
         async _clearDataCache() {
             const key = this._dataCacheKey();
-            try {
-                localStorage.removeItem(key);
-            } catch {
-                // Ignore storage errors.
-            }
+            removeLocalKey(key);
             await idbDelete('cache', key);
             this._dataCache = null;
             this._dataCacheLoaded = false;

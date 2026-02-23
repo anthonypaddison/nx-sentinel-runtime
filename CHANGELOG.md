@@ -8,6 +8,9 @@
 - Removed stale legacy CI/tooling config files and simplified ESLint config to match the current repo.
 - Cleaned documentation drift (README, contributing guide, release checklist, architecture notes, and AGENTS.md duplicates).
 - Expanded `config/secrets.yaml.template` to include currently referenced secret keys.
+- Deduplicated frontend scoped storage key/migration/local JSON helpers across prefs/persistence/refresh modules.
+- Centralized `nx-displaygrid` websocket command names in frontend/backend constants and added protocol stability tests.
+- Began tracking the `nx_displaygrid` custom component backend in-repo for reproducible deployments (excluding Python cache files).
 
 ## 2026-02-19
 

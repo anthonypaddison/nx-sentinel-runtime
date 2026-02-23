@@ -4,6 +4,16 @@
 import { debugLog } from './nx-displaygrid.util.js';
 import { getDeviceKind } from './util/prefs.util.js';
 import { idbGet, idbSet, idbDelete, idbKeysByPrefix } from './util/idb.util.js';
+import {
+    makeScopedKey,
+    makeLegacyScopedKey,
+    migrateScopedStoreKey,
+    readJsonLocal,
+    writeJsonLocal,
+    removeLocalKey,
+    removeLocalKeysByPrefix as removeLocalKeysByPrefixValue,
+} from './util/scoped-storage.util.js';
+import { NX_DISPLAYGRID_WS } from './util/ws-protocol.util.js';
 
 export function applyPersistence(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -25,7 +35,7 @@ export function applyPersistence(FamilyBoardCard) {
             this._storageLoadPromise = (async () => {
                 this._wsConfigLoadInProgress = true;
                 await this._migrateConfigStorage();
-                const stored = await this._getStoredConfig({ skipWs: true });
+                const stored = await this._getStoredConfig();
                 this._storageLoaded = true;
                 if (stored) {
                     this._storedConfig = stored;
@@ -125,16 +135,12 @@ export function applyPersistence(FamilyBoardCard) {
         },
 
         async _callWsGet() {
-            const types = ['family_board/config/get', 'nx_displaygrid/config/get'];
             let hadError = false;
-            for (const type of types) {
-                try {
-                    const result = await this._hass.callWS({ type });
-                    return result?.config || null;
-                } catch {
-                    hadError = true;
-                    // Try the next known namespace.
-                }
+            try {
+                const result = await this._hass.callWS({ type: NX_DISPLAYGRID_WS.GET_CONFIG });
+                return result?.config || null;
+            } catch {
+                hadError = true;
             }
             if (hadError) this._notifyWsConfigFallbackOnce();
             return null;
@@ -149,14 +155,14 @@ export function applyPersistence(FamilyBoardCard) {
 
         _localConfigKey() {
             const userId = this._hass?.user?.id || 'unknown';
-            return `nx-displaygrid:config:${userId}`;
+            return makeScopedKey('nx-displaygrid:config', userId);
         },
 
         _legacyLocalConfigKey(
             userId = this._hass?.user?.id || 'unknown',
             device = getDeviceKind()
         ) {
-            return `nx-displaygrid:config:${userId}:${device}`;
+            return makeLegacyScopedKey('nx-displaygrid:config', userId, device);
         },
 
         async _migrateConfigStorage() {
@@ -164,35 +170,17 @@ export function applyPersistence(FamilyBoardCard) {
             this._configStorageMigrated = true;
             const key = this._localConfigKey();
             const legacyKey = this._legacyLocalConfigKey();
-
-            try {
-                const currentRaw = localStorage.getItem(key);
-                if (currentRaw === null) {
-                    const legacyRaw = localStorage.getItem(legacyKey);
-                    if (legacyRaw !== null) localStorage.setItem(key, legacyRaw);
-                }
-            } catch {
-                // Ignore storage errors.
-            }
-
-            const currentIdb = await idbGet('config', key);
-            if (currentIdb && typeof currentIdb === 'object') return;
-            const legacyIdb = await idbGet('config', legacyKey);
-            if (legacyIdb && typeof legacyIdb === 'object') {
-                await idbSet('config', key, legacyIdb);
-            }
+            await migrateScopedStoreKey({
+                key,
+                legacyKey,
+                idbStore: 'config',
+                idbGetFn: idbGet,
+                idbSetFn: idbSet,
+            });
         },
 
         async _removeLocalKeysByPrefix(prefix) {
-            try {
-                for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-                    const key = localStorage.key(i);
-                    if (!key || !String(key).startsWith(prefix)) continue;
-                    localStorage.removeItem(key);
-                }
-            } catch {
-                // Ignore storage errors.
-            }
+            removeLocalKeysByPrefixValue(prefix);
         },
 
         async _removeIdbKeysByPrefix(store, prefix) {
@@ -208,64 +196,47 @@ export function applyPersistence(FamilyBoardCard) {
         },
 
         _loadLocalConfig() {
-            try {
-                const raw = localStorage.getItem(this._localConfigKey());
-                return raw ? JSON.parse(raw) : null;
-            } catch {
-                return null;
-            }
+            return readJsonLocal(this._localConfigKey(), null);
         },
 
         async _persistConfig(config) {
             const ok = await this._callWsSet(config);
             if (ok) {
-                this._persistMode = 'ws';
-                this._saveIdbConfig(config);
-                this._saveLocalConfig(config);
-                this._storedConfig = config;
-                this._sharedConfig = config;
-                this._storageLoaded = true;
+                this._applyPersistedConfig(config, 'ws');
                 debugLog(this._debug, 'persistConfig', { mode: 'ws' });
                 return { ok: true, mode: 'ws' };
             }
-            this._persistMode = 'local';
+            this._applyPersistedConfig(config, 'local');
+            debugLog(this._debug, 'persistConfig', { mode: 'local' });
+            return { ok: true, mode: 'local' };
+        },
+
+        _applyPersistedConfig(config, mode) {
+            this._persistMode = mode;
             this._saveIdbConfig(config);
             this._saveLocalConfig(config);
             this._storedConfig = config;
             this._sharedConfig = config;
             this._storageLoaded = true;
-            debugLog(this._debug, 'persistConfig', { mode: 'local' });
-            return { ok: true, mode: 'local' };
         },
 
         async _callWsSet(config) {
-            const types = ['family_board/config/set', 'nx_displaygrid/config/set'];
-            for (const type of types) {
-                try {
-                    await this._hass.callWS({ type, config });
-                    return true;
-                } catch {
-                    // Try the next known namespace.
-                }
+            try {
+                await this._hass.callWS({ type: NX_DISPLAYGRID_WS.SET_CONFIG, config });
+                return true;
+            } catch {
+                // Fall back to local persistence.
             }
             return false;
         },
 
         _saveLocalConfig(config) {
-            try {
-                localStorage.setItem(this._localConfigKey(), JSON.stringify(config || {}));
-            } catch {
-                // Ignore storage errors.
-            }
+            writeJsonLocal(this._localConfigKey(), config || {});
         },
 
         async _clearConfigCache() {
             const key = this._localConfigKey();
-            try {
-                localStorage.removeItem(key);
-            } catch {
-                // Ignore storage errors.
-            }
+            removeLocalKey(key);
             await idbDelete('config', key);
         },
 
@@ -283,12 +254,24 @@ export function applyPersistence(FamilyBoardCard) {
         async _resetAll(userId, device) {
             const resolvedUserId = userId || this._hass?.user?.id || 'unknown';
             const resolvedDevice = device || getDeviceKind();
-            const configKey = `nx-displaygrid:config:${resolvedUserId}`;
-            const prefsKey = `nx-displaygrid:prefs:${resolvedUserId}`;
-            const dataKey = `nx-displaygrid:data:${resolvedUserId}`;
-            const legacyConfigKey = `nx-displaygrid:config:${resolvedUserId}:${resolvedDevice}`;
-            const legacyPrefsKey = `nx-displaygrid:prefs:${resolvedUserId}:${resolvedDevice}`;
-            const legacyDataKey = `nx-displaygrid:data:${resolvedUserId}:${resolvedDevice}`;
+            const configKey = makeScopedKey('nx-displaygrid:config', resolvedUserId);
+            const prefsKey = makeScopedKey('nx-displaygrid:prefs', resolvedUserId);
+            const dataKey = makeScopedKey('nx-displaygrid:data', resolvedUserId);
+            const legacyConfigKey = makeLegacyScopedKey(
+                'nx-displaygrid:config',
+                resolvedUserId,
+                resolvedDevice
+            );
+            const legacyPrefsKey = makeLegacyScopedKey(
+                'nx-displaygrid:prefs',
+                resolvedUserId,
+                resolvedDevice
+            );
+            const legacyDataKey = makeLegacyScopedKey(
+                'nx-displaygrid:data',
+                resolvedUserId,
+                resolvedDevice
+            );
             const emptyConfig = {
                 people: [],
                 calendars: [],
@@ -298,21 +281,9 @@ export function applyPersistence(FamilyBoardCard) {
             };
             let wsOk = false;
 
-            try {
-                localStorage.removeItem(configKey);
-            } catch {
-                // Ignore storage errors.
-            }
-            try {
-                localStorage.removeItem(prefsKey);
-            } catch {
-                // Ignore storage errors.
-            }
-            try {
-                localStorage.removeItem(dataKey);
-            } catch {
-                // Ignore storage errors.
-            }
+            removeLocalKey(configKey);
+            removeLocalKey(prefsKey);
+            removeLocalKey(dataKey);
             await Promise.all([
                 this._removeLocalKeysByPrefix(`nx-displaygrid:config:${resolvedUserId}:`),
                 this._removeLocalKeysByPrefix(`nx-displaygrid:prefs:${resolvedUserId}:`),
