@@ -28,11 +28,17 @@ export function applyConfigHelpers(FamilyBoardCard) {
             if (this._v2FeatureEnabled('food_view')) {
                 screens.push({ key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' });
             }
+            if (this._v2FeatureEnabled('family_dashboard')) {
+                screens.push({ key: 'family', label: 'Family', icon: 'mdi:home-heart' });
+            }
             if (this._v2FeatureEnabled('intent_view')) {
                 screens.push({ key: 'intent', label: 'Intent', icon: 'mdi:gesture-tap-button' });
             }
             if (this._v2FeatureEnabled('ambient_view')) {
                 screens.push({ key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' });
+            }
+            if (this._v2FeatureEnabled('admin_dashboard') && this._hasAdminAccess?.()) {
+                screens.push({ key: 'admin', label: 'Admin', icon: 'mdi:shield-crown-outline' });
             }
             return screens;
         },

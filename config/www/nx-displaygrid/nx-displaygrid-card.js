@@ -58,8 +58,10 @@ import './views/home.view.js';
 import './views/chores.view.js';
 import './views/shopping.view.js';
 import './views/food.view.js';
+import './views/family.view.js';
 import './views/intent.view.js';
 import './views/ambient.view.js';
+import './views/admin.view.js';
 import './views/settings.view.js';
 import './views/setup.view.js';
 import './views/important.view.js';
@@ -813,6 +815,11 @@ class FamilyBoardCard extends LitElement {
                                   .card=${this}
                                   .renderKey=${`${foodSig}|${shoppingItemsSig}`}
                               ></fb-food-view>`
+                            : screen === 'family'
+                            ? html`<fb-family-view
+                                  .card=${this}
+                                  .renderKey=${ambientSig}
+                              ></fb-family-view>`
                             : screen === 'intent'
                             ? html`<fb-intent-view
                                   .card=${this}
@@ -823,6 +830,11 @@ class FamilyBoardCard extends LitElement {
                                   .card=${this}
                                   .renderKey=${ambientSig}
                               ></fb-ambient-view>`
+                            : screen === 'admin'
+                            ? html`<fb-admin-view
+                                  .card=${this}
+                                  .renderKey=${`${ambientSig}|${settingsRenderKey}`}
+                              ></fb-admin-view>`
                             : screen === 'settings'
                             ? html`<fb-settings-view
                                   .card=${this}

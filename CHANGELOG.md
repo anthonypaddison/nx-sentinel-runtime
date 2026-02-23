@@ -33,6 +33,7 @@
 - Added Phase 2 V2 adaptive presentation: explicit house-mode scaffolding, dynamic theme switching, and automatic screen recommendations/switching (time/occupancy/events/error aware).
 - Added Phase 3 V2 timed reminder banners with countdown/optional sound and Settings reminder management/test-sound actions.
 - Added Phase 3 V2 state-aware phone notification policy scaffolding (severity thresholds, context/reasons, and dashboard-visibility suppression).
+- Added V2 `Family` and `Admin` dashboards as dedicated views (family daily-summary/actions surface and admin operations/health/recovery surface).
 
 ## 2026-02-19
 

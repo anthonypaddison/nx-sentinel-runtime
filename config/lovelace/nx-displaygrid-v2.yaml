@@ -25,6 +25,8 @@ views:
                 dynamic_themes: true
                 reminder_banners: true
                 notification_policy: true
+                family_dashboard: true
+                admin_dashboard: true
 
             adaptive_v2:
                 auto_screen: true

@@ -2269,11 +2269,18 @@ export class FbSettingsView extends LitElement {
                                 ${card._v2FeatureEnabled?.('food_view')
                                     ? html`<option value="food">Food</option>`
                                     : html``}
+                                ${card._v2FeatureEnabled?.('family_dashboard')
+                                    ? html`<option value="family">Family</option>`
+                                    : html``}
                                 ${card._v2FeatureEnabled?.('intent_view')
                                     ? html`<option value="intent">Intent</option>`
                                     : html``}
                                 ${card._v2FeatureEnabled?.('ambient_view')
                                     ? html`<option value="ambient">Ambient</option>`
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('admin_dashboard') &&
+                                card._hasAdminAccess?.()
+                                    ? html`<option value="admin">Admin</option>`
                                     : html``}
                                 <option value="home">Home</option>
                             </select>
