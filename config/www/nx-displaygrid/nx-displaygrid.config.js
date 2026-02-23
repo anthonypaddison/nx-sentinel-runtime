@@ -7,6 +7,16 @@ import { configHasPeople } from './util/source-validation.util.js';
 
 export function applyConfigHelpers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _v2Features(config = this._config) {
+            const flags = config?.v2_features;
+            return flags && typeof flags === 'object' ? flags : {};
+        },
+
+        _v2FeatureEnabled(name, config = this._config) {
+            if (!name) return false;
+            return this._v2Features(config)[name] === true;
+        },
+
         _onboardingSchemaVersion() {
             return 1;
         },
