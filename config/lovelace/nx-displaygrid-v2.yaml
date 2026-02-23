@@ -21,6 +21,31 @@ views:
                 event_details_extended: true
                 intent_view: true
                 ambient_view: true
+                adaptive_layout: true
+                dynamic_themes: true
+
+            adaptive_v2:
+                auto_screen: true
+                auto_screen_idle_seconds: 180
+                dynamic_theme: true
+                occupancy_entity: ''
+
+            intent_v2:
+                house_mode_entity: ''
+
+            house_modes_v2:
+                - id: home
+                  label: Home
+                - id: away
+                  label: Away
+                - id: away_off
+                  label: Away/Off
+                - id: guest
+                  label: Guest
+                - id: quiet
+                  label: Quiet
+                - id: calm
+                  label: Calm
 
             # Layout tuning
             day_start_hour: 6

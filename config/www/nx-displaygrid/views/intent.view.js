@@ -90,6 +90,14 @@ export class FbIntentView extends LitElement {
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 10px;
         }
+        .modeStrip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .modeBtn {
+            border-radius: 999px;
+        }
         .microCard {
             border: 1px solid var(--fb-grid);
             border-radius: 12px;
@@ -127,6 +135,8 @@ export class FbIntentView extends LitElement {
 
         const actions = card._v2IntentActions?.() || [];
         const ambient = card._v2AmbientSummary?.() || {};
+        const houseModes = card._v2HouseModes?.() || [];
+        const currentMode = String(ambient.houseMode?.state || '').toLowerCase();
 
         return html`
             <div class="wrapIntent">
@@ -160,6 +170,32 @@ export class FbIntentView extends LitElement {
                         </div>
                     </div>
                 </div>
+                ${ambient.houseMode?.entityId
+                    ? html`
+                          <div class="fb-card padded">
+                              <div class="heroSub" style="margin-bottom:8px">
+                                  House modes
+                                  ${ambient.houseMode.available
+                                      ? `(${ambient.houseMode.entityId})`
+                                      : '(entity unavailable)'}
+                              </div>
+                              <div class="modeStrip">
+                                  ${houseModes.map(
+                                      (mode) => html`
+                                          <button
+                                              class="btn modeBtn ${currentMode === String(mode.id).toLowerCase()
+                                                  ? 'primary'
+                                                  : 'secondary'}"
+                                              @click=${() => card._v2SetHouseMode?.(mode.id)}
+                                          >
+                                              ${mode.label}
+                                          </button>
+                                      `
+                                  )}
+                              </div>
+                          </div>
+                      `
+                    : html``}
 
                 <div class="actions">
                     ${actions.map(

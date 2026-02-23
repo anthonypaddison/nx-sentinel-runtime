@@ -1084,6 +1084,21 @@ export class FbSettingsView extends LitElement {
             .map((id) => people.find((p) => p.id === id))
             .filter(Boolean);
         const theme = cfg.theme || 'bright-light';
+        const adaptiveV2 =
+            cfg.adaptive_v2 && typeof cfg.adaptive_v2 === 'object' ? cfg.adaptive_v2 : {};
+        const intentV2 =
+            cfg.intent_v2 && typeof cfg.intent_v2 === 'object' ? cfg.intent_v2 : {};
+        const houseModes = card._v2HouseModes?.() || [];
+        const houseModeState = card._v2HouseModeState?.() || {
+            entityId: '',
+            state: '',
+            available: false,
+        };
+        const occupancyState = card._v2OccupancyState?.() || {
+            entityId: '',
+            state: '',
+            available: false,
+        };
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -2246,12 +2261,167 @@ export class FbSettingsView extends LitElement {
                                 <option value="important">Important</option>
                                 <option value="chores">Chores</option>
                                 <option value="shopping">Shopping</option>
+                                ${card._v2FeatureEnabled?.('food_view')
+                                    ? html`<option value="food">Food</option>`
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('intent_view')
+                                    ? html`<option value="intent">Intent</option>`
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('ambient_view')
+                                    ? html`<option value="ambient">Ambient</option>`
+                                    : html``}
                                 <option value="home">Home</option>
                             </select>
                                 </div>
                                 <div class="muted">
                                     Used when the board first loads on this device.
                                 </div>
+                                ${card._v2FeatureEnabled?.('adaptive_layout') ||
+                                card._v2FeatureEnabled?.('dynamic_themes')
+                                    ? html`
+                                          <div class="subTitle">V2 Adaptive & House Modes</div>
+                                          <div class="muted">
+                                              Auto layout switching, dynamic themes, and explicit
+                                              house-mode scaffolding for V2 dashboards.
+                                          </div>
+                                          <div class="row">
+                                              <div>House mode entity</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="input_select.house_mode"
+                                                  .value=${intentV2.house_mode_entity || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          intent_v2: {
+                                                              ...intentV2,
+                                                              house_mode_entity: e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="muted">
+                                              Current:
+                                              ${houseModeState.available
+                                                  ? `${houseModeState.entityId} = ${houseModeState.state || 'unknown'}`
+                                                  : houseModeState.entityId
+                                                  ? `Entity not found (${houseModeState.entityId})`
+                                                  : 'Not configured'}
+                                          </div>
+                                          ${houseModeState.entityId
+                                              ? html`
+                                                    <div class="actions">
+                                                        ${houseModes.map(
+                                                            (mode) => html`
+                                                                <button
+                                                                    class="btn"
+                                                                    @click=${() =>
+                                                                        card._v2SetHouseMode?.(
+                                                                            mode.id
+                                                                        )}
+                                                                >
+                                                                    ${mode.label}
+                                                                </button>
+                                                            `
+                                                        )}
+                                                    </div>
+                                                `
+                                              : html``}
+                                          <div class="row">
+                                              <div>Occupancy entity</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="person.home / binary_sensor.occupied"
+                                                  .value=${adaptiveV2.occupancy_entity || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          adaptive_v2: {
+                                                              ...adaptiveV2,
+                                                              occupancy_entity: e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="muted">
+                                              Current:
+                                              ${occupancyState.available
+                                                  ? `${occupancyState.entityId} = ${occupancyState.state || 'unknown'}`
+                                                  : occupancyState.entityId
+                                                  ? `Entity not found (${occupancyState.entityId})`
+                                                  : 'Not configured'}
+                                          </div>
+                                          <div class="row">
+                                              <div>Auto screen switching (V2)</div>
+                                              <label>
+                                                  <input
+                                                      type="checkbox"
+                                                      .checked=${adaptiveV2.auto_screen === true}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              adaptive_v2: {
+                                                                  ...adaptiveV2,
+                                                                  auto_screen:
+                                                                      e.target.checked,
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="muted">
+                                                      ${adaptiveV2.auto_screen === true
+                                                          ? 'On'
+                                                          : 'Off'}
+                                                  </span>
+                                              </label>
+                                          </div>
+                                          <div class="row">
+                                              <div>Auto screen idle delay</div>
+                                              <div class="unitRow">
+                                                  <input
+                                                      class="input"
+                                                      type="number"
+                                                      min="30"
+                                                      step="30"
+                                                      .value=${Number(
+                                                          adaptiveV2.auto_screen_idle_seconds || 180
+                                                      )}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              adaptive_v2: {
+                                                                  ...adaptiveV2,
+                                                                  auto_screen_idle_seconds:
+                                                                      Number(e.target.value) || 180,
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="unit">seconds</span>
+                                              </div>
+                                          </div>
+                                          <div class="row">
+                                              <div>Dynamic themes (V2)</div>
+                                              <label>
+                                                  <input
+                                                      type="checkbox"
+                                                      .checked=${adaptiveV2.dynamic_theme === true}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              adaptive_v2: {
+                                                                  ...adaptiveV2,
+                                                                  dynamic_theme:
+                                                                      e.target.checked,
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="muted">
+                                                      ${adaptiveV2.dynamic_theme === true
+                                                          ? 'On'
+                                                          : 'Off'}
+                                                  </span>
+                                              </label>
+                                          </div>
+                                          <div class="muted">
+                                              Dynamic theme reacts to time of day, stale/error
+                                              states, occupancy, and configured house mode.
+                                          </div>
+                                      `
+                                    : html``}
                                 <div class="actions">
                                     <button
                                         class="btn"

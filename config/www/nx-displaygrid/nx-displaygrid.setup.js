@@ -117,6 +117,7 @@ export function applySetup(FamilyBoardCard) {
             } else {
                 this.style.removeProperty('--fb-bg');
             }
+            this._applyV2DynamicTheme?.();
 
             this._ensureVisibilitySets();
             this._buildPeopleMap();

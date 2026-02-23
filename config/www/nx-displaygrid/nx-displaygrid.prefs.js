@@ -77,8 +77,15 @@ export function applyPrefs(FamilyBoardCard) {
         },
 
         _setDefaultViewPref(view) {
-            if (!['schedule', 'important', 'chores', 'shopping', 'home', 'settings'].includes(view))
-                return;
+            const allowed = this._allowedViews?.() || [
+                'schedule',
+                'important',
+                'chores',
+                'shopping',
+                'home',
+                'settings',
+            ];
+            if (!allowed.includes(view)) return;
             this._defaultView = view;
             this._savePrefs();
         },

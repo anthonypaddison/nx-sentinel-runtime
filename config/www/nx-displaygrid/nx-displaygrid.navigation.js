@@ -15,8 +15,10 @@ export function applyNavigation(FamilyBoardCard) {
         _onNav(ev) {
             const target = ev?.detail?.target;
             if (!target) return;
+            const source = ev?.detail?.source || '';
             this._screen = target;
             debugLog(this._debug, 'nav', { target });
+            if (source !== 'adaptive') this._lastManualNavTs = Date.now();
             this._savePrefs();
             this._queueRefresh();
         },

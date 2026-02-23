@@ -41,6 +41,7 @@ import { applyValidation } from './nx-displaygrid.validation.js';
 import { applyTodoHelpers } from './nx-displaygrid.todo.js';
 import { applyFood } from './nx-displaygrid.food.js';
 import { applyIntent } from './nx-displaygrid.intent.js';
+import { applyAdaptive } from './nx-displaygrid.adaptive.js';
 
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
 
@@ -310,6 +311,11 @@ class FamilyBoardCard extends LitElement {
         this._clockTimer = null;
         this._configVersion = 0;
         this._prefsVersion = 0;
+        this._lastManualNavTs = 0;
+        this._lastAdaptiveTickTs = 0;
+        this._adaptiveScreenTs = 0;
+        this._v2AdaptiveThemeKey = '';
+        this._v2AdaptiveThemeApplied = false;
     }
 
     setConfig(config) {
@@ -449,6 +455,7 @@ class FamilyBoardCard extends LitElement {
 
     updated() {
         this._updateTopbarHeight();
+        this._tickV2AdaptivePresentation?.();
     }
 
     _applyPrefs(prefs, { allowInitialView = true } = {}) {
@@ -507,7 +514,14 @@ class FamilyBoardCard extends LitElement {
         }
 
         if (allowInitialView && !this._initialViewSet) {
-            const allowedViews = ['schedule', 'important', 'chores', 'shopping', 'home', 'settings'];
+            const allowedViews = this._allowedViews?.() || [
+                'schedule',
+                'important',
+                'chores',
+                'shopping',
+                'home',
+                'settings',
+            ];
             const view = allowedViews.includes(this._lastView)
                 ? this._lastView
                 : allowedViews.includes(this._defaultView)
@@ -870,6 +884,7 @@ applyHandlers(FamilyBoardCard);
 applyValidation(FamilyBoardCard);
 applyFood(FamilyBoardCard);
 applyIntent(FamilyBoardCard);
+applyAdaptive(FamilyBoardCard);
 customElements.define('nx-displaygrid', FamilyBoardCard);
 
 window.customCards = window.customCards || [];
