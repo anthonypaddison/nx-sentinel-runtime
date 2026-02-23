@@ -13,6 +13,65 @@ import {
 } from '../nx-displaygrid.util.js';
 import { renderActionButtons } from './action-buttons.js';
 import { repeatOrMap } from './repeat.util.js';
+
+function toCount(value, fallback = 0) {
+    const num = Number(value);
+    return Number.isFinite(num) && num >= 0 ? num : fallback;
+}
+
+function normaliseStringList(value) {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item || '').trim())
+            .filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    return [];
+}
+
+function choreMetadataBadges(item) {
+    if (!item || typeof item !== 'object') return [];
+    const badges = [];
+
+    const priority = toCount(item.priority, 0);
+    if (priority > 0) badges.push({ key: `priority-${priority}`, text: `P${priority}` });
+
+    const labels = normaliseStringList(item.labels || item.tags || item.label_names);
+    labels.slice(0, 3).forEach((label) => {
+        badges.push({ key: `label-${label}`, text: `#${label}` });
+    });
+    if (labels.length > 3) {
+        badges.push({ key: 'labels-more', text: `+${labels.length - 3} labels` });
+    }
+
+    const subtaskCount = Math.max(
+        toCount(item.subtask_count, -1),
+        toCount(Array.isArray(item.subtasks) ? item.subtasks.length : NaN, -1),
+        toCount(Array.isArray(item.children) ? item.children.length : NaN, -1)
+    );
+    if (subtaskCount > 0) badges.push({ key: 'subtasks', text: `${subtaskCount} subtasks` });
+
+    const commentCount = Math.max(
+        toCount(item.comment_count, -1),
+        toCount(item.comments_count, -1),
+        toCount(Array.isArray(item.comments) ? item.comments.length : NaN, -1)
+    );
+    if (commentCount > 0) badges.push({ key: 'comments', text: `${commentCount} comments` });
+
+    const recurring =
+        item.recurring === true ||
+        item.is_recurring === true ||
+        item?.due?.recurring === true;
+    if (recurring) badges.push({ key: 'recurring', text: 'Recurring' });
+
+    return badges;
+}
+
 export class FbChoresView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -100,6 +159,22 @@ export class FbChoresView extends LitElement {
             color: var(--fb-muted);
             font-size: 12px;
             margin-top: 2px;
+        }
+        .metaBadges {
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .metaBadge {
+            border: 1px solid var(--fb-border);
+            background: var(--fb-surface);
+            color: var(--fb-muted);
+            border-radius: 999px;
+            padding: 1px 7px;
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: 700;
         }
         .item.completed {
             background: var(--fb-surface);
@@ -258,11 +333,17 @@ export class FbChoresView extends LitElement {
                                         ? repeatItems(
                                               items,
                                               (it, idx) => this._itemKey(it, idx),
-                                              (it, idx) => {
+                                            (it, idx) => {
                                               const isDone =
                                                   ['completed', 'done'].includes(
                                                       String(it.status || '').toLowerCase()
                                                   ) || Boolean(it.completed);
+                                              const showMetadataBadges = card._v2FeatureEnabled?.(
+                                                  'chores_metadata_badges'
+                                              );
+                                              const metadataBadges = showMetadataBadges
+                                                  ? choreMetadataBadges(it)
+                                                  : [];
                                               return html`
                                                   <div
                                                       class="item ${isDone ? 'completed' : ''}"
@@ -296,6 +377,20 @@ export class FbChoresView extends LitElement {
                                                                   )}
                                                               </div>`;
                                                           })()}
+                                                          ${metadataBadges.length
+                                                              ? html`<div class="metaBadges">
+                                                                    ${repeatItems(
+                                                                        metadataBadges,
+                                                                        (badge) =>
+                                                                            badge.key || badge.text,
+                                                                        (badge) => html`
+                                                                            <span class="metaBadge"
+                                                                                >${badge.text}</span
+                                                                            >
+                                                                        `
+                                                                    )}
+                                                                </div>`
+                                                              : html``}
                                                       </div>
                                                       ${renderActionButtons(
                                                           [

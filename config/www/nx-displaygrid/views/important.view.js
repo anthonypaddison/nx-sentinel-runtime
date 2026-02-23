@@ -29,6 +29,34 @@ export class FbImportantView extends LitElement {
             height: 100%;
             min-height: 0;
         }
+        .viewHeader {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+            gap: 8px;
+        }
+        .headerChip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            border: 1px solid var(--fb-border);
+            background: var(--fb-surface);
+            color: var(--fb-text);
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .headerChip ha-icon {
+            width: 18px;
+            height: 18px;
+            font-size: 18px;
+            color: var(--fb-accent);
+        }
+        .headerChip.loading {
+            color: var(--fb-muted);
+        }
         .column {
             --fb-card-padding: 12px;
             display: flex;
@@ -182,8 +210,16 @@ export class FbImportantView extends LitElement {
 
         const calendars = Array.isArray(card._config?.calendars) ? card._config.calendars : [];
         const todos = Array.isArray(card._config?.todos) ? card._config.todos : [];
+        const shoppingEntity = card._config?.shopping?.entity || '';
         const isCalendarLoading = calendars.length && !card._calendarLastSuccessTs;
         const isTodoLoading = todos.length && !card._todoLoaded;
+        const isShoppingLoading = Boolean(shoppingEntity) && !card._shoppingLoaded;
+        const showShoppingHeader = card._v2FeatureEnabled?.(
+            'important_shopping_count_header'
+        );
+        const shoppingCount = card._shoppingQuantityCount
+            ? card._shoppingQuantityCount(card._shoppingItems || [])
+            : (card._shoppingItems || []).length;
 
         const today = startOfDay(new Date());
         const tomorrow = addDays(today, 1);
@@ -259,6 +295,16 @@ export class FbImportantView extends LitElement {
 
         return html`
             <div class="wrap hidden">
+                ${showShoppingHeader && shoppingEntity
+                    ? html`<div class="viewHeader">
+                          <div class="headerChip ${isShoppingLoading ? 'loading' : ''}">
+                              <ha-icon icon="mdi:cart-outline"></ha-icon>
+                              <span
+                                  >Shopping: ${isShoppingLoading ? 'Loading…' : shoppingCount}</span
+                              >
+                          </div>
+                      </div>`
+                    : html``}
                 <div class="layout">
                     ${column('Today', todayItems)}
                     ${column('Tomorrow', tomorrowItems)}
