@@ -5,8 +5,7 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles } from '../views/shared.styles.js';
-import { yamlString } from '../util/yaml.util.js';
-import { DEFAULT_CARD_CONFIG } from '../nx-displaygrid.defaults.js';
+import { serializeNxDisplaygridCardConfig } from '../util/config-yaml.util.js';
 
 export class FbManageSources extends LitElement {
     static properties = {
@@ -240,70 +239,7 @@ export class FbManageSources extends LitElement {
     }
 
     _toYaml(cfg) {
-        const lines = [];
-        const push = (l) => lines.push(l);
-        push(`type: custom:nx-displaygrid`);
-        if (cfg.title) push(`title: ${yamlString(cfg.title)}`);
-        if (cfg.debug !== undefined) push(`debug: ${cfg.debug ? 'true' : 'false'}`);
-        push(`days_to_show: ${DEFAULT_CARD_CONFIG.days_to_show}`);
-        if (cfg.day_start_hour !== undefined) push(`day_start_hour: ${cfg.day_start_hour}`);
-        if (cfg.day_end_hour !== undefined) push(`day_end_hour: ${cfg.day_end_hour}`);
-        if (cfg.slot_minutes !== undefined) push(`slot_minutes: ${cfg.slot_minutes}`);
-        if (cfg.px_per_hour !== undefined) push(`px_per_hour: ${cfg.px_per_hour}`);
-        if (cfg.refresh_interval_ms !== undefined)
-            push(`refresh_interval_ms: ${cfg.refresh_interval_ms}`);
-
-        const people = Array.isArray(cfg.people) ? cfg.people : [];
-        if (people.length) {
-            push(`people:`);
-            for (const p of people) {
-                push(`  - id: ${yamlString(p.id)}`);
-                if (p.name) push(`    name: ${yamlString(p.name)}`);
-                if (p.color) push(`    color: ${yamlString(p.color)}`);
-                if (p.text_color) push(`    text_color: ${yamlString(p.text_color)}`);
-                if (p.role) push(`    role: ${yamlString(p.role)}`);
-                if (p.header_row) push(`    header_row: ${p.header_row}`);
-            }
-        }
-        const peopleDisplay = Array.isArray(cfg.people_display) ? cfg.people_display : [];
-        if (peopleDisplay.length) {
-            push(`people_display:`);
-            for (const id of peopleDisplay) {
-                push(`  - ${yamlString(id)}`);
-            }
-        }
-
-        if (cfg.admin_pin !== undefined) {
-            push(`admin_pin: ${yamlString(cfg.admin_pin)}`);
-        }
-
-        const calendars = Array.isArray(cfg.calendars) ? cfg.calendars : [];
-        if (calendars.length) {
-            push(`calendars:`);
-            for (const c of calendars) {
-                push(`  - entity: ${yamlString(c.entity)}`);
-                if (c.person_id) push(`    person_id: ${yamlString(c.person_id)}`);
-                if (c.role) push(`    role: ${yamlString(c.role)}`);
-            }
-        }
-
-        const todos = Array.isArray(cfg.todos) ? cfg.todos : [];
-        if (todos.length) {
-            push(`todos:`);
-            for (const t of todos) {
-                push(`  - entity: ${yamlString(t.entity)}`);
-                if (t.name) push(`    name: ${yamlString(t.name)}`);
-                if (t.person_id) push(`    person_id: ${yamlString(t.person_id)}`);
-            }
-        }
-
-        if (cfg.shopping?.entity) {
-            push(`shopping:`);
-            push(`  entity: ${yamlString(cfg.shopping.entity)}`);
-            if (cfg.shopping.name) push(`  name: ${yamlString(cfg.shopping.name)}`);
-        }
-
-        return lines.join('\n');
+        return serializeNxDisplaygridCardConfig(cfg);
     }
 
     _ensureList(path) {

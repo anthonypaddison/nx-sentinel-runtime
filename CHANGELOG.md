@@ -16,6 +16,7 @@
 - Centralized runtime `nx-displaygrid` default card values to reduce drift across stub config, setup, settings fallbacks, and YAML export helpers.
 - Reduced retry timer duplication in the refresh pipeline by extracting shared retry schedule/clear helpers for calendar/todo/shopping refresh paths.
 - Reduced `settings.view.js` render-method complexity by extracting shared render-state helpers and static options into file-local helpers/constants.
+- Consolidated duplicated `nx-displaygrid` YAML export/clipboard serialization into a shared utility with tests to keep editor/manage-sources outputs aligned.
 
 ## 2026-02-19
 
