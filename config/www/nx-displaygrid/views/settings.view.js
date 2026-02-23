@@ -1100,6 +1100,10 @@ export class FbSettingsView extends LitElement {
             available: false,
         };
         const remindersV2 = Array.isArray(cfg.reminders_v2) ? cfg.reminders_v2 : [];
+        const notificationsV2 =
+            cfg.notifications_v2 && typeof cfg.notifications_v2 === 'object'
+                ? cfg.notifications_v2
+                : {};
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -2695,6 +2699,101 @@ export class FbSettingsView extends LitElement {
                                                     `;
                                                 })}`
                                               : html`<div class="muted">No reminders configured yet.</div>`}
+                                      `
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('notification_policy')
+                                    ? html`
+                                          <div class="subTitle">V2 Notification Policy</div>
+                                          <div class="muted">
+                                              State-aware phone notification scaffolding for alerts
+                                              with severity thresholds, reasons, and dashboard
+                                              visibility suppression.
+                                          </div>
+                                          <div class="row">
+                                              <div>Phone notifications</div>
+                                              <label>
+                                                  <input
+                                                      type="checkbox"
+                                                      .checked=${notificationsV2.enabled === true}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              notifications_v2: {
+                                                                  ...notificationsV2,
+                                                                  enabled: e.target.checked,
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="muted">
+                                                      ${notificationsV2.enabled === true
+                                                          ? 'On'
+                                                          : 'Off'}
+                                                  </span>
+                                              </label>
+                                          </div>
+                                          <div class="row">
+                                              <div>Notify service</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="notify.mobile_app_your_phone"
+                                                  .value=${notificationsV2.notify_service || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          notifications_v2: {
+                                                              ...notificationsV2,
+                                                              notify_service:
+                                                                  e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Minimum severity</div>
+                                              <select
+                                                  class="input"
+                                                  .value=${notificationsV2.min_severity || 'warn'}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          notifications_v2: {
+                                                              ...notificationsV2,
+                                                              min_severity:
+                                                                  e.target.value,
+                                                          },
+                                                      })}
+                                              >
+                                                  <option value="info">Info</option>
+                                                  <option value="warn">Warn</option>
+                                                  <option value="critical">Critical</option>
+                                              </select>
+                                          </div>
+                                          <div class="row">
+                                              <div>Suppress when visible</div>
+                                              <label>
+                                                  <input
+                                                      type="checkbox"
+                                                      .checked=${notificationsV2.suppress_when_visible !==
+                                                      false}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              notifications_v2: {
+                                                                  ...notificationsV2,
+                                                                  suppress_when_visible:
+                                                                      e.target.checked,
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="muted">
+                                                      ${notificationsV2.suppress_when_visible !==
+                                                      false
+                                                          ? 'On'
+                                                          : 'Off'}
+                                                  </span>
+                                              </label>
+                                          </div>
+                                          <div class="muted">
+                                              Current screen-specific suppression applies to known
+                                              dashboard surfaces (Schedule, Chores, Shopping,
+                                              Home) when the related issue is already visible.
+                                          </div>
                                       `
                                     : html``}
                                 <div class="actions">

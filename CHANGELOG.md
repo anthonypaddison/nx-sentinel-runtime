@@ -32,6 +32,7 @@
 - Added V2 `Intent` and `Ambient` views, including adaptive action prioritization based on time/house mode/recent board state.
 - Added Phase 2 V2 adaptive presentation: explicit house-mode scaffolding, dynamic theme switching, and automatic screen recommendations/switching (time/occupancy/events/error aware).
 - Added Phase 3 V2 timed reminder banners with countdown/optional sound and Settings reminder management/test-sound actions.
+- Added Phase 3 V2 state-aware phone notification policy scaffolding (severity thresholds, context/reasons, and dashboard-visibility suppression).
 
 ## 2026-02-19
 
