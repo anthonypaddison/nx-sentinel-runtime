@@ -27,6 +27,7 @@ export class FbTopbar extends LitElement {
         shoppingRetrying: { type: Boolean },
         shoppingStale: { type: Boolean },
         shoppingError: { type: Boolean },
+        extraScreens: { type: Array },
         idbFailed: { type: Boolean },
         idbError: { type: String },
         _timeLabel: { state: true },
@@ -657,6 +658,18 @@ export class FbTopbar extends LitElement {
             : html``;
         const menu = html`
             <div class="menuWrap" @click=${(e) => e.stopPropagation()}>
+                ${(() => {
+                    const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
+                    const menuScreens = [
+                        { key: 'schedule', label: 'Schedule' },
+                        { key: 'important', label: 'Important' },
+                        { key: 'chores', label: 'Chores' },
+                        { key: 'shopping', label: 'Shopping' },
+                        ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
+                        { key: 'home', label: 'Home' },
+                        ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
+                    ];
+                    return html`
                 <button
                     class="btn settingsBtn menuBtn"
                     title="Menu"
@@ -668,16 +681,7 @@ export class FbTopbar extends LitElement {
                     ? html`
                           <div class="menu" @click=${(e) => e.stopPropagation()}>
                               <div>
-                                  ${[
-                                      { key: 'schedule', label: 'Schedule' },
-                                      { key: 'important', label: 'Important' },
-                                      { key: 'chores', label: 'Chores' },
-                                      { key: 'shopping', label: 'Shopping' },
-                                      { key: 'home', label: 'Home' },
-                                      ...(this.isAdmin
-                                          ? [{ key: 'settings', label: 'Settings' }]
-                                          : []),
-                                  ].map(
+                                  ${menuScreens.map(
                                       (item) => html`
                                           <button
                                               class="btn menuItem ${screen === item.key
@@ -708,6 +712,8 @@ export class FbTopbar extends LitElement {
                           </div>
                       `
                     : html``}
+                    `;
+                })()}
             </div>
         `;
         // Retry is only shown for hard failures without usable cached data.

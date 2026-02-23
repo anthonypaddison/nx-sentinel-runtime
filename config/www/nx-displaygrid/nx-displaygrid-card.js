@@ -39,6 +39,7 @@ import { applyServices } from './nx-displaygrid.services.js';
 import { applyHandlers } from './nx-displaygrid.handlers.js';
 import { applyValidation } from './nx-displaygrid.validation.js';
 import { applyTodoHelpers } from './nx-displaygrid.todo.js';
+import { applyFood } from './nx-displaygrid.food.js';
 
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
 
@@ -53,6 +54,7 @@ import './ui/editor-guide.dialog.js';
 import './views/home.view.js';
 import './views/chores.view.js';
 import './views/shopping.view.js';
+import './views/food.view.js';
 import './views/settings.view.js';
 import './views/setup.view.js';
 import './views/important.view.js';
@@ -619,6 +621,8 @@ class FamilyBoardCard extends LitElement {
 
         const sidebarWidth = '76px';
         const settingsRenderKey = `${this._configVersion || 0}|${this._prefsVersion || 0}`;
+        const extraScreens = this._v2NavScreens?.() || [];
+        const foodSig = JSON.stringify(this._config?.food_v2 || {});
 
         return html`
             <div class="app" style="--fb-sidebar-width:${sidebarWidth}">
@@ -628,6 +632,7 @@ class FamilyBoardCard extends LitElement {
                         .counts=${this._sidebarCounts()}
                         .isAdmin=${showSettings}
                         .collapsed=${true}
+                        .extraScreens=${extraScreens}
                         @fb-nav=${this._onNav}
                     ></fb-sidebar>
                 </div>
@@ -663,6 +668,7 @@ class FamilyBoardCard extends LitElement {
                             .shoppingRetrying=${this._shoppingRetrying}
                             .shoppingStale=${this._shoppingStale}
                             .shoppingError=${this._shoppingError}
+                            .extraScreens=${extraScreens}
                             .idbFailed=${this._idbFailed}
                             .idbError=${this._idbError}
                             @fb-main-mode=${this._onMainMode}
@@ -698,6 +704,11 @@ class FamilyBoardCard extends LitElement {
                                   .card=${this}
                                   .renderKey=${`${shoppingFavSig}|${shoppingCommonSig}|${shoppingItemsSig}`}
                               ></fb-shopping-view>`
+                            : screen === 'food'
+                            ? html`<fb-food-view
+                                  .card=${this}
+                                  .renderKey=${`${foodSig}|${shoppingItemsSig}`}
+                              ></fb-food-view>`
                             : screen === 'settings'
                             ? html`<fb-settings-view
                                   .card=${this}
@@ -840,6 +851,7 @@ applySchedule(FamilyBoardCard);
 applyServices(FamilyBoardCard);
 applyHandlers(FamilyBoardCard);
 applyValidation(FamilyBoardCard);
+applyFood(FamilyBoardCard);
 customElements.define('nx-displaygrid', FamilyBoardCard);
 
 window.customCards = window.customCards || [];

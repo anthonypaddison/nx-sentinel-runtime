@@ -23,6 +23,20 @@ export function applyConfigHelpers(FamilyBoardCard) {
             });
         },
 
+        _v2NavScreens() {
+            const screens = [];
+            if (this._v2FeatureEnabled('food_view')) {
+                screens.push({ key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' });
+            }
+            if (this._v2FeatureEnabled('intent_view')) {
+                screens.push({ key: 'intent', label: 'Intent', icon: 'mdi:gesture-tap-button' });
+            }
+            if (this._v2FeatureEnabled('ambient_view')) {
+                screens.push({ key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' });
+            }
+            return screens;
+        },
+
         _onboardingSchemaVersion() {
             return 1;
         },

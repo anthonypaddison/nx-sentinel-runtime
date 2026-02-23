@@ -26,6 +26,7 @@
 - Added V2-only `Important` view shopping-count header and Chores metadata badges (priority/labels/subtasks/comments/recurring when available).
 - Added V2-only date-context persistence (schedule/month offsets) and broader Home Controls eligibility using HA service-registry checks.
 - Bumped Lovelace resource cache-bust query string after V2/frontend JS changes.
+- Added a V2 `Food` view (weekly menu + in-house pantry/fridge inventory) with saved shopping lists and meal-to-shopping helpers.
 
 ## 2026-02-19
 

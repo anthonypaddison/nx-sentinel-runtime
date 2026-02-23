@@ -16,6 +16,11 @@ views:
                 chores_metadata_badges: true
                 persist_date_context: true
                 home_controls_broader_entities: true
+                food_view: true
+                person_wizard_settings: true
+                event_details_extended: true
+                intent_view: true
+                ambient_view: true
 
             # Layout tuning
             day_start_hour: 6

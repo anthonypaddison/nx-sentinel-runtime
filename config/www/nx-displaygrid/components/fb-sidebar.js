@@ -11,6 +11,7 @@ export class FbSidebar extends LitElement {
         counts: { type: Object }, // { schedule, chores, shopping }
         isAdmin: { type: Boolean },
         collapsed: { type: Boolean },
+        extraScreens: { type: Array },
     };
 
     static styles = [
@@ -152,6 +153,7 @@ export class FbSidebar extends LitElement {
         const meta = (k) => (counts?.[k] ? counts[k] : null);
         const isAdmin = Boolean(this.isAdmin);
         const collapsed = true;
+        const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
 
         const item = (key, label, icon) => html`
             <button
@@ -174,6 +176,7 @@ export class FbSidebar extends LitElement {
                     ${item('important', 'Important', 'mdi:alert-circle-outline')}
                     ${item('chores', 'Chores', 'mdi:check-circle-outline')}
                     ${item('shopping', 'Shopping', 'mdi:cart-outline')}
+                    ${extraScreens.map((s) => item(s.key, s.label, s.icon))}
                     ${item('home', 'Home', 'mdi:home-automation')}
                     ${isAdmin
                         ? html`<button
