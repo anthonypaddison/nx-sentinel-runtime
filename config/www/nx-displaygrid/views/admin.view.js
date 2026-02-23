@@ -136,6 +136,7 @@ export class FbAdminView extends LitElement {
                 last: card._lastRefreshTs,
             },
         ];
+        const backup = card._v2BackupStatus?.() || {};
 
         const badgeClass = (state) => {
             const s = String(state || '').toLowerCase();
@@ -187,6 +188,19 @@ export class FbAdminView extends LitElement {
                                     ${card._idbFailed ? 'Error' : 'OK'}
                                 </div>
                             </div>
+                            <div class="row">
+                                <div>
+                                    <div class="label">Backups</div>
+                                    <div class="value">
+                                        ${backup.ts
+                                            ? `Last successful backup: ${new Date(backup.ts).toLocaleString()}`
+                                            : backup.detail || 'Not configured'}
+                                    </div>
+                                </div>
+                                <div class=${badgeClass(backup.status || 'Unknown')}>
+                                    ${backup.status || 'Unknown'}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -194,6 +208,17 @@ export class FbAdminView extends LitElement {
                         <div class="fb-card-header">Operations & Recovery</div>
                         <div class="panelBody">
                             <div class="actions">
+                                <button
+                                    class="btn btnTile"
+                                    @click=${() => card._v2SnapshotNow?.()}
+                                >
+                                    <div class="label">Snapshot now</div>
+                                    <div class="value">
+                                        ${backup.configured
+                                            ? 'Run configured backup/snapshot service'
+                                            : 'Auto-detect backup service or configure one in Settings'}
+                                    </div>
+                                </button>
                                 <button
                                     class="btn btnTile"
                                     @click=${() => card._onSyncCalendars?.()}

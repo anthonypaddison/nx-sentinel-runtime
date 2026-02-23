@@ -1104,6 +1104,16 @@ export class FbSettingsView extends LitElement {
             cfg.notifications_v2 && typeof cfg.notifications_v2 === 'object'
                 ? cfg.notifications_v2
                 : {};
+        const adminV2 =
+            cfg.admin_v2 && typeof cfg.admin_v2 === 'object' ? cfg.admin_v2 : {};
+        const backupStatus = card._v2BackupStatus?.() || {
+            configured: false,
+            available: false,
+            status: 'Not configured',
+            detail: '',
+            entityId: '',
+            thresholdHours: 48,
+        };
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -2800,6 +2810,83 @@ export class FbSettingsView extends LitElement {
                                               Current screen-specific suppression applies to known
                                               dashboard surfaces (Schedule, Chores, Shopping,
                                               Home) when the related issue is already visible.
+                                          </div>
+                                      `
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('admin_dashboard')
+                                    ? html`
+                                          <div class="subTitle">V2 Admin Reliability</div>
+                                          <div class="muted">
+                                              Backup freshness indicator and manual snapshot action
+                                              for the V2 Admin dashboard.
+                                          </div>
+                                          <div class="row">
+                                              <div>Backup last-success entity</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="sensor.last_backup_success"
+                                                  .value=${adminV2.backup_last_success_entity || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          admin_v2: {
+                                                              ...adminV2,
+                                                              backup_last_success_entity:
+                                                                  e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Backup stale threshold</div>
+                                              <div class="unitRow">
+                                                  <input
+                                                      class="input"
+                                                      type="number"
+                                                      min="1"
+                                                      .value=${Number(
+                                                          adminV2.backup_stale_hours || 48
+                                                      )}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              admin_v2: {
+                                                                  ...adminV2,
+                                                                  backup_stale_hours: Math.max(
+                                                                      1,
+                                                                      Number(
+                                                                          e.target.value || 48
+                                                                      )
+                                                                  ),
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="unit">hours</span>
+                                              </div>
+                                          </div>
+                                          <div class="row">
+                                              <div>Snapshot now service</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="backup.create"
+                                                  .value=${adminV2.snapshot_service || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          admin_v2: {
+                                                              ...adminV2,
+                                                              snapshot_service:
+                                                                  e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="muted">
+                                              Current backup status:
+                                              ${backupStatus.status}
+                                              ${backupStatus.entityId
+                                                  ? ` · ${backupStatus.entityId}`
+                                                  : ''}
+                                              ${backupStatus.detail
+                                                  ? ` · ${backupStatus.detail}`
+                                                  : ''}
                                           </div>
                                       `
                                     : html``}

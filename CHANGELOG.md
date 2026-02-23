@@ -34,6 +34,7 @@
 - Added Phase 3 V2 timed reminder banners with countdown/optional sound and Settings reminder management/test-sound actions.
 - Added Phase 3 V2 state-aware phone notification policy scaffolding (severity thresholds, context/reasons, and dashboard-visibility suppression).
 - Added V2 `Family` and `Admin` dashboards as dedicated views (family daily-summary/actions surface and admin operations/health/recovery surface).
+- Added V2 Admin backup freshness/status support (configurable backup timestamp entity, stale threshold warning, and manual `Snapshot now` service action).
 
 ## 2026-02-19
 

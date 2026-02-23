@@ -40,6 +40,11 @@ views:
             notifications_v2:
                 suppress_when_visible: true
 
+            admin_v2:
+                backup_last_success_entity: ''
+                backup_stale_hours: 48
+                snapshot_service: ''
+
             house_modes_v2:
                 - id: home
                   label: Home
