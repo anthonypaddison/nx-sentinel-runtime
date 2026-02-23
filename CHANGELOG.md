@@ -18,6 +18,7 @@
 - Reduced `settings.view.js` render-method complexity by extracting shared render-state helpers and static options into file-local helpers/constants.
 - Consolidated duplicated `nx-displaygrid` YAML export/clipboard serialization into a shared utility with tests to keep editor/manage-sources outputs aligned.
 - Added refresh retry/queue characterization tests to lock retry timer caps, flags, and pending-refresh behavior before deeper refresh simplification.
+- Continued `settings.view.js` decomposition by extracting admin-locked and footer dialog rendering into class helpers without changing settings behavior.
 
 ## 2026-02-19
 

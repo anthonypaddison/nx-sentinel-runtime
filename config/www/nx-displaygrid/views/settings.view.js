@@ -508,6 +508,170 @@ export class FbSettingsView extends LitElement {
         this._closePersonWizard();
     }
 
+    _renderAdminLocked({ card, hasPin }) {
+        return html`
+            <div class="wrap">
+                <div class="section fb-card">
+                    <div class="title">Admin access</div>
+                    <div class="panelBody">
+                        ${hasPin
+                            ? html`
+                                  <div class="muted">
+                                      Enter the admin PIN to unlock settings on this device.
+                                  </div>
+                                  <div class="row">
+                                      <div>PIN</div>
+                                      <div class="unitRow">
+                                          <input
+                                              class="input"
+                                              type="password"
+                                              .value=${this._pinValue || ''}
+                                              @input=${(e) => (this._pinValue = e.target.value)}
+                                          />
+                                          <button
+                                              class="btn"
+                                              @click=${() => {
+                                                  const ok = card._tryAdminUnlock?.(this._pinValue);
+                                                  if (ok) this._pinValue = '';
+                                              }}
+                                          >
+                                              Unlock
+                                          </button>
+                                      </div>
+                                  </div>
+                              `
+                            : html`<div class="muted">
+                                  No admin PIN is set. Ask an admin to configure one.
+                              </div>`}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderDialogs(card) {
+        return html`
+            ${this._resetStep
+                ? html`<div
+                      class="infoBackdrop"
+                      @click=${(e) => e.target === e.currentTarget && (this._resetStep = 0)}
+                  >
+                      <div class="infoDlg">
+                          <div class="infoHead">
+                              <div>
+                                  ${this._resetStep === 1
+                                      ? 'Reset preferences?'
+                                      : 'Confirm reset'}
+                              </div>
+                          </div>
+                          <div class="muted">
+                              ${this._resetStep === 1
+                                  ? 'This will reset all per-device preferences back to defaults.'
+                                  : 'Are you 100% sure you want to reset everything on this device?'}
+                          </div>
+                          <div class="actions">
+                              <button class="btn" @click=${() => (this._resetStep = 0)}>
+                                  Cancel
+                              </button>
+                              <button
+                                  class="btn"
+                                  @click=${() => {
+                                      if (this._resetStep === 1) {
+                                          this._resetStep = 2;
+                                          return;
+                                      }
+                                      card._resetPrefsToDefaults?.();
+                                      this._resetStep = 0;
+                                  }}
+                              >
+                                  ${this._resetStep === 1 ? 'Yes' : 'Yes, reset'}
+                              </button>
+                          </div>
+                      </div>
+                  </div>`
+                : html``}
+            ${this._resetDashboardStep
+                ? html`<div
+                      class="infoBackdrop"
+                      @click=${(e) =>
+                          !this._resetDashboardBusy &&
+                          e.target === e.currentTarget &&
+                          (this._resetDashboardStep = 0)}
+                  >
+                      <div class="infoDlg">
+                          <div class="infoHead">
+                              <div>
+                                  ${this._resetDashboardStep === 1
+                                      ? 'Reset dashboard?'
+                                      : 'Confirm dashboard reset'}
+                              </div>
+                          </div>
+                          <div class="muted">
+                              ${this._resetDashboardStep === 1
+                                  ? 'This clears dashboard config for this device and resets onboarding.'
+                                  : 'This is destructive. Config, prefs, and cached data will be cleared for this user/device.'}
+                          </div>
+                          <div class="actions">
+                              <button
+                                  class="btn"
+                                  ?disabled=${this._resetDashboardBusy}
+                                  @click=${() => (this._resetDashboardStep = 0)}
+                              >
+                                  Cancel
+                              </button>
+                              <button
+                                  class="btn"
+                                  ?disabled=${this._resetDashboardBusy}
+                                  @click=${async () => {
+                                      if (this._resetDashboardStep === 1) {
+                                          this._resetDashboardStep = 2;
+                                          return;
+                                      }
+                                      this._resetDashboardBusy = true;
+                                      try {
+                                          const userId = card?._hass?.user?.id || '';
+                                          const result = await card._resetAll?.(userId);
+                                          if (!result?.ok) {
+                                              card._showErrorToast?.(
+                                                  'Reset dashboard failed',
+                                                  'Please try again.'
+                                              );
+                                          }
+                                      } finally {
+                                          this._resetDashboardBusy = false;
+                                          this._resetDashboardStep = 0;
+                                      }
+                                  }}
+                              >
+                                  ${this._resetDashboardBusy
+                                      ? 'Resetting...'
+                                      : this._resetDashboardStep === 1
+                                      ? 'Yes'
+                                      : 'Yes, reset dashboard'}
+                              </button>
+                          </div>
+                      </div>
+                  </div>`
+                : html``}
+            ${this._infoOpen
+                ? html`<div
+                      class="infoBackdrop"
+                      @click=${(e) => e.target === e.currentTarget && (this._infoOpen = false)}
+                  >
+                      <div class="infoDlg">
+                          <div class="infoHead">
+                              <div>${this._infoTitle || 'Info'}</div>
+                              <button class="btn" @click=${() => (this._infoOpen = false)}>
+                                  Close
+                              </button>
+                          </div>
+                          <div class="muted">${this._infoText || ''}</div>
+                      </div>
+                  </div>`
+                : html``}
+        `;
+    }
+
     render() {
         const card = this.card;
         if (!card) return html``;
@@ -583,49 +747,7 @@ export class FbSettingsView extends LitElement {
         const makeBinId = () =>
             `bin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
-        if (!hasAdminAccess) {
-            return html`
-                <div class="wrap">
-                    <div class="section fb-card">
-                        <div class="title">Admin access</div>
-                        <div class="panelBody">
-                            ${hasPin
-                                ? html`
-                                      <div class="muted">
-                                          Enter the admin PIN to unlock settings on this device.
-                                      </div>
-                                      <div class="row">
-                                          <div>PIN</div>
-                                          <div class="unitRow">
-                                              <input
-                                                  class="input"
-                                                  type="password"
-                                                  .value=${this._pinValue || ''}
-                                                  @input=${(e) =>
-                                                      (this._pinValue = e.target.value)}
-                                              />
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      const ok = card._tryAdminUnlock?.(
-                                                          this._pinValue
-                                                      );
-                                                      if (ok) this._pinValue = '';
-                                                  }}
-                                              >
-                                                  Unlock
-                                              </button>
-                                          </div>
-                                      </div>
-                                  `
-                                : html`<div class="muted">
-                                      No admin PIN is set. Ask an admin to configure one.
-                                  </div>`}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+        if (!hasAdminAccess) return this._renderAdminLocked({ card, hasPin });
 
         return html`
             <div class="wrap hidden">
@@ -1888,128 +2010,7 @@ export class FbSettingsView extends LitElement {
                     </div>
                 </div>
             </div>
-            ${this._resetStep
-                ? html`<div
-                      class="infoBackdrop"
-                      @click=${(e) =>
-                          e.target === e.currentTarget && (this._resetStep = 0)}
-                  >
-                      <div class="infoDlg">
-                          <div class="infoHead">
-                              <div>
-                                  ${this._resetStep === 1
-                                      ? 'Reset preferences?'
-                                      : 'Confirm reset'}
-                              </div>
-                          </div>
-                          <div class="muted">
-                              ${this._resetStep === 1
-                                  ? 'This will reset all per-device preferences back to defaults.'
-                                  : 'Are you 100% sure you want to reset everything on this device?'}
-                          </div>
-                          <div class="actions">
-                              <button
-                                  class="btn"
-                                  @click=${() => (this._resetStep = 0)}
-                              >
-                                  Cancel
-                              </button>
-                              <button
-                                  class="btn"
-                                  @click=${() => {
-                                      if (this._resetStep === 1) {
-                                          this._resetStep = 2;
-                                          return;
-                                      }
-                                      card._resetPrefsToDefaults?.();
-                                      this._resetStep = 0;
-                                  }}
-                              >
-                                  ${this._resetStep === 1 ? 'Yes' : 'Yes, reset'}
-                              </button>
-                          </div>
-                      </div>
-                  </div>`
-                : html``}
-            ${this._resetDashboardStep
-                ? html`<div
-                      class="infoBackdrop"
-                      @click=${(e) =>
-                          !this._resetDashboardBusy &&
-                          e.target === e.currentTarget &&
-                          (this._resetDashboardStep = 0)}
-                  >
-                      <div class="infoDlg">
-                          <div class="infoHead">
-                              <div>
-                                  ${this._resetDashboardStep === 1
-                                      ? 'Reset dashboard?'
-                                      : 'Confirm dashboard reset'}
-                              </div>
-                          </div>
-                          <div class="muted">
-                              ${this._resetDashboardStep === 1
-                                  ? 'This clears dashboard config for this device and resets onboarding.'
-                                  : 'This is destructive. Config, prefs, and cached data will be cleared for this user/device.'}
-                          </div>
-                          <div class="actions">
-                              <button
-                                  class="btn"
-                                  ?disabled=${this._resetDashboardBusy}
-                                  @click=${() => (this._resetDashboardStep = 0)}
-                              >
-                                  Cancel
-                              </button>
-                              <button
-                                  class="btn"
-                                  ?disabled=${this._resetDashboardBusy}
-                                  @click=${async () => {
-                                      if (this._resetDashboardStep === 1) {
-                                          this._resetDashboardStep = 2;
-                                          return;
-                                      }
-                                      this._resetDashboardBusy = true;
-                                      try {
-                                          const userId = card?._hass?.user?.id || '';
-                                          const result = await card._resetAll?.(userId);
-                                          if (!result?.ok) {
-                                              card._showErrorToast?.(
-                                                  'Reset dashboard failed',
-                                                  'Please try again.'
-                                              );
-                                          }
-                                      } finally {
-                                          this._resetDashboardBusy = false;
-                                          this._resetDashboardStep = 0;
-                                      }
-                                  }}
-                              >
-                                  ${this._resetDashboardBusy
-                                      ? 'Resetting...'
-                                      : this._resetDashboardStep === 1
-                                      ? 'Yes'
-                                      : 'Yes, reset dashboard'}
-                              </button>
-                          </div>
-                      </div>
-                  </div>`
-                : html``}
-            ${this._infoOpen
-                ? html`<div
-                      class="infoBackdrop"
-                      @click=${(e) => e.target === e.currentTarget && (this._infoOpen = false)}
-                  >
-                      <div class="infoDlg">
-                          <div class="infoHead">
-                              <div>${this._infoTitle || 'Info'}</div>
-                              <button class="btn" @click=${() => (this._infoOpen = false)}>
-                                  Close
-                              </button>
-                          </div>
-                          <div class="muted">${this._infoText || ''}</div>
-                      </div>
-                  </div>`
-                : html``}
+            ${this._renderDialogs(card)}
         `;
     }
 }
