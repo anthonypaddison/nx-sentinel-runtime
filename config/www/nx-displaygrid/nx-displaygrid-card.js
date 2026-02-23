@@ -42,6 +42,7 @@ import { applyTodoHelpers } from './nx-displaygrid.todo.js';
 import { applyFood } from './nx-displaygrid.food.js';
 import { applyIntent } from './nx-displaygrid.intent.js';
 import { applyAdaptive } from './nx-displaygrid.adaptive.js';
+import { applyReminders } from './nx-displaygrid.reminders.js';
 
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
 
@@ -189,6 +190,43 @@ class FamilyBoardCard extends LitElement {
                 font-size: 14px;
                 margin-top: 2px;
             }
+            .reminderBanner {
+                position: absolute;
+                left: var(--fb-gutter);
+                right: var(--fb-gutter);
+                top: var(--fb-gutter);
+                z-index: 19;
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 10px;
+                align-items: center;
+                border: 1px solid var(--fb-border);
+                background: color-mix(in srgb, var(--warning) 14%, var(--fb-surface));
+                border-radius: 12px;
+                padding: 10px 12px;
+                box-shadow: var(--fb-shadow);
+            }
+            .reminderBanner.urgent {
+                background: color-mix(in srgb, var(--urgent) 14%, var(--fb-surface));
+            }
+            .reminderMeta {
+                display: grid;
+                gap: 2px;
+                min-width: 0;
+            }
+            .reminderTitle {
+                font-weight: 800;
+                font-size: 14px;
+            }
+            .reminderDetail {
+                color: var(--fb-muted);
+                font-size: 12px;
+            }
+            .reminderActions {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
             @media (max-width: 900px) {
                 .app {
                     grid-template-columns: 1fr;
@@ -316,6 +354,9 @@ class FamilyBoardCard extends LitElement {
         this._adaptiveScreenTs = 0;
         this._v2AdaptiveThemeKey = '';
         this._v2AdaptiveThemeApplied = false;
+        this._activeReminderBanner = null;
+        this._v2ReminderDismissed = new Set();
+        this._v2ReminderSoundPlayedKey = '';
     }
 
     setConfig(config) {
@@ -343,6 +384,7 @@ class FamilyBoardCard extends LitElement {
         this._resetRefreshTimer();
         if (!this._clockTimer) {
             this._clockTimer = setInterval(() => {
+                this._v2TickReminderBanner?.();
                 this.requestUpdate();
             }, 60_000);
         }
@@ -641,6 +683,9 @@ class FamilyBoardCard extends LitElement {
         const extraScreens = this._v2NavScreens?.() || [];
         const foodSig = JSON.stringify(this._config?.food_v2 || {});
         const ambientSig = `${this._eventsVersion || 0}|${this._todoVersion || 0}|${this._shoppingVersion || 0}|${this._lastRefreshTs || 0}`;
+        const reminderBanner = this._activeReminderBanner || this._v2CurrentReminderBanner?.() || null;
+        const reminderSuppressed =
+            reminderBanner && this._v2ShouldSuppressReminderBanner?.(reminderBanner);
 
         return html`
             <div class="app" style="--fb-sidebar-width:${sidebarWidth}">
@@ -662,6 +707,47 @@ class FamilyBoardCard extends LitElement {
                               ${this._toastDetail
                                   ? html`<div class="toastDetail">${this._toastDetail}</div>`
                                   : html``}
+                          </div>`
+                        : html``}
+                    ${reminderBanner && !reminderSuppressed
+                        ? html`<div
+                              class="reminderBanner ${reminderBanner.phase !== 'countdown'
+                                  ? 'urgent'
+                                  : ''}"
+                          >
+                              <div class="reminderMeta">
+                                  <div class="reminderTitle">
+                                      ${reminderBanner.reminder.label || 'Reminder'}
+                                  </div>
+                                  <div class="reminderDetail">
+                                      ${this._v2ReminderBannerText?.(reminderBanner) || ''}
+                                  </div>
+                              </div>
+                              <div class="reminderActions">
+                                  <button
+                                      class="btn sm"
+                                      @click=${() =>
+                                          this._v2DismissReminderBanner?.(
+                                              reminderBanner.occurrenceKey
+                                          )}
+                                  >
+                                      Dismiss
+                                  </button>
+                                  ${reminderBanner.reminder.sound
+                                      ? html`<button
+                                            class="btn sm ghost"
+                                            title="Play reminder sound"
+                                            @click=${() =>
+                                                this._v2PlayReminderSound?.({
+                                                    pattern:
+                                                        reminderBanner.reminder.soundPattern ||
+                                                        'double',
+                                                })}
+                                        >
+                                            Test sound
+                                        </button>`
+                                      : html``}
+                              </div>
                           </div>`
                         : html``}
                     <div class="topbar">
@@ -885,6 +971,7 @@ applyValidation(FamilyBoardCard);
 applyFood(FamilyBoardCard);
 applyIntent(FamilyBoardCard);
 applyAdaptive(FamilyBoardCard);
+applyReminders(FamilyBoardCard);
 customElements.define('nx-displaygrid', FamilyBoardCard);
 
 window.customCards = window.customCards || [];

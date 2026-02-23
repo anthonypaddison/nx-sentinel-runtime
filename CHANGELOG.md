@@ -31,6 +31,7 @@
 - Added a V2 Settings person wizard UI for add/edit flows with step navigation, cancel, and confirm.
 - Added V2 `Intent` and `Ambient` views, including adaptive action prioritization based on time/house mode/recent board state.
 - Added Phase 2 V2 adaptive presentation: explicit house-mode scaffolding, dynamic theme switching, and automatic screen recommendations/switching (time/occupancy/events/error aware).
+- Added Phase 3 V2 timed reminder banners with countdown/optional sound and Settings reminder management/test-sound actions.
 
 ## 2026-02-19
 

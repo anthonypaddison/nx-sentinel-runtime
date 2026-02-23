@@ -23,6 +23,8 @@ views:
                 ambient_view: true
                 adaptive_layout: true
                 dynamic_themes: true
+                reminder_banners: true
+                notification_policy: true
 
             adaptive_v2:
                 auto_screen: true
@@ -32,6 +34,9 @@ views:
 
             intent_v2:
                 house_mode_entity: ''
+
+            notifications_v2:
+                suppress_when_visible: true
 
             house_modes_v2:
                 - id: home

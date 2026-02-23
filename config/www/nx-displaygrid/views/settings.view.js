@@ -1099,6 +1099,7 @@ export class FbSettingsView extends LitElement {
             state: '',
             available: false,
         };
+        const remindersV2 = Array.isArray(cfg.reminders_v2) ? cfg.reminders_v2 : [];
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -2420,6 +2421,280 @@ export class FbSettingsView extends LitElement {
                                               Dynamic theme reacts to time of day, stale/error
                                               states, occupancy, and configured house mode.
                                           </div>
+                                      `
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('reminder_banners')
+                                    ? html`
+                                          <div class="subTitle">V2 Reminders</div>
+                                          <div class="muted">
+                                              Timed reminder banners with optional countdown and
+                                              sound.
+                                          </div>
+                                          <div class="actions">
+                                              <button
+                                                  class="btn"
+                                                  @click=${() =>
+                                                      card._v2PlayReminderSound?.({
+                                                          pattern: 'double',
+                                                      })}
+                                              >
+                                                  Test reminder sound
+                                              </button>
+                                              <button
+                                                  class="btn"
+                                                  @click=${async () => {
+                                                      const next = [
+                                                          ...remindersV2,
+                                                          {
+                                                              id: `rem_${Date.now().toString(36)}`,
+                                                              label: 'Reminder',
+                                                              message: '',
+                                                              time: '09:00',
+                                                              enabled: true,
+                                                              countdown_minutes: 10,
+                                                              sound: true,
+                                                              sound_pattern: 'double',
+                                                              days: [],
+                                                          },
+                                                      ];
+                                                      await card._v2SaveReminderList?.(next);
+                                                  }}
+                                              >
+                                                  Add reminder
+                                              </button>
+                                          </div>
+                                          <div class="muted">
+                                              Empty `days` means every day. Use 0-6 checkboxes for
+                                              Sun-Sat.
+                                          </div>
+                                          ${remindersV2.length
+                                              ? html`${remindersV2.map((reminder, idx) => {
+                                                    const daySet = new Set(
+                                                        Array.isArray(reminder.days)
+                                                            ? reminder.days.map(Number)
+                                                            : []
+                                                    );
+                                                    const updateReminder = async (patch) => {
+                                                        const next = remindersV2.map((r, i) =>
+                                                            i === idx ? { ...r, ...patch } : r
+                                                        );
+                                                        await card._v2SaveReminderList?.(next);
+                                                    };
+                                                    return html`
+                                                        <div class="fb-card padded" style="margin-top:10px">
+                                                            <div class="row">
+                                                                <div>Label</div>
+                                                                <input
+                                                                    class="input"
+                                                                    .value=${reminder.label || ''}
+                                                                    @change=${(e) =>
+                                                                        updateReminder({
+                                                                            label: e.target.value,
+                                                                        })}
+                                                                />
+                                                            </div>
+                                                            <div class="row">
+                                                                <div>Message</div>
+                                                                <input
+                                                                    class="input"
+                                                                    .value=${reminder.message || ''}
+                                                                    @change=${(e) =>
+                                                                        updateReminder({
+                                                                            message:
+                                                                                e.target.value,
+                                                                        })}
+                                                                />
+                                                            </div>
+                                                            <div class="row">
+                                                                <div>Time</div>
+                                                                <div class="unitRow">
+                                                                    <input
+                                                                        class="input"
+                                                                        type="time"
+                                                                        .value=${reminder.time ||
+                                                                        '09:00'}
+                                                                        @change=${(e) =>
+                                                                            updateReminder({
+                                                                                time: e.target
+                                                                                    .value,
+                                                                            })}
+                                                                    />
+                                                                    <span class="unit">
+                                                                        Countdown
+                                                                    </span>
+                                                                    <input
+                                                                        class="input"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max="180"
+                                                                        style="max-width:90px"
+                                                                        .value=${Number(
+                                                                            reminder.countdown_minutes ??
+                                                                                10
+                                                                        )}
+                                                                        @change=${(e) =>
+                                                                            updateReminder({
+                                                                                countdown_minutes:
+                                                                                    Number(
+                                                                                        e.target
+                                                                                            .value
+                                                                                    ) || 0,
+                                                                            })}
+                                                                    />
+                                                                    <span class="unit">min</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="row">
+                                                                <div>Options</div>
+                                                                <div class="unitRow">
+                                                                    <label>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            .checked=${reminder.enabled !==
+                                                                            false}
+                                                                            @change=${(e) =>
+                                                                                updateReminder({
+                                                                                    enabled: e
+                                                                                        .target
+                                                                                        .checked,
+                                                                                })}
+                                                                        />
+                                                                        <span class="muted">
+                                                                            Enabled
+                                                                        </span>
+                                                                    </label>
+                                                                    <label>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            .checked=${reminder.sound !==
+                                                                            false}
+                                                                            @change=${(e) =>
+                                                                                updateReminder({
+                                                                                    sound: e.target
+                                                                                        .checked,
+                                                                                })}
+                                                                        />
+                                                                        <span class="muted">
+                                                                            Sound
+                                                                        </span>
+                                                                    </label>
+                                                                    <select
+                                                                        class="input"
+                                                                        style="max-width:120px"
+                                                                        .value=${reminder.sound_pattern ||
+                                                                        'double'}
+                                                                        @change=${(e) =>
+                                                                            updateReminder({
+                                                                                sound_pattern:
+                                                                                    e.target
+                                                                                        .value,
+                                                                            })}
+                                                                    >
+                                                                        <option value="double">
+                                                                            Double
+                                                                        </option>
+                                                                        <option value="triple">
+                                                                            Triple
+                                                                        </option>
+                                                                        <option value="long">
+                                                                            Long
+                                                                        </option>
+                                                                    </select>
+                                                                    <button
+                                                                        class="btn sm"
+                                                                        @click=${() =>
+                                                                            card._v2PlayReminderSound?.({
+                                                                                pattern:
+                                                                                    reminder.sound_pattern ||
+                                                                                    'double',
+                                                                            })}
+                                                                    >
+                                                                        Test
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="row">
+                                                                <div>Days</div>
+                                                                <div class="unitRow" style="flex-wrap:wrap">
+                                                                    ${[
+                                                                        ['S', 0],
+                                                                        ['M', 1],
+                                                                        ['T', 2],
+                                                                        ['W', 3],
+                                                                        ['T', 4],
+                                                                        ['F', 5],
+                                                                        ['S', 6],
+                                                                    ].map(
+                                                                        ([label, day]) => html`
+                                                                            <label>
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    .checked=${daySet.has(
+                                                                                        day
+                                                                                    )}
+                                                                                    @change=${async (
+                                                                                        e
+                                                                                    ) => {
+                                                                                        const nextDays = new Set(
+                                                                                            daySet
+                                                                                        );
+                                                                                        if (
+                                                                                            e.target
+                                                                                                .checked
+                                                                                        )
+                                                                                            nextDays.add(
+                                                                                                day
+                                                                                            );
+                                                                                        else
+                                                                                            nextDays.delete(
+                                                                                                day
+                                                                                            );
+                                                                                        await updateReminder(
+                                                                                            {
+                                                                                                days: Array.from(
+                                                                                                    nextDays
+                                                                                                ).sort(),
+                                                                                            }
+                                                                                        );
+                                                                                    }}
+                                                                                />
+                                                                                <span class="muted">
+                                                                                    ${label}
+                                                                                </span>
+                                                                            </label>
+                                                                        `
+                                                                    )}
+                                                                    <button
+                                                                        class="btn sm ghost"
+                                                                        @click=${() =>
+                                                                            updateReminder({
+                                                                                days: [],
+                                                                            })}
+                                                                    >
+                                                                        Every day
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="actions">
+                                                                <button
+                                                                    class="btn"
+                                                                    @click=${async () => {
+                                                                        const next = remindersV2.filter(
+                                                                            (_, i) =>
+                                                                                i !== idx
+                                                                        );
+                                                                        await card._v2SaveReminderList?.(
+                                                                            next
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    Remove reminder
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    `;
+                                                })}`
+                                              : html`<div class="muted">No reminders configured yet.</div>`}
                                       `
                                     : html``}
                                 <div class="actions">
