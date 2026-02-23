@@ -178,73 +178,81 @@ export function applyRefresh(FamilyBoardCard) {
         },
 
         _scheduleCalendarRetry() {
-            if (this._calendarRetryTimer) return;
-            const refreshMs = this._refreshIntervalMs ?? 300_000;
-            const base = Math.min(30_000, refreshMs);
-            const next = this._calendarRetryMs
-                ? Math.min(this._calendarRetryMs * 2, refreshMs)
-                : base;
-            this._calendarRetryMs = next;
-            this._calendarRetryTimer = setTimeout(() => {
-                this._calendarRetryTimer = null;
-                this._queueRefresh({ forceCalendars: true, reason: 'retry' });
-            }, next);
+            this._scheduleRetryTimer({
+                timerProp: '_calendarRetryTimer',
+                retryMsProp: '_calendarRetryMs',
+                capMs: this._refreshIntervalMs ?? 300_000,
+                queueArgs: { forceCalendars: true, reason: 'retry' },
+            });
         },
 
         _clearCalendarRetry() {
-            if (this._calendarRetryTimer) {
-                clearTimeout(this._calendarRetryTimer);
-                this._calendarRetryTimer = null;
-            }
-            this._calendarRetryMs = 0;
+            this._clearRetryTimer({
+                timerProp: '_calendarRetryTimer',
+                retryMsProp: '_calendarRetryMs',
+            });
         },
 
         _scheduleTodoRetry() {
-            if (this._todoRetryTimer) return;
-            const refreshMs = this._refreshIntervalMs ?? 300_000;
-            const base = Math.min(30_000, refreshMs);
-            const cap = Math.max(refreshMs, 120_000);
-            const next = this._todoRetryMs ? Math.min(this._todoRetryMs * 2, cap) : base;
-            this._todoRetryMs = next;
-            this._todoRetrying = true;
-            this._todoRetryTimer = setTimeout(() => {
-                this._todoRetryTimer = null;
-                this._queueRefresh({ reason: 'retry' });
-            }, next);
+            this._scheduleRetryTimer({
+                timerProp: '_todoRetryTimer',
+                retryMsProp: '_todoRetryMs',
+                capMs: Math.max(this._refreshIntervalMs ?? 300_000, 120_000),
+                retryingProp: '_todoRetrying',
+                queueArgs: { reason: 'retry' },
+            });
         },
 
         _clearTodoRetry() {
-            if (this._todoRetryTimer) {
-                clearTimeout(this._todoRetryTimer);
-                this._todoRetryTimer = null;
-            }
-            this._todoRetryMs = 0;
-            this._todoRetrying = false;
+            this._clearRetryTimer({
+                timerProp: '_todoRetryTimer',
+                retryMsProp: '_todoRetryMs',
+                retryingProp: '_todoRetrying',
+            });
         },
 
         _scheduleShoppingRetry() {
-            if (this._shoppingRetryTimer) return;
-            const refreshMs = this._refreshIntervalMs ?? 300_000;
-            const base = Math.min(30_000, refreshMs);
-            const cap = Math.max(refreshMs, 120_000);
-            const next = this._shoppingRetryMs
-                ? Math.min(this._shoppingRetryMs * 2, cap)
-                : base;
-            this._shoppingRetryMs = next;
-            this._shoppingRetrying = true;
-            this._shoppingRetryTimer = setTimeout(() => {
-                this._shoppingRetryTimer = null;
-                this._queueRefresh({ reason: 'retry' });
-            }, next);
+            this._scheduleRetryTimer({
+                timerProp: '_shoppingRetryTimer',
+                retryMsProp: '_shoppingRetryMs',
+                capMs: Math.max(this._refreshIntervalMs ?? 300_000, 120_000),
+                retryingProp: '_shoppingRetrying',
+                queueArgs: { reason: 'retry' },
+            });
         },
 
         _clearShoppingRetry() {
-            if (this._shoppingRetryTimer) {
-                clearTimeout(this._shoppingRetryTimer);
-                this._shoppingRetryTimer = null;
+            this._clearRetryTimer({
+                timerProp: '_shoppingRetryTimer',
+                retryMsProp: '_shoppingRetryMs',
+                retryingProp: '_shoppingRetrying',
+            });
+        },
+
+        _scheduleRetryTimer({ timerProp, retryMsProp, capMs, retryingProp = '', queueArgs = {} }) {
+            if (!timerProp || !retryMsProp) return;
+            if (this[timerProp]) return;
+            const refreshMs = this._refreshIntervalMs ?? 300_000;
+            const base = Math.min(30_000, refreshMs);
+            const cap = Number.isFinite(capMs) ? capMs : refreshMs;
+            const current = Number(this[retryMsProp]) || 0;
+            const next = current ? Math.min(current * 2, cap) : base;
+            this[retryMsProp] = next;
+            if (retryingProp) this[retryingProp] = true;
+            this[timerProp] = setTimeout(() => {
+                this[timerProp] = null;
+                this._queueRefresh(queueArgs);
+            }, next);
+        },
+
+        _clearRetryTimer({ timerProp, retryMsProp, retryingProp = '' }) {
+            if (!timerProp || !retryMsProp) return;
+            if (this[timerProp]) {
+                clearTimeout(this[timerProp]);
+                this[timerProp] = null;
             }
-            this._shoppingRetryMs = 0;
-            this._shoppingRetrying = false;
+            this[retryMsProp] = 0;
+            if (retryingProp) this[retryingProp] = false;
         },
 
         _visibleCalendarEntities() {
