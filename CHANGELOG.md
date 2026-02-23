@@ -25,6 +25,7 @@
 - Added a separate `nx-displaygrid-v2` YAML dashboard entry/file that mirrors the current dashboard config while enabling isolated V2 feature flags.
 - Added V2-only `Important` view shopping-count header and Chores metadata badges (priority/labels/subtasks/comments/recurring when available).
 - Added V2-only date-context persistence (schedule/month offsets) and broader Home Controls eligibility using HA service-registry checks.
+- Bumped Lovelace resource cache-bust query string after V2/frontend JS changes.
 
 ## 2026-02-19
 
