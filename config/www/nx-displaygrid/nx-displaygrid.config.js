@@ -1,7 +1,7 @@
 /* nx-displaygrid - config helpers
  * SPDX-License-Identifier: MIT
  */
-import { debugLog } from './nx-displaygrid.util.js';
+import { debugLog, isControllableEntity } from './nx-displaygrid.util.js';
 import { serializeNxDisplaygridCardConfig } from './util/config-yaml.util.js';
 import { configHasPeople } from './util/source-validation.util.js';
 
@@ -15,6 +15,12 @@ export function applyConfigHelpers(FamilyBoardCard) {
         _v2FeatureEnabled(name, config = this._config) {
             if (!name) return false;
             return this._v2Features(config)[name] === true;
+        },
+
+        _isHomeControlEntityEligible(entityId) {
+            return isControllableEntity(this._hass, entityId, {
+                allowAllDomains: this._v2FeatureEnabled('home_controls_broader_entities'),
+            });
         },
 
         _onboardingSchemaVersion() {

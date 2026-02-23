@@ -13,6 +13,7 @@ export function applySchedule(FamilyBoardCard) {
             this._dayOffset = diffDays;
             this._mainMode = 'schedule';
             this._screen = 'schedule';
+            this._saveDateContextPrefs?.();
             this._queueRefresh();
         },
     });

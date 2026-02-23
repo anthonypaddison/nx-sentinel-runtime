@@ -8,6 +8,7 @@ export function applyNavigation(FamilyBoardCard) {
         _setMonthOffset(delta) {
             this._monthOffset = (this._monthOffset || 0) + delta;
             debugLog(this._debug, 'setMonthOffset', { delta, monthOffset: this._monthOffset });
+            this._saveDateContextPrefs?.();
             this._queueRefresh();
         },
 
@@ -25,6 +26,7 @@ export function applyNavigation(FamilyBoardCard) {
             this._mainMode = mode;
             if (mode !== 'month') this._monthOffset = 0;
             debugLog(this._debug, 'mainMode', { mode });
+            this._saveDateContextPrefs?.();
             this._queueRefresh();
         },
 
@@ -40,6 +42,7 @@ export function applyNavigation(FamilyBoardCard) {
             const step = this._mainMode === 'schedule' ? 1 : 1;
             this._dayOffset = (this._dayOffset || 0) + delta * step;
             debugLog(this._debug, 'dateNav', { delta, dayOffset: this._dayOffset });
+            this._saveDateContextPrefs?.();
             this._queueRefresh();
         },
 
@@ -47,6 +50,7 @@ export function applyNavigation(FamilyBoardCard) {
             this._dayOffset = 0;
             this._monthOffset = 0;
             debugLog(this._debug, 'today');
+            this._saveDateContextPrefs?.();
             this._queueRefresh();
         },
 

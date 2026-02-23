@@ -24,6 +24,7 @@
 - Further reduced `settings.view.js` render complexity by extracting the Preferences debug/cache-status subsection and added tests for Home Controls entity eligibility checks.
 - Added a separate `nx-displaygrid-v2` YAML dashboard entry/file that mirrors the current dashboard config while enabling isolated V2 feature flags.
 - Added V2-only `Important` view shopping-count header and Chores metadata badges (priority/labels/subtasks/comments/recurring when available).
+- Added V2-only date-context persistence (schedule/month offsets) and broader Home Controls eligibility using HA service-registry checks.
 
 ## 2026-02-19
 

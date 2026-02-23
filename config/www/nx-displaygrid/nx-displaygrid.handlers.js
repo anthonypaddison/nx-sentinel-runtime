@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
-import { debugLog, isControllableEntity } from './nx-displaygrid.util.js';
+import { debugLog } from './nx-displaygrid.util.js';
 export function applyHandlers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
         _onAddCalendar: async function (ev) {
@@ -61,7 +61,7 @@ export function applyHandlers(FamilyBoardCard) {
             const entityId = ev?.detail?.entityId;
             if (!entityId) return;
             if (!this._hasAdminAccess()) return;
-            if (!isControllableEntity(this._hass, entityId)) {
+            if (!this._isHomeControlEntityEligible?.(entityId)) {
                 this._showToast('Not a controllable entity');
                 return;
             }

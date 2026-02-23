@@ -1,7 +1,6 @@
 /* nx-displaygrid - config validation helpers
  * SPDX-License-Identifier: MIT
  */
-import { isControllableEntity } from './nx-displaygrid.util.js';
 import { configHasSources } from './util/source-validation.util.js';
 
 export function applyValidation(FamilyBoardCard) {
@@ -69,7 +68,7 @@ export function applyValidation(FamilyBoardCard) {
                 errors.push(`Shopping list missing: ${shopping}`);
             }
             homeControls.forEach((eid) => {
-                if (eid && !isControllableEntity(this._hass, eid)) {
+                if (eid && !this._isHomeControlEntityEligible?.(eid)) {
                     errors.push(`Home control unavailable (hidden): ${eid}`);
                 }
             });

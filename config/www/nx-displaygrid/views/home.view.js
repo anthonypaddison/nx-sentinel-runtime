@@ -5,7 +5,6 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import { isControllableEntity } from '../nx-displaygrid.util.js';
 export class FbHomeView extends LitElement {
     static properties = { card: { type: Object } };
 
@@ -128,7 +127,9 @@ export class FbHomeView extends LitElement {
         const controls = Array.isArray(card._config?.home_controls)
             ? card._config.home_controls
             : [];
-        const validControls = controls.filter((eid) => isControllableEntity(hass, eid));
+        const validControls = controls.filter((eid) =>
+            card._isHomeControlEntityEligible?.(eid)
+        );
         const hiddenCount = Math.max(0, controls.length - validControls.length);
 
         return html`

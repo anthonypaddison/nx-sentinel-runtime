@@ -219,21 +219,28 @@ export function debugLog(debug, ...args) {
     console.log('[nx-displaygrid]', ...args);
 }
 
-export function isControllableEntity(hass, entityId) {
+export function isControllableEntity(hass, entityId, options = {}) {
     if (!hass || !entityId) return false;
     const states = hass.states;
     if (!states || !states[entityId]) return false;
     const domain = String(entityId).split('.')[0] || '';
+    const allowAllDomains = options?.allowAllDomains === true;
     // Conservative allowlist for explicit on/off controls; extend later if needed
     // (e.g. scripts/scenes). Sensors and binary_sensors are intentionally excluded.
     const allowed = ['switch', 'light', 'input_boolean', 'fan'];
-    if (!allowed.includes(domain)) return false;
+    if (!allowAllDomains && !allowed.includes(domain)) return false;
     const services = hass.services;
-    if (!services || typeof services !== 'object') return true;
+    if (!services || typeof services !== 'object') return allowAllDomains ? false : true;
     const domainServices = services[domain];
-    if (!domainServices || typeof domainServices !== 'object') return true;
-    const hasToggle = Boolean(domainServices.toggle);
-    const hasTurnOn = Boolean(domainServices.turn_on);
-    const hasTurnOff = Boolean(domainServices.turn_off);
+    const homeassistantServices = services.homeassistant;
+    const hasGenericTurnOn = Boolean(homeassistantServices?.turn_on);
+    const hasGenericTurnOff = Boolean(homeassistantServices?.turn_off);
+    if ((!domainServices || typeof domainServices !== 'object') && !allowAllDomains) return true;
+    const hasToggle = Boolean(domainServices?.toggle);
+    const hasTurnOn = Boolean(domainServices?.turn_on);
+    const hasTurnOff = Boolean(domainServices?.turn_off);
+    if (allowAllDomains && (hasGenericTurnOn || hasGenericTurnOff)) {
+        return hasToggle || (hasTurnOn && hasTurnOff) || (hasGenericTurnOn && hasGenericTurnOff);
+    }
     return hasToggle || (hasTurnOn && hasTurnOff);
 }

@@ -489,6 +489,17 @@ class FamilyBoardCard extends LitElement {
         this._shoppingFavourites = Array.isArray(nextPrefs.shoppingFavourites)
             ? nextPrefs.shoppingFavourites
             : [];
+        if (this._v2FeatureEnabled?.('persist_date_context')) {
+            if (nextPrefs.lastMainMode === 'month' || nextPrefs.lastMainMode === 'schedule') {
+                this._mainMode = nextPrefs.lastMainMode;
+            }
+            if (Number.isFinite(nextPrefs.scheduleDayOffset)) {
+                this._dayOffset = Math.trunc(nextPrefs.scheduleDayOffset);
+            }
+            if (Number.isFinite(nextPrefs.monthOffset)) {
+                this._monthOffset = Math.trunc(nextPrefs.monthOffset);
+            }
+        }
 
         if (allowInitialView && !this._initialViewSet) {
             const allowedViews = ['schedule', 'important', 'chores', 'shopping', 'home', 'settings'];

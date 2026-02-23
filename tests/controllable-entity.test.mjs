@@ -49,3 +49,44 @@ test('isControllableEntity is permissive when service registry is unavailable', 
     };
     assert.equal(isControllableEntity(hass, 'light.kitchen'), true);
 });
+
+test('isControllableEntity can optionally allow broader domains via generic homeassistant on/off', () => {
+    const hass = {
+        states: {
+            'script.goodnight': {},
+            'scene.evening': {},
+            'sensor.temp': {},
+        },
+        services: {
+            homeassistant: { turn_on: {}, turn_off: {} },
+            script: { turn_on: {}, turn_off: {} },
+        },
+    };
+
+    assert.equal(isControllableEntity(hass, 'script.goodnight'), false);
+    assert.equal(
+        isControllableEntity(hass, 'script.goodnight', { allowAllDomains: true }),
+        true
+    );
+    assert.equal(
+        isControllableEntity(hass, 'scene.evening', { allowAllDomains: true }),
+        true
+    );
+    assert.equal(
+        isControllableEntity(hass, 'sensor.temp', { allowAllDomains: true }),
+        true
+    );
+});
+
+test('isControllableEntity broader mode still requires on/off or toggle support', () => {
+    const hass = {
+        states: {
+            'scene.evening': {},
+        },
+        services: {
+            scene: {},
+        },
+    };
+
+    assert.equal(isControllableEntity(hass, 'scene.evening', { allowAllDomains: true }), false);
+});

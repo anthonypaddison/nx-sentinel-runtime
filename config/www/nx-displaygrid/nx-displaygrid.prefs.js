@@ -9,6 +9,7 @@ export function applyPrefs(FamilyBoardCard) {
         _savePrefs() {
             const userId = this._hass?.user?.id;
             if (!userId) return;
+            const persistDateContext = this._v2FeatureEnabled?.('persist_date_context');
             updatePrefs(userId, {
                 personFilters: Array.from(this._personFilterSet || []),
                 useMobileView: Boolean(this._useMobileView),
@@ -30,9 +31,21 @@ export function applyPrefs(FamilyBoardCard) {
                 peopleDisplay: Array.isArray(this._devicePeopleDisplay)
                     ? this._devicePeopleDisplay
                     : null,
+                ...(persistDateContext
+                    ? {
+                          lastMainMode: this._mainMode || 'schedule',
+                          scheduleDayOffset: Number(this._dayOffset || 0),
+                          monthOffset: Number(this._monthOffset || 0),
+                      }
+                    : {}),
             });
             this._prefsVersion = (this._prefsVersion || 0) + 1;
             this.requestUpdate();
+        },
+
+        _saveDateContextPrefs() {
+            if (!this._v2FeatureEnabled?.('persist_date_context')) return;
+            this._savePrefs();
         },
 
         _resetPrefsToDefaults() {

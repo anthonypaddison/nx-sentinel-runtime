@@ -5,7 +5,7 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import { isControllableEntity, slugifyId } from '../nx-displaygrid.util.js';
+import { slugifyId } from '../nx-displaygrid.util.js';
 import { DEFAULT_CARD_CONFIG } from '../nx-displaygrid.defaults.js';
 
 const SETTINGS_WEEKDAY_OPTIONS = [
@@ -803,10 +803,10 @@ export class FbSettingsView extends LitElement {
                 : binRotation.anchor_date || '';
         const entityIds = Object.keys(card._hass?.states || {}).sort();
         const controllableEntityIds = entityIds.filter((eid) =>
-            isControllableEntity(card._hass, eid)
+            card._isHomeControlEntityEligible?.(eid)
         );
         const invalidHomeControls = homeControls.filter(
-            (eid) => !isControllableEntity(card._hass, eid)
+            (eid) => !card._isHomeControlEntityEligible?.(eid)
         );
         const addValue = this._homeControlAdd || '';
         const { hasPeopleDisplay, peopleDisplay, allPeopleIds, peopleDisplayFull } =
