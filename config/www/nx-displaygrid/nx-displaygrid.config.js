@@ -3,6 +3,7 @@
  */
 import { debugLog } from './nx-displaygrid.util.js';
 import { yamlString } from './util/yaml.util.js';
+import { DEFAULT_CARD_CONFIG } from './nx-displaygrid.defaults.js';
 
 export function applyConfigHelpers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -86,7 +87,7 @@ export function applyConfigHelpers(FamilyBoardCard) {
             push(`type: custom:nx-displaygrid`);
             if (draft.title) push(`title: ${yamlString(draft.title)}`);
             if (draft.debug !== undefined) push(`debug: ${draft.debug ? 'true' : 'false'}`);
-            push(`days_to_show: 5`);
+            push(`days_to_show: ${DEFAULT_CARD_CONFIG.days_to_show}`);
             if (draft.day_start_hour !== undefined) push(`day_start_hour: ${draft.day_start_hour}`);
             if (draft.day_end_hour !== undefined) push(`day_end_hour: ${draft.day_end_hour}`);
             if (draft.slot_minutes !== undefined) push(`slot_minutes: ${draft.slot_minutes}`);

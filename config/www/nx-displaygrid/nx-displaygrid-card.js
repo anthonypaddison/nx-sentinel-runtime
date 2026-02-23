@@ -14,7 +14,7 @@ import {
     getDeviceKind,
 } from './util/prefs.util.js';
 import { idbFailureState } from './util/idb.util.js';
-import { DEFAULT_COMMON_ITEMS } from './nx-displaygrid.defaults.js';
+import { DEFAULT_COMMON_ITEMS, DEFAULT_CARD_CONFIG } from './nx-displaygrid.defaults.js';
 import { applyPersistence } from './nx-displaygrid.persistence.js';
 import { applyRefresh } from './nx-displaygrid.refresh.js';
 import { applyActions } from './nx-displaygrid.actions.js';
@@ -103,12 +103,7 @@ class FamilyBoardCard extends LitElement {
         return {
             type: 'custom:nx-displaygrid',
             title: 'nx-displaygrid',
-            days_to_show: 5,
-            day_start_hour: 6,
-            day_end_hour: 24,
-            slot_minutes: 30,
-            px_per_hour: 120,
-            refresh_interval_ms: 300000,
+            ...DEFAULT_CARD_CONFIG,
         };
     }
 

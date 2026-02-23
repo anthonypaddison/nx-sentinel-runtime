@@ -13,6 +13,7 @@
 - Began tracking the `nx_displaygrid` custom component backend in-repo for reproducible deployments (excluding Python cache files).
 - Deduplicated repeated Lit `repeat` fallback lambdas across views and shared timed-event sorting logic for schedule layout.
 - Hardened Home Controls validation/add flow to reject hidden or non-controllable entities before persisting config.
+- Centralized runtime `nx-displaygrid` default card values to reduce drift across stub config, setup, settings fallbacks, and YAML export helpers.
 
 ## 2026-02-19
 

@@ -6,6 +6,7 @@ import { CalendarService } from './services/calendar.service.js';
 import { TodoService } from './services/todo.service.js';
 import { ShoppingService } from './services/shopping.service.js';
 import { suggestShoppingEntity } from './util/discovery.util.js';
+import { DEFAULT_CARD_CONFIG } from './nx-displaygrid.defaults.js';
 
 export function applySetup(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -77,17 +78,27 @@ export function applySetup(FamilyBoardCard) {
             this._debug = Boolean(merged.debug);
             this._configVersion = (this._configVersion || 0) + 1;
 
-            const dayStart = useDefaults ? 6 : this._dayStartHour ?? 6;
-            const dayEnd = useDefaults ? 24 : this._dayEndHour ?? 24;
-            const slotMinutes = useDefaults ? 30 : this._slotMinutes ?? 30;
-            const pxPerHour = useDefaults ? 120 : this._pxPerHour ?? 120;
-            const refreshMs = useDefaults ? 300_000 : this._refreshIntervalMs ?? 300_000;
+            const dayStart = useDefaults
+                ? DEFAULT_CARD_CONFIG.day_start_hour
+                : this._dayStartHour ?? DEFAULT_CARD_CONFIG.day_start_hour;
+            const dayEnd = useDefaults
+                ? DEFAULT_CARD_CONFIG.day_end_hour
+                : this._dayEndHour ?? DEFAULT_CARD_CONFIG.day_end_hour;
+            const slotMinutes = useDefaults
+                ? DEFAULT_CARD_CONFIG.slot_minutes
+                : this._slotMinutes ?? DEFAULT_CARD_CONFIG.slot_minutes;
+            const pxPerHour = useDefaults
+                ? DEFAULT_CARD_CONFIG.px_per_hour
+                : this._pxPerHour ?? DEFAULT_CARD_CONFIG.px_per_hour;
+            const refreshMs = useDefaults
+                ? DEFAULT_CARD_CONFIG.refresh_interval_ms
+                : this._refreshIntervalMs ?? DEFAULT_CARD_CONFIG.refresh_interval_ms;
 
             this._dayStartHour = merged.day_start_hour ?? dayStart;
             this._dayEndHour = merged.day_end_hour ?? dayEnd;
             this._slotMinutes = merged.slot_minutes ?? slotMinutes;
             this._pxPerHour = merged.px_per_hour ?? pxPerHour;
-            const daysToShow = merged.days_to_show ?? 5;
+            const daysToShow = merged.days_to_show ?? DEFAULT_CARD_CONFIG.days_to_show;
             this._daysToShow = daysToShow;
             this._scheduleDays = daysToShow;
             this._refreshIntervalMs = merged.refresh_interval_ms ?? refreshMs;

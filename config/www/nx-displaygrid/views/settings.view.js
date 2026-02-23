@@ -6,6 +6,7 @@ const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
 import { isControllableEntity, slugifyId } from '../nx-displaygrid.util.js';
+import { DEFAULT_CARD_CONFIG } from '../nx-displaygrid.defaults.js';
 export class FbSettingsView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -497,8 +498,12 @@ export class FbSettingsView extends LitElement {
         const hasAdminAccess = card._hasAdminAccess?.() || false;
         const isHaAdmin = Boolean(card._hass?.user?.is_admin);
         const hasPin = Boolean(cfg.admin_pin);
-        const startHour = Number.isFinite(cfg.day_start_hour) ? cfg.day_start_hour : 6;
-        const endHour = Number.isFinite(cfg.day_end_hour) ? cfg.day_end_hour : 24;
+        const startHour = Number.isFinite(cfg.day_start_hour)
+            ? cfg.day_start_hour
+            : DEFAULT_CARD_CONFIG.day_start_hour;
+        const endHour = Number.isFinite(cfg.day_end_hour)
+            ? cfg.day_end_hour
+            : DEFAULT_CARD_CONFIG.day_end_hour;
         const minGapHours = Number(card._slotMinutes || 30) / 60;
         const orderedPeople = peopleDisplayFull
             .map((id) => people.find((p) => p.id === id))

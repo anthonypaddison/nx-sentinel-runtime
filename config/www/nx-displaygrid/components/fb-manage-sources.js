@@ -6,6 +6,7 @@ const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles } from '../views/shared.styles.js';
 import { yamlString } from '../util/yaml.util.js';
+import { DEFAULT_CARD_CONFIG } from '../nx-displaygrid.defaults.js';
 
 export class FbManageSources extends LitElement {
     static properties = {
@@ -244,7 +245,7 @@ export class FbManageSources extends LitElement {
         push(`type: custom:nx-displaygrid`);
         if (cfg.title) push(`title: ${yamlString(cfg.title)}`);
         if (cfg.debug !== undefined) push(`debug: ${cfg.debug ? 'true' : 'false'}`);
-        push(`days_to_show: 5`);
+        push(`days_to_show: ${DEFAULT_CARD_CONFIG.days_to_show}`);
         if (cfg.day_start_hour !== undefined) push(`day_start_hour: ${cfg.day_start_hour}`);
         if (cfg.day_end_hour !== undefined) push(`day_end_hour: ${cfg.day_end_hour}`);
         if (cfg.slot_minutes !== undefined) push(`slot_minutes: ${cfg.slot_minutes}`);
