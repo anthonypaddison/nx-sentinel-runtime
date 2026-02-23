@@ -14,6 +14,7 @@ import {
     formatTimeRange,
 } from '../nx-displaygrid.util.js';
 import { sharedViewStyles } from './shared.styles.js';
+import { repeatOrMap } from './repeat.util.js';
 import { getReadableTextColour } from '../util/colour.util.js';
 
 export class FbMobileView extends LitElement {
@@ -107,10 +108,8 @@ export class FbMobileView extends LitElement {
             );
         }, 0);
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         return html`
             <div class="wrap scroll">

@@ -14,6 +14,7 @@ import '../components/fb-loading.js';
 const { LitElement, html, css, repeat } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
+import { repeatOrMap } from './repeat.util.js';
 export class FbImportantView extends LitElement {
     static properties = { card: { type: Object }, renderKey: { type: String } };
 
@@ -189,10 +190,8 @@ export class FbImportantView extends LitElement {
         const todayItems = this._rangeItems(card, today, tomorrow);
         const tomorrowItems = this._rangeItems(card, tomorrow, addDays(tomorrow, 1));
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         const column = (label, items) => html`
             <div class="column fb-card padded">

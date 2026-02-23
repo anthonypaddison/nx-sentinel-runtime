@@ -12,6 +12,7 @@ import {
     todoItemText,
 } from '../nx-displaygrid.util.js';
 import { renderActionButtons } from './action-buttons.js';
+import { repeatOrMap } from './repeat.util.js';
 export class FbChoresView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -143,10 +144,8 @@ export class FbChoresView extends LitElement {
         const card = this.card;
         if (!card) return html``;
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         const todos = Array.isArray(card._config?.todos) ? card._config.todos : [];
         if (!todos.length) {

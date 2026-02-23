@@ -11,6 +11,7 @@
 - Deduplicated frontend scoped storage key/migration/local JSON helpers across prefs/persistence/refresh modules.
 - Centralized `nx-displaygrid` websocket command names in frontend/backend constants and added protocol stability tests.
 - Began tracking the `nx_displaygrid` custom component backend in-repo for reproducible deployments (excluding Python cache files).
+- Deduplicated repeated Lit `repeat` fallback lambdas across views and shared timed-event sorting logic for schedule layout.
 
 ## 2026-02-19
 

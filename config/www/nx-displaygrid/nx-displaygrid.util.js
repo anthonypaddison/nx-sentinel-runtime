@@ -157,17 +157,20 @@ export function formatTimeRange(start, end, allDay = false) {
     return `${startLabel}–${endLabel}`;
 }
 
+export function compareTimedEventPosition(a, b) {
+    return (
+        a.startMin - b.startMin ||
+        a.endMin - b.endMin ||
+        String(a._fbKey || '').localeCompare(String(b._fbKey || ''))
+    );
+}
+
 /**
  * Assign lanes for overlapping timed events in a single column.
  * Each event must have startMin/endMin.
  */
 export function assignOverlapLanes(events) {
-    const sorted = [...events].sort(
-        (a, b) =>
-            a.startMin - b.startMin ||
-            a.endMin - b.endMin ||
-            String(a._fbKey || '').localeCompare(String(b._fbKey || ''))
-    );
+    const sorted = [...events].sort(compareTimedEventPosition);
 
     // Active events by endMin
     const active = [];

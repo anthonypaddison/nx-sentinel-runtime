@@ -19,6 +19,7 @@ import {
 } from '../nx-displaygrid.util.js';
 import { getReadableTextColour } from '../util/colour.util.js';
 import { layoutDayEvents } from './schedule.layout.js';
+import { repeatOrMap } from './repeat.util.js';
 
 export class FbScheduleView extends LitElement {
     static properties = {
@@ -583,10 +584,8 @@ export class FbScheduleView extends LitElement {
             `;
         }
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         return html`
             <div class="wrap">

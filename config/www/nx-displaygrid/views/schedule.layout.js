@@ -2,15 +2,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { assignOverlapLanes } from '../nx-displaygrid.util.js';
+import { assignOverlapLanes, compareTimedEventPosition } from '../nx-displaygrid.util.js';
 
 function groupByOverlap(events) {
-    const sorted = [...events].sort(
-        (a, b) =>
-            a.startMin - b.startMin ||
-            a.endMin - b.endMin ||
-            String(a._fbKey || '').localeCompare(String(b._fbKey || ''))
-    );
+    const sorted = [...events].sort(compareTimedEventPosition);
     const groups = [];
     let active = [];
     let groupStart = null;

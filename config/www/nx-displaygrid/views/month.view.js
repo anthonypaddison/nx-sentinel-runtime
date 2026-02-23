@@ -13,6 +13,7 @@ import {
     formatTimeShort,
 } from '../nx-displaygrid.util.js';
 import { sharedViewStyles } from './shared.styles.js';
+import { repeatOrMap } from './repeat.util.js';
 
 export class FbMonthView extends LitElement {
     static properties = {
@@ -227,10 +228,8 @@ export class FbMonthView extends LitElement {
         const daysWithEvents = dayStats.filter((x) => x.dayTotal > 0).length;
         const totalEvents = dayStats.reduce((sum, x) => sum + x.dayTotal, 0);
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         return html`
             <div class="wrap">

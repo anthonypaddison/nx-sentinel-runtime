@@ -7,6 +7,7 @@ const { LitElement, html, css, repeat } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
 import { renderActionButtons } from './action-buttons.js';
+import { repeatOrMap } from './repeat.util.js';
 export class FbShoppingView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -341,10 +342,8 @@ export class FbShoppingView extends LitElement {
         const card = this.card;
         if (!card) return html``;
 
-        const repeatItems =
-            repeat ||
-            ((items, keyFn, templateFn) =>
-                (items || []).map((item, idx) => templateFn(item, idx)));
+        const repeatItems = (items, keyFn, templateFn) =>
+            repeatOrMap(repeat, items, keyFn, templateFn);
 
         const itemKey = (it, idx) =>
             it?.uid ||
