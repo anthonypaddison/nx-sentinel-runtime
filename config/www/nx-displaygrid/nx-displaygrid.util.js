@@ -218,3 +218,22 @@ export function debugLog(debug, ...args) {
     // eslint-disable-next-line no-console
     console.log('[nx-displaygrid]', ...args);
 }
+
+export function isControllableEntity(hass, entityId) {
+    if (!hass || !entityId) return false;
+    const states = hass.states;
+    if (!states || !states[entityId]) return false;
+    const domain = String(entityId).split('.')[0] || '';
+    // Conservative allowlist for explicit on/off controls; extend later if needed
+    // (e.g. scripts/scenes). Sensors and binary_sensors are intentionally excluded.
+    const allowed = ['switch', 'light', 'input_boolean', 'fan'];
+    if (!allowed.includes(domain)) return false;
+    const services = hass.services;
+    if (!services || typeof services !== 'object') return true;
+    const domainServices = services[domain];
+    if (!domainServices || typeof domainServices !== 'object') return true;
+    const hasToggle = Boolean(domainServices.toggle);
+    const hasTurnOn = Boolean(domainServices.turn_on);
+    const hasTurnOff = Boolean(domainServices.turn_off);
+    return hasToggle || (hasTurnOn && hasTurnOff);
+}
