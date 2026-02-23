@@ -89,6 +89,9 @@ deploy/export-nx-displaygrid-setup.sh 192.168.x.x live
 
 Use this before changing data structures so you can diff/restore your current board setup without re-running onboarding.
 
+Restore procedure:
+- See `docs/RESTORE.md` for focused `nx-displaygrid` restores vs full `/config` rollbacks.
+
 ## Local checks
 Run the repo check wrapper:
 ```bash

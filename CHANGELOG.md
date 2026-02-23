@@ -20,6 +20,7 @@
 - Added refresh retry/queue characterization tests to lock retry timer caps, flags, and pending-refresh behavior before deeper refresh simplification.
 - Continued `settings.view.js` decomposition by extracting admin-locked and footer dialog rendering into class helpers without changing settings behavior.
 - Added shared source-validation utility helpers (`configHasSources`, `configHasSourceData`) and reused them in startup checks/manage-sources code paths.
+- Added a restore runbook (`docs/RESTORE.md`) for full `/config` rollbacks vs focused `nx-displaygrid` restores using the new backup/export scripts.
 
 ## 2026-02-19
 
