@@ -17,6 +17,7 @@
 - Reduced retry timer duplication in the refresh pipeline by extracting shared retry schedule/clear helpers for calendar/todo/shopping refresh paths.
 - Reduced `settings.view.js` render-method complexity by extracting shared render-state helpers and static options into file-local helpers/constants.
 - Consolidated duplicated `nx-displaygrid` YAML export/clipboard serialization into a shared utility with tests to keep editor/manage-sources outputs aligned.
+- Added refresh retry/queue characterization tests to lock retry timer caps, flags, and pending-refresh behavior before deeper refresh simplification.
 
 ## 2026-02-19
 
