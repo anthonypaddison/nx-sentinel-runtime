@@ -188,25 +188,6 @@ rsync -av --no-perms --no-times --inplace \
  config/ root@<TARGET>:/config/
 
 Then:
-
-## 6. Deployment Model
-
-Current workflow:
-
-- Edit configuration in nx-sentinel-runtime
-- Commit changes
-- Deploy via rsync over SSH
-
-Example:
-
-rsync -av --no-perms --no-times --inplace \
- --exclude='.storage' \
- --exclude='home-assistant_v2.db*' \
- --exclude='home-assistant.log*' \
- config/ root@<TARGET>:/config/
-
-Then:
-
 - Restart Home Assistant
 - Hard refresh browser
 

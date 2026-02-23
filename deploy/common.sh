@@ -3,6 +3,20 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="$ROOT_DIR/config"
+BACKUP_ROOT_DEFAULT="$ROOT_DIR/backups/ha"
+
+require_cmds() {
+  local missing=0
+  for cmd in "$@"; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "ERROR: required command not found: $cmd" >&2
+      missing=1
+    fi
+  done
+  if [[ "$missing" -ne 0 ]]; then
+    exit 1
+  fi
+}
 
 require_clean_git() {
   if [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
@@ -18,7 +32,96 @@ checkout_ref() {
 }
 
 update_submodules() {
-  git -C "$ROOT_DIR" submodule update --init --recursive
+  if [[ -f "$ROOT_DIR/.gitmodules" ]]; then
+    git -C "$ROOT_DIR" submodule update --init --recursive
+  fi
+}
+
+timestamp_utc() {
+  date -u +"%Y%m%d-%H%M%SZ"
+}
+
+ensure_backup_dir() {
+  local dir="$1"
+  mkdir -p "$dir"
+}
+
+backup_remote_config() {
+  local remote_host="$1"
+  local env_name="$2"
+  local backup_root="${HA_BACKUP_ROOT:-$BACKUP_ROOT_DEFAULT}"
+  local include_secrets="${HA_BACKUP_INCLUDE_SECRETS:-0}"
+  local secrets_excludes=()
+  local stamp
+  local dest_dir
+  stamp="$(timestamp_utc)"
+  dest_dir="${backup_root}/${env_name}/${stamp}"
+
+  ensure_backup_dir "$dest_dir"
+
+  if [[ "$include_secrets" != "1" ]]; then
+    secrets_excludes+=(--exclude 'secrets.yaml')
+  fi
+
+  echo "Creating backup snapshot: $dest_dir"
+  rsync -az \
+    --exclude 'home-assistant_v2.db' \
+    --exclude 'home-assistant_v2.db-*' \
+    --exclude '*.log' \
+    --exclude '*.log.*' \
+    --exclude '__pycache__/' \
+    --exclude '.DS_Store' \
+    "${secrets_excludes[@]}" \
+    "root@${remote_host}:/config/" "$dest_dir/config/"
+
+  echo "$dest_dir"
+}
+
+maybe_backup_before_deploy() {
+  local remote_host="$1"
+  local env_name="$2"
+  local enabled="${BACKUP_BEFORE_DEPLOY:-1}"
+  if [[ "$enabled" != "1" ]]; then
+    return 0
+  fi
+  backup_remote_config "$remote_host" "$env_name" >/dev/null
+}
+
+export_nx_displaygrid_setup() {
+  local remote_host="$1"
+  local env_name="${2:-manual}"
+  local backup_root="${HA_BACKUP_ROOT:-$BACKUP_ROOT_DEFAULT}"
+  local stamp
+  local dest_dir
+  stamp="$(timestamp_utc)"
+  dest_dir="${backup_root}/${env_name}/${stamp}/nx-displaygrid-export"
+
+  ensure_backup_dir "$dest_dir"
+
+  rsync -az \
+    --include '/lovelace/' \
+    --include '/lovelace/nx-displaygrid.yaml' \
+    --include '/lovelace/resources.yaml' \
+    --include '/packages/' \
+    --include '/packages/common/' \
+    --include '/packages/common/nx_displaygrid.yaml' \
+    --include '/custom_components/' \
+    --include '/custom_components/nx_displaygrid/' \
+    --include '/custom_components/nx_displaygrid/websocket.py' \
+    --include '/custom_components/nx_displaygrid/__init__.py' \
+    --include '/.storage/' \
+    --include '/.storage/nx_displaygrid.config' \
+    --exclude '*' \
+    "root@${remote_host}:/config/" "$dest_dir/config/"
+
+  if [[ ! -f "$dest_dir/config/.storage/nx_displaygrid.config" ]]; then
+    cat > "$dest_dir/README.txt" <<'EOF'
+nx-displaygrid shared config store was not found at /config/.storage/nx_displaygrid.config.
+The dashboard may be using only YAML defaults, or the integration has not saved runtime config yet.
+EOF
+  fi
+
+  echo "$dest_dir"
 }
 
 create_stage_config() {
@@ -94,4 +197,9 @@ print_deploy_summary() {
   echo "Restart options:"
   echo "# HAOS: ha core restart"
   echo "# Docker: docker restart homeassistant"
+  echo
+  echo "Backups:"
+  echo "# Disable pre-deploy backup: BACKUP_BEFORE_DEPLOY=0"
+  echo "# Backup root override: HA_BACKUP_ROOT=/path/to/backups"
+  echo "# Include secrets in backup (default off): HA_BACKUP_INCLUDE_SECRETS=1"
 }

@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
+require_cmds git rsync ssh
+
 LAB_IP="${LAB_IP:-}"
 LAB_SECRETS_FILE="${LAB_SECRETS_FILE:-${HOME}/.ha-secrets/secrets.lab.yaml}"
 DEPLOY_REF="${1:-lab}"
@@ -21,6 +23,7 @@ update_submodules
 STAGE_DIR="$(create_stage_config lab)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
+maybe_backup_before_deploy "$LAB_IP" "lab"
 rsync_config "$STAGE_DIR" "$LAB_IP"
 sync_secrets "$LAB_SECRETS_FILE" "$LAB_IP"
 restart_home_assistant "$LAB_IP"

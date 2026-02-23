@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
+require_cmds git rsync ssh
+
 LIVE_IP="${LIVE_IP:-}"
 LIVE_SECRETS_FILE="${LIVE_SECRETS_FILE:-${HOME}/.ha-secrets/secrets.live.yaml}"
 TARGET_REF="${1:-}"
@@ -40,6 +42,7 @@ update_submodules
 STAGE_DIR="$(create_stage_config live)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
+maybe_backup_before_deploy "$LIVE_IP" "live"
 rsync_config "$STAGE_DIR" "$LIVE_IP"
 sync_secrets "$LIVE_SECRETS_FILE" "$LIVE_IP"
 restart_home_assistant "$LIVE_IP"

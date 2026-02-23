@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-02-23
+
+- Added deploy-time backup/export tooling for Home Assistant runtime config and `nx-displaygrid` setup snapshots.
+- Enabled configurable pre-deploy backups by default in deploy scripts to harden rollbacks during schema/data changes.
+- Added a local `scripts/check.sh` workflow wrapper for tests and optional lint/config checks.
+- Removed stale legacy CI/tooling config files and simplified ESLint config to match the current repo.
+- Cleaned documentation drift (README, contributing guide, release checklist, architecture notes, and AGENTS.md duplicates).
+- Expanded `config/secrets.yaml.template` to include currently referenced secret keys.
+
 ## 2026-02-19
 
 - Fixed Home Controls tile overlap by switching to an auto-fit responsive grid and adding shrink-safe tile sizing so controls do not collide across viewport widths.

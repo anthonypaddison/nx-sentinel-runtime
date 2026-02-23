@@ -1,7 +1,8 @@
 # Release Checklist
 
-1) Update the Lovelace resource cache buster in `config/configuration.yaml`.
-2) Run `docs/SMOKE_TESTS.md`.
-3) Verify calendar/todo entities still load without errors.
-4) Confirm Settings save to WS storage (or local fallback).
-5) Rebuild and publish the release notes (if needed).
+1) Export/backup current runtime config before deploy (`deploy/export-nx-displaygrid-setup.sh` and/or `deploy/backup-remote-config.sh`).
+2) Update the Lovelace resource cache buster in `config/lovelace/resources.yaml`.
+3) Run `docs/SMOKE_TESTS.md`.
+4) Verify calendar/todo entities still load without errors.
+5) Confirm Settings save to WS storage (or local fallback).
+6) Rebuild and publish the release notes (if needed).

@@ -175,31 +175,6 @@ After completing a task, provide:
 
 Default: don't.
 If forced:
-/ nx-displaygrid
-
-- Keep changes modular and easy to revert.
-- No Node-only APIs in code intended to run in the HA frontend.
-- Any new variables/config flags must be camelCase.
-- Avoid external CDNs for core dependencies unless explicitly asked.
-
----
-
-## 7) Output expectations for each task
-
-After completing a task, provide:
-
-- Files changed (list)
-- Commits made (list of commit messages)
-- How to verify (steps)
-- Any version assumptions noted
-
----
-
-## 8) If asked to rename/restructure
-
-Default: don't.
-If forced:
-
 - Do it in a controlled migration
 - Update all references
 - Provide rollback instructions (git revert)

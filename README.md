@@ -59,8 +59,12 @@ LIVE_IP=192.168.x.x deploy/deploy-live.sh <ref>
 
 Deploy behavior:
 - Requires clean git tree.
-- Updates submodules recursively.
+- Updates submodules recursively only when `.gitmodules` exists.
 - Stages config with env overlay (`lab` or `live`).
+- Creates a pre-deploy backup snapshot by default under `backups/ha/` (ignored by git).
+  - Disable with `BACKUP_BEFORE_DEPLOY=0`
+  - Override destination with `HA_BACKUP_ROOT=/path/to/backups`
+  - Include `secrets.yaml` only when explicitly needed: `HA_BACKUP_INCLUDE_SECRETS=1`
 - `rsync --delete` to `root@<IP>:/config/` with safe excludes:
   - `.storage/`
   - HA DB files
@@ -69,17 +73,29 @@ Deploy behavior:
 - Restarts Home Assistant on target (`ha core restart` by default).
   Override with `HA_RESTART_CMD`, for example:
   - `HA_RESTART_CMD='docker restart homeassistant'`
-- Prints commit and submodule hashes.
+- Prints commit and submodule hashes (submodule list may be empty when vendored).
 - Prints restart options (HAOS and Docker command examples).
 
-## How to update nx-displaygrid submodule
+## Backup and export (recommended before schema/data changes)
+Full remote `/config` snapshot (includes `.storage`, excludes DB/logs; excludes `secrets.yaml` by default):
 ```bash
-git submodule update --init --recursive
-git -C config/www/nx-displaygrid fetch origin
-git -C config/www/nx-displaygrid checkout <commit-or-tag>
-git add config/www/nx-displaygrid
-git commit -m "chore: bump nx-displaygrid submodule"
+deploy/backup-remote-config.sh 192.168.x.x lab
 ```
+
+Focused `nx-displaygrid` setup export (dashboard YAML + resources + integration files + stored shared config):
+```bash
+deploy/export-nx-displaygrid-setup.sh 192.168.x.x live
+```
+
+Use this before changing data structures so you can diff/restore your current board setup without re-running onboarding.
+
+## Local checks
+Run the repo check wrapper:
+```bash
+scripts/check.sh
+```
+
+It runs fast Node tests and optional `shellcheck` / `yamllint` / `ha core check` when those tools are installed.
 
 ## How to bump resource cache-bust query string
 Update the query string in:
@@ -109,3 +125,4 @@ LIVE_IP=192.168.x.x deploy/deploy-live.sh live-2026-02-15
 - Keep secrets in external files and inject at deploy time.
 - Use `!secret` references in YAML for sensitive values.
 - Keep `config/secrets.yaml.template` as the non-sensitive key scaffold.
+- Before adding new `!secret` references, update the template so deploy/setup docs stay complete.

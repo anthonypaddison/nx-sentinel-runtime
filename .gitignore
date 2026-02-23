@@ -12,3 +12,6 @@ config/secrets.live.yaml
 
 # macOS
 .DS_Store
+
+# Local backups and snapshots (operational dumps)
+backups/
