@@ -7,6 +7,77 @@ const { LitElement, html, css } = getHaLit();
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
 import { isControllableEntity, slugifyId } from '../nx-displaygrid.util.js';
 import { DEFAULT_CARD_CONFIG } from '../nx-displaygrid.defaults.js';
+
+const SETTINGS_WEEKDAY_OPTIONS = [
+    { value: 0, label: 'Sunday' },
+    { value: 1, label: 'Monday' },
+    { value: 2, label: 'Tuesday' },
+    { value: 3, label: 'Wednesday' },
+    { value: 4, label: 'Thursday' },
+    { value: 5, label: 'Friday' },
+    { value: 6, label: 'Saturday' },
+];
+
+const BIN_COLOUR_OPTIONS = [
+    { label: 'Dark Grey', colour: '#1e1e1e' },
+    { label: 'Blue', colour: '#0000FF' },
+    { label: 'Green', colour: '#008000' },
+    { label: 'Brown', colour: '#421f01' },
+    { label: 'Red', colour: '#FF0000' },
+    { label: 'Yellow', colour: '#FFFF00' },
+    { label: 'Orange', colour: '#FFA500' },
+    { label: 'Purple', colour: '#4e0e63' },
+];
+
+function buildRotationPatternLabel(bins, binRotation = {}) {
+    const weeks = Array.isArray(binRotation.weeks) ? binRotation.weeks : [];
+    return weeks
+        .map((week) => {
+            const ids = Array.isArray(week?.bins) ? week.bins : [];
+            const names = ids
+                .map((id) => bins.find((b) => b.id === id)?.name || id)
+                .filter(Boolean);
+            return names.join('+');
+        })
+        .filter(Boolean)
+        .join(', ');
+}
+
+function buildPeopleDisplayState(people, rawPeopleDisplay) {
+    const hasPeopleDisplay = Array.isArray(rawPeopleDisplay);
+    const peopleDisplay = hasPeopleDisplay
+        ? rawPeopleDisplay.filter((id) => people.some((p) => p.id === id))
+        : people.map((p) => p.id).filter(Boolean);
+    const allPeopleIds = people.map((p) => p.id).filter(Boolean);
+    const peopleDisplayFull = [
+        ...peopleDisplay,
+        ...allPeopleIds.filter((id) => !peopleDisplay.includes(id)),
+    ];
+    return { hasPeopleDisplay, peopleDisplay, allPeopleIds, peopleDisplayFull };
+}
+
+function formatRefreshAge(ts) {
+    if (!ts) return 'Never';
+    const minutes = Math.max(0, Math.round((Date.now() - ts) / 60000));
+    return `${minutes} min ago`;
+}
+
+function formatTimestamp(ts) {
+    return ts ? new Date(ts).toLocaleString() : '—';
+}
+
+function formatRefreshReasonLabel(reason) {
+    const map = {
+        startup: 'Startup',
+        resume: 'Resume',
+        interval: 'Interval',
+        'cache-max-age': 'Cache max age',
+        manual: 'Manual',
+        retry: 'Retry',
+    };
+    return map[reason] || (reason ? reason : '—');
+}
+
 export class FbSettingsView extends LitElement {
     static properties = {
         card: { type: Object },
@@ -455,18 +526,7 @@ export class FbSettingsView extends LitElement {
         const rotationPattern =
             this._binRotationPattern !== undefined
                 ? this._binRotationPattern
-                : Array.isArray(binRotation.weeks)
-                ? binRotation.weeks
-                      .map((week) => {
-                          const ids = Array.isArray(week?.bins) ? week.bins : [];
-                          const names = ids
-                              .map((id) => bins.find((b) => b.id === id)?.name || id)
-                              .filter(Boolean);
-                          return names.join('+');
-                      })
-                      .filter(Boolean)
-                      .join(', ')
-                : '';
+                : buildRotationPatternLabel(bins, binRotation);
         const rotationWeekday =
             this._binRotationWeekday !== undefined
                 ? this._binRotationWeekday
@@ -483,15 +543,8 @@ export class FbSettingsView extends LitElement {
             (eid) => !isControllableEntity(card._hass, eid)
         );
         const addValue = this._homeControlAdd || '';
-        const hasPeopleDisplay = Array.isArray(cfg.people_display);
-        const peopleDisplay = hasPeopleDisplay
-            ? cfg.people_display.filter((id) => people.some((p) => p.id === id))
-            : people.map((p) => p.id).filter(Boolean);
-        const allPeopleIds = people.map((p) => p.id).filter(Boolean);
-        const peopleDisplayFull = [
-            ...peopleDisplay,
-            ...allPeopleIds.filter((id) => !peopleDisplay.includes(id)),
-        ];
+        const { hasPeopleDisplay, peopleDisplay, allPeopleIds, peopleDisplayFull } =
+            buildPeopleDisplayState(people, cfg.people_display);
         const updatePeopleDisplay = (next) => {
             card._updateConfigPartial({ people_display: next });
         };
@@ -512,46 +565,14 @@ export class FbSettingsView extends LitElement {
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
-        const formatAge = (ts) => {
-            if (!ts) return 'Never';
-            const minutes = Math.max(0, Math.round((Date.now() - ts) / 60000));
-            return `${minutes} min ago`;
-        };
-        const formatTs = (ts) => (ts ? new Date(ts).toLocaleString() : '—');
-        const refreshReasonLabel = (() => {
-            const reason = card._lastRefreshReason || '';
-            const map = {
-                startup: 'Startup',
-                resume: 'Resume',
-                interval: 'Interval',
-                'cache-max-age': 'Cache max age',
-                manual: 'Manual',
-                retry: 'Retry',
-            };
-            return map[reason] || (reason ? reason : '—');
-        })();
+        const formatAge = formatRefreshAge;
+        const formatTs = formatTimestamp;
+        const refreshReasonLabel = formatRefreshReasonLabel(card._lastRefreshReason || '');
         const wizard = this._personWizardDraft || {};
         const wizardStep = Number(this._personWizardStep || 0);
         const wizardSteps = ['Basics', 'Calendars', 'Todos', 'Review'];
-        const weekdayOptions = [
-            { value: 0, label: 'Sunday' },
-            { value: 1, label: 'Monday' },
-            { value: 2, label: 'Tuesday' },
-            { value: 3, label: 'Wednesday' },
-            { value: 4, label: 'Thursday' },
-            { value: 5, label: 'Friday' },
-            { value: 6, label: 'Saturday' },
-        ];
-        const binColourOptions = [
-            { label: 'Dark Grey', colour: '#1e1e1e' },
-            { label: 'Blue', colour: '#0000FF' },
-            { label: 'Green', colour: '#008000' },
-            { label: 'Brown', colour: '#421f01' },
-            { label: 'Red', colour: '#FF0000' },
-            { label: 'Yellow', colour: '#FFFF00' },
-            { label: 'Orange', colour: '#FFA500' },
-            { label: 'Purple', colour: '#4e0e63' },
-        ];
+        const weekdayOptions = SETTINGS_WEEKDAY_OPTIONS;
+        const binColourOptions = BIN_COLOUR_OPTIONS;
         const updateBinConfig = (nextBins, nextSchedule) => {
             card._updateConfigPartial({
                 bins: nextBins,

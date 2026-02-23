@@ -15,6 +15,7 @@
 - Hardened Home Controls validation/add flow to reject hidden or non-controllable entities before persisting config.
 - Centralized runtime `nx-displaygrid` default card values to reduce drift across stub config, setup, settings fallbacks, and YAML export helpers.
 - Reduced retry timer duplication in the refresh pipeline by extracting shared retry schedule/clear helpers for calendar/todo/shopping refresh paths.
+- Reduced `settings.view.js` render-method complexity by extracting shared render-state helpers and static options into file-local helpers/constants.
 
 ## 2026-02-19
 
