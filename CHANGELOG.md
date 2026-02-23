@@ -28,6 +28,7 @@
 - Bumped Lovelace resource cache-bust query string after V2/frontend JS changes.
 - Added a V2 `Food` view (weekly menu + in-house pantry/fridge inventory) with saved shopping lists and meal-to-shopping helpers.
 - Added V2 extended event details in the event dialog (location/description) with calendar update support for those fields.
+- Added a V2 Settings person wizard UI for add/edit flows with step navigation, cancel, and confirm.
 
 ## 2026-02-19
 

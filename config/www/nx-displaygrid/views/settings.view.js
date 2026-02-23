@@ -431,6 +431,20 @@ export class FbSettingsView extends LitElement {
         this._personWizardError = '';
     }
 
+    _setPersonWizardStep(nextStep) {
+        const value = Math.max(0, Math.min(3, Number(nextStep || 0)));
+        this._personWizardStep = value;
+        this._personWizardError = '';
+    }
+
+    _updatePersonWizardDraft(patch) {
+        const current = this._personWizardDraft && typeof this._personWizardDraft === 'object'
+            ? this._personWizardDraft
+            : {};
+        this._personWizardDraft = { ...current, ...(patch || {}) };
+        this._personWizardError = '';
+    }
+
     _applyPersonWizard() {
         const card = this.card;
         const cfg = card?._config || {};
@@ -506,6 +520,243 @@ export class FbSettingsView extends LitElement {
             people_display: nextDisplay,
         });
         this._closePersonWizard();
+    }
+
+    _renderPersonWizardDialog(card, { calendars, todos, people }) {
+        if (!this._personWizardOpen) return html``;
+        const draft = this._personWizardDraft || {};
+        const mode = this._personWizardMode || 'add';
+        const step = Number(this._personWizardStep || 0);
+        const steps = ['Basics', 'Calendars', 'Todos', 'Confirm'];
+        const calendarIds = new Set(Array.isArray(draft.calendarIds) ? draft.calendarIds : []);
+        const todoIds = new Set(Array.isArray(draft.todoIds) ? draft.todoIds : []);
+        const canNextFromBasics = Boolean(String(draft.name || '').trim());
+        const currentId = String(draft.originalId || draft.id || '');
+        const otherPeople = (Array.isArray(people) ? people : []).filter(
+            (p) => String(p?.id || '') !== currentId
+        );
+
+        const renderBasics = () => html`
+            <div class="wizardGrid">
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>Name</div>
+                    <input
+                        class="input"
+                        .value=${draft.name || ''}
+                        @input=${(e) => {
+                            const name = e.target.value;
+                            const patch = { name };
+                            if (this._personWizardAutoId) patch.id = slugifyId(name);
+                            this._updatePersonWizardDraft(patch);
+                        }}
+                    />
+                </div>
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>ID</div>
+                    <input
+                        class="input"
+                        .value=${draft.id || ''}
+                        ?disabled=${this._personWizardAutoId}
+                        @input=${(e) => this._updatePersonWizardDraft({ id: e.target.value })}
+                    />
+                </div>
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>Colour</div>
+                    <input
+                        class="input"
+                        type="color"
+                        .value=${draft.color || '#36B37E'}
+                        @input=${(e) => this._updatePersonWizardDraft({ color: e.target.value })}
+                    />
+                </div>
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>Role</div>
+                    <select
+                        class="input"
+                        .value=${draft.role || ''}
+                        @change=${(e) => this._updatePersonWizardDraft({ role: e.target.value })}
+                    >
+                        <option value="">None</option>
+                        <option value="kid">Kid</option>
+                        <option value="grownup">Grownup</option>
+                    </select>
+                </div>
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>Header row</div>
+                    <select
+                        class="input"
+                        .value=${String(Number(draft.header_row) || 1)}
+                        @change=${(e) =>
+                            this._updatePersonWizardDraft({ header_row: Number(e.target.value) })}
+                    >
+                        <option value="1">Row 1</option>
+                        <option value="2">Row 2</option>
+                    </select>
+                </div>
+                <div class="row" style="grid-template-columns:1fr;">
+                    <div>Auto ID</div>
+                    <label>
+                        <input
+                            type="checkbox"
+                            .checked=${Boolean(this._personWizardAutoId)}
+                            @change=${(e) => {
+                                const checked = e.target.checked;
+                                this._personWizardAutoId = checked;
+                                if (checked) {
+                                    this._updatePersonWizardDraft({
+                                        id: slugifyId(this._personWizardDraft?.name || ''),
+                                    });
+                                } else {
+                                    this.requestUpdate();
+                                }
+                            }}
+                        />
+                        <span class="muted">Generate from name</span>
+                    </label>
+                </div>
+            </div>
+        `;
+
+        const renderEntityAssign = (title, rows, selectedIds, key) => html`
+            <div class="wizardGrid full">
+                <div class="muted">
+                    Choose which ${title.toLowerCase()} belong to this person. Cancel discards all
+                    changes.
+                </div>
+                ${rows.length
+                    ? rows.map((row) => html`
+                          <label class="row" style="grid-template-columns:auto 1fr;">
+                              <input
+                                  type="checkbox"
+                                  .checked=${selectedIds.has(row.entity)}
+                                  @change=${(e) => {
+                                      const next = new Set(selectedIds);
+                                      if (e.target.checked) next.add(row.entity);
+                                      else next.delete(row.entity);
+                                      this._updatePersonWizardDraft({
+                                          [key]: Array.from(next),
+                                      });
+                                  }}
+                              />
+                              <span>${row.entity}</span>
+                          </label>
+                      `)
+                    : html`<div class="muted">No ${title.toLowerCase()} configured yet.</div>`}
+            </div>
+        `;
+
+        const renderReview = () => {
+            const previewId = slugifyId(draft.id || draft.name);
+            const selectedCalendars = calendars.filter((c) => calendarIds.has(c.entity));
+            const selectedTodos = todos.filter((t) => todoIds.has(t.entity));
+            return html`
+                <div class="wizardGrid full">
+                    <div class="row">
+                        <div>Name</div>
+                        <div class="muted">${draft.name || '—'}</div>
+                    </div>
+                    <div class="row">
+                        <div>ID</div>
+                        <div class="muted">${previewId || '—'}</div>
+                    </div>
+                    <div class="row">
+                        <div>Colour</div>
+                        <div class="unitRow">
+                            <span
+                                style="width:14px;height:14px;border-radius:999px;border:1px solid var(--fb-grid);background:${draft.color || '#36B37E'};display:inline-block"
+                            ></span>
+                            <span class="muted">${draft.color || 'default'}</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div>Header row</div>
+                        <div class="muted">Row ${Number(draft.header_row) || 1}</div>
+                    </div>
+                    <div class="row">
+                        <div>Calendars</div>
+                        <div class="muted">
+                            ${selectedCalendars.length
+                                ? selectedCalendars.map((c) => c.entity).join(', ')
+                                : 'None'}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div>Todo lists</div>
+                        <div class="muted">
+                            ${selectedTodos.length
+                                ? selectedTodos.map((t) => t.entity).join(', ')
+                                : 'None'}
+                        </div>
+                    </div>
+                    ${otherPeople.length
+                        ? html`<div class="muted">
+                              Existing people keep their order unless you later reorder in People order.
+                          </div>`
+                        : html``}
+                </div>
+            `;
+        };
+
+        const canNext =
+            step === 0 ? canNextFromBasics : true;
+
+        return html`
+            <div
+                class="infoBackdrop"
+                @click=${(e) => e.target === e.currentTarget && this._closePersonWizard()}
+            >
+                <div class="wizardDlg">
+                    <div class="infoHead">
+                        <div>${mode === 'edit' ? 'Edit person' : 'Add person'} wizard</div>
+                        <button class="btn" @click=${() => this._closePersonWizard()}>Cancel</button>
+                    </div>
+                    <div class="wizardSteps">
+                        ${steps.map(
+                            (label, idx) => html`
+                                <div class="wizardStep ${idx === step ? 'active' : ''}">
+                                    ${idx + 1}. ${label}
+                                </div>
+                            `
+                        )}
+                    </div>
+                    ${step === 0
+                        ? renderBasics()
+                        : step === 1
+                        ? renderEntityAssign('Calendars', calendars, calendarIds, 'calendarIds')
+                        : step === 2
+                        ? renderEntityAssign('Todo lists', todos, todoIds, 'todoIds')
+                        : renderReview()}
+                    ${this._personWizardError
+                        ? html`<div class="wizardError">${this._personWizardError}</div>`
+                        : html``}
+                    <div class="wizardNav">
+                        <button
+                            class="btn"
+                            ?disabled=${step <= 0}
+                            @click=${() => this._setPersonWizardStep(step - 1)}
+                        >
+                            Back
+                        </button>
+                        <div class="unitRow">
+                            <button class="btn secondary" @click=${() => this._closePersonWizard()}>
+                                Cancel
+                            </button>
+                            ${step < 3
+                                ? html`<button
+                                      class="btn"
+                                      ?disabled=${!canNext}
+                                      @click=${() => this._setPersonWizardStep(step + 1)}
+                                  >
+                                      Next
+                                  </button>`
+                                : html`<button class="btn" @click=${() => this._applyPersonWizard()}>
+                                      Confirm
+                                  </button>`}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     _renderAdminLocked({ card, hasPin }) {
@@ -652,7 +903,12 @@ export class FbSettingsView extends LitElement {
     }
 
     _renderDialogs(card) {
+        const cfg = card?._config || {};
+        const calendars = Array.isArray(cfg.calendars) ? cfg.calendars : [];
+        const todos = Array.isArray(cfg.todos) ? cfg.todos : [];
+        const people = Array.isArray(cfg.people) ? cfg.people : [];
         return html`
+            ${this._renderPersonWizardDialog(card, { calendars, todos, people })}
             ${this._resetStep
                 ? html`<div
                       class="infoBackdrop"
@@ -837,6 +1093,7 @@ export class FbSettingsView extends LitElement {
         const wizard = this._personWizardDraft || {};
         const wizardStep = Number(this._personWizardStep || 0);
         const wizardSteps = ['Basics', 'Calendars', 'Todos', 'Review'];
+        const personWizardEnabled = Boolean(card._v2FeatureEnabled?.('person_wizard_settings'));
         const weekdayOptions = SETTINGS_WEEKDAY_OPTIONS;
         const binColourOptions = BIN_COLOUR_OPTIONS;
         const updateBinConfig = (nextBins, nextSchedule) => {
@@ -930,10 +1187,31 @@ export class FbSettingsView extends LitElement {
                                     <button class="btn" @click=${() => card._openSetupWizard?.()}>
                                         Open setup wizard
                                     </button>
+                                    ${personWizardEnabled
+                                        ? html`<button
+                                              class="btn"
+                                              @click=${() => this._openPersonWizard()}
+                                          >
+                                              Add person (wizard)
+                                          </button>`
+                                        : html``}
                                 </div>
                                 ${people.length
                                     ? html`<ul>
-                                          ${people.map((p) => html`<li>${p.name || p.id}</li>`)}
+                                          ${people.map(
+                                              (p) => html`<li>
+                                                  ${p.name || p.id}
+                                                  ${personWizardEnabled
+                                                      ? html`<button
+                                                            class="btn sm ghost"
+                                                            style="margin-left:8px"
+                                                            @click=${() => this._openPersonWizard(p)}
+                                                        >
+                                                            Edit
+                                                        </button>`
+                                                      : html``}
+                                              </li>`
+                                          )}
                                       </ul>`
                                     : html`<div class="muted">No people configured yet.</div>`}
                                 <div class="row">
