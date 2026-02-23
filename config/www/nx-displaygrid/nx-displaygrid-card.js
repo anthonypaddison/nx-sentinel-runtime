@@ -686,6 +686,7 @@ class FamilyBoardCard extends LitElement {
         const foodSig = JSON.stringify(this._config?.food_v2 || {});
         const ambientSig = `${this._eventsVersion || 0}|${this._todoVersion || 0}|${this._shoppingVersion || 0}|${this._lastRefreshTs || 0}`;
         const healthSig = this._v2HealthRenderSig?.() || '';
+        const presenceSig = this._v2PresenceRenderSig?.() || '';
         const reminderBanner = this._activeReminderBanner || this._v2CurrentReminderBanner?.() || null;
         const reminderSuppressed =
             reminderBanner && this._v2ShouldSuppressReminderBanner?.(reminderBanner);
@@ -824,12 +825,12 @@ class FamilyBoardCard extends LitElement {
                             : screen === 'intent'
                             ? html`<fb-intent-view
                                   .card=${this}
-                                  .renderKey=${ambientSig}
+                                  .renderKey=${`${ambientSig}|${presenceSig}`}
                               ></fb-intent-view>`
                             : screen === 'ambient'
                             ? html`<fb-ambient-view
                                   .card=${this}
-                                  .renderKey=${ambientSig}
+                                  .renderKey=${`${ambientSig}|${presenceSig}`}
                               ></fb-ambient-view>`
                             : screen === 'admin'
                             ? html`<fb-admin-view

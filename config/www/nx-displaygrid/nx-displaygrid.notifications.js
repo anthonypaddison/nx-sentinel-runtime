@@ -63,6 +63,11 @@ export function applyNotifications(FamilyBoardCard) {
                 return false;
             }
 
+            const presence = this._v2PresenceState?.();
+            if (presence?.uncertain && this._v2SeverityRank?.(severity) < this._v2SeverityRank?.('critical')) {
+                return false;
+            }
+
             const [domain, service] = String(policy.notifyService).split('.');
             if (!domain || !service || !this._hass) return false;
             const lines = [String(message || '').trim()].filter(Boolean);
@@ -71,6 +76,13 @@ export function applyNotifications(FamilyBoardCard) {
             if (context && typeof context === 'object') {
                 if (context.category) lines.push(`Category: ${context.category}`);
                 if (context.lastRefreshReason) lines.push(`Refresh: ${context.lastRefreshReason}`);
+                if (presence?.confidence?.available) {
+                    lines.push(
+                        `Presence confidence: ${presence.confidence.value}%${
+                            presence.uncertain ? ' (uncertain)' : ''
+                        }`
+                    );
+                }
                 if (context.calendarState || context.todoState || context.shoppingState) {
                     lines.push(
                         `State: C=${context.calendarState || 'ok'} T=${context.todoState || 'ok'} S=${

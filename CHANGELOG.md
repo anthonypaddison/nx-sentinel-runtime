@@ -36,6 +36,7 @@
 - Added V2 `Family` and `Admin` dashboards as dedicated views (family daily-summary/actions surface and admin operations/health/recovery surface).
 - Added V2 Admin backup freshness/status support (configurable backup timestamp entity, stale threshold warning, and manual `Snapshot now` service action).
 - Added V2 house health/drift status lists (lights left on, windows open, heating conflicts, unreachable devices) for Admin/Family dashboards with configurable watch lists.
+- Added V2 presence-confidence scaffolding (confidence entity + threshold) to drive adaptive theme/screen behavior, Intent UI cues, and notification gating for uncertain presence states.
 
 ## 2026-02-19
 

@@ -45,6 +45,8 @@ export function applyAdaptive(FamilyBoardCard) {
                 auto_screen_idle_seconds: Number(base.auto_screen_idle_seconds || 180),
                 dynamic_theme: base.dynamic_theme === true,
                 occupancy_entity: String(base.occupancy_entity || '').trim(),
+                confidence_entity: String(base.confidence_entity || '').trim(),
+                confidence_uncertain_below: Number(base.confidence_uncertain_below ?? 70),
             };
         },
 
@@ -75,6 +77,63 @@ export function applyAdaptive(FamilyBoardCard) {
             return { entityId, state, occupied, away, available: Boolean(st) };
         },
 
+        _v2PresenceConfidence() {
+            const adaptive = this._v2AdaptiveConfig();
+            const entityId = adaptive.confidence_entity || '';
+            const st = entityId ? this._hass?.states?.[entityId] : null;
+            const raw =
+                st?.attributes?.confidence ??
+                st?.attributes?.score ??
+                st?.attributes?.value ??
+                st?.state;
+            let value = Number(raw);
+            if (!Number.isFinite(value)) value = NaN;
+            if (Number.isFinite(value) && value <= 1) value *= 100;
+            const threshold = Math.max(1, Math.min(100, Number(adaptive.confidence_uncertain_below || 70)));
+            const available = Boolean(st) && Number.isFinite(value);
+            const rounded = available ? Math.max(0, Math.min(100, Math.round(value))) : null;
+            const uncertain = Boolean(available && rounded < threshold);
+            return {
+                entityId,
+                available,
+                value: rounded,
+                threshold,
+                uncertain,
+                state: String(st?.state || ''),
+            };
+        },
+
+        _v2PresenceState() {
+            const occupancy = this._v2OccupancyState();
+            const confidence = this._v2PresenceConfidence();
+            const uncertainAway = Boolean(occupancy.away && confidence.available && confidence.uncertain);
+            const uncertainOccupied = Boolean(
+                occupancy.occupied && confidence.available && confidence.uncertain
+            );
+            return {
+                occupancy,
+                confidence,
+                uncertain: Boolean(confidence.available && confidence.uncertain),
+                uncertainAway,
+                uncertainOccupied,
+            };
+        },
+
+        _v2PresenceRenderSig() {
+            const presence = this._v2PresenceState?.();
+            if (!presence) return '';
+            const occ = presence.occupancy || {};
+            const conf = presence.confidence || {};
+            return [
+                occ.entityId || '',
+                occ.state || '',
+                conf.entityId || '',
+                conf.available ? conf.value : '',
+                conf.threshold || '',
+                conf.uncertain ? '1' : '0',
+            ].join('|');
+        },
+
         _v2AdaptiveSeverity() {
             const hard = Boolean(this._calendarError || this._todoError || this._shoppingError);
             const soft = Boolean(this._calendarStale || this._todoStale || this._shoppingStale);
@@ -99,6 +158,8 @@ export function applyAdaptive(FamilyBoardCard) {
 
             const occupancy = this._v2OccupancyState();
             if (occupancy.available && occupancy.away) return 'away';
+            const presence = this._v2PresenceState?.();
+            if (presence?.uncertain) return 'warn';
 
             const bucket = timeBucket(new Date());
             if (bucket === 'night') return 'night';
@@ -222,9 +283,14 @@ export function applyAdaptive(FamilyBoardCard) {
 
             const bucket = timeBucket(new Date());
             const occupancy = this._v2OccupancyState();
+            const presence = this._v2PresenceState?.();
             const eventsNow = this._v2CurrentEventsNowCount?.() || 0;
             const choresDue = this._v2TodoDueTodayCount?.() || 0;
             const shoppingCount = this._shoppingQuantityCount?.(this._shoppingItems || []) || 0;
+
+            if (presence?.uncertain && this._v2FeatureEnabled?.('intent_view')) {
+                return 'intent';
+            }
 
             if ((bucket === 'night' || bucket === 'evening') && this._v2FeatureEnabled?.('ambient_view')) {
                 return 'ambient';

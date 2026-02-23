@@ -1099,6 +1099,11 @@ export class FbSettingsView extends LitElement {
             state: '',
             available: false,
         };
+        const presenceState = card._v2PresenceState?.() || {
+            confidence: { entityId: '', available: false, value: null, threshold: 70, uncertain: false },
+            occupancy: occupancyState,
+            uncertain: false,
+        };
         const remindersV2 = Array.isArray(cfg.reminders_v2) ? cfg.reminders_v2 : [];
         const notificationsV2 =
             cfg.notifications_v2 && typeof cfg.notifications_v2 === 'object'
@@ -2389,6 +2394,63 @@ export class FbSettingsView extends LitElement {
                                                   ? `${occupancyState.entityId} = ${occupancyState.state || 'unknown'}`
                                                   : occupancyState.entityId
                                                   ? `Entity not found (${occupancyState.entityId})`
+                                                  : 'Not configured'}
+                                          </div>
+                                          <div class="row">
+                                              <div>Presence confidence entity</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="sensor.presence_confidence"
+                                                  .value=${adaptiveV2.confidence_entity || ''}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          adaptive_v2: {
+                                                              ...adaptiveV2,
+                                                              confidence_entity:
+                                                                  e.target.value,
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Uncertain if below</div>
+                                              <div class="unitRow">
+                                                  <input
+                                                      class="input"
+                                                      type="number"
+                                                      min="1"
+                                                      max="100"
+                                                      .value=${Number(
+                                                          adaptiveV2.confidence_uncertain_below ??
+                                                              70
+                                                      )}
+                                                      @change=${(e) =>
+                                                          card._updateConfigPartial({
+                                                              adaptive_v2: {
+                                                                  ...adaptiveV2,
+                                                                  confidence_uncertain_below:
+                                                                      Math.max(
+                                                                          1,
+                                                                          Math.min(
+                                                                              100,
+                                                                              Number(
+                                                                                  e.target.value ||
+                                                                                      70
+                                                                              )
+                                                                          )
+                                                                      ),
+                                                              },
+                                                          })}
+                                                  />
+                                                  <span class="unit">%</span>
+                                              </div>
+                                          </div>
+                                          <div class="muted">
+                                              Presence confidence:
+                                              ${presenceState.confidence?.available
+                                                  ? `${presenceState.confidence.value}% (threshold ${presenceState.confidence.threshold}%)${presenceState.uncertain ? ' · Uncertain' : ''}`
+                                                  : presenceState.confidence?.entityId
+                                                  ? `Entity not found or non-numeric (${presenceState.confidence.entityId})`
                                                   : 'Not configured'}
                                           </div>
                                           <div class="row">

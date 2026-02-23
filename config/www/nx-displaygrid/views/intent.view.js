@@ -136,6 +136,7 @@ export class FbIntentView extends LitElement {
         const actions = card._v2IntentActions?.() || [];
         const ambient = card._v2AmbientSummary?.() || {};
         const houseModes = card._v2HouseModes?.() || [];
+        const presence = card._v2PresenceState?.() || {};
         const currentMode = String(ambient.houseMode?.state || '').toLowerCase();
 
         return html`
@@ -146,6 +147,18 @@ export class FbIntentView extends LitElement {
                         Large actions for quick decisions. Priorities adapt to time of day, house mode,
                         and recent refresh/board state.
                     </div>
+                    ${presence.confidence?.available
+                        ? html`
+                              <div class="heroSub">
+                                  Presence confidence: ${presence.confidence.value}%${presence
+                                      .uncertain
+                                      ? ' (uncertain)'
+                                      : ''}${presence.occupancy?.available
+                                      ? ` · occupancy=${presence.occupancy.state}`
+                                      : ''}
+                              </div>
+                          `
+                        : html``}
                 </div>
 
                 <div class="micro">
@@ -169,6 +182,18 @@ export class FbIntentView extends LitElement {
                                 : 'Not set'}
                         </div>
                     </div>
+                    ${presence.confidence?.available
+                        ? html`
+                              <div class="microCard">
+                                  <div class="microLabel">Presence confidence</div>
+                                  <div class="microValue" style="font-size:16px">
+                                      ${presence.confidence.value}%${presence.uncertain
+                                          ? ' · Uncertain'
+                                          : ''}
+                                  </div>
+                              </div>
+                          `
+                        : html``}
                 </div>
                 ${ambient.houseMode?.entityId
                     ? html`
