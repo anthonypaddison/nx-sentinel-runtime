@@ -3,6 +3,163 @@
  */
 export function applyAdmin(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _v2HealthConfig() {
+            const cfg = this._config?.health_v2;
+            const base = cfg && typeof cfg === 'object' ? cfg : {};
+            const toList = (value) =>
+                Array.isArray(value)
+                    ? value.map((v) => String(v || '').trim()).filter(Boolean)
+                    : [];
+            return {
+                window_entities: toList(base.window_entities),
+                heating_entities: toList(base.heating_entities),
+                lights_watch_entities: toList(base.lights_watch_entities),
+                device_watch_entities: toList(base.device_watch_entities),
+            };
+        },
+
+        _v2IsEntityOn(entityId) {
+            const st = entityId ? this._hass?.states?.[entityId] : null;
+            const state = String(st?.state || '').toLowerCase();
+            return ['on', 'open', 'home', 'detected', 'playing'].includes(state);
+        },
+
+        _v2IsEntityUnavailable(entityId) {
+            const st = entityId ? this._hass?.states?.[entityId] : null;
+            if (!st) return true;
+            const state = String(st.state || '').toLowerCase();
+            return !state || ['unavailable', 'unknown', 'none'].includes(state);
+        },
+
+        _v2ClimateHeatingActive(entityId) {
+            const st = entityId ? this._hass?.states?.[entityId] : null;
+            if (!st) return false;
+            const state = String(st.state || '').toLowerCase();
+            const hvacAction = String(st.attributes?.hvac_action || '').toLowerCase();
+            if (hvacAction === 'heating') return true;
+            if (st.attributes?.hvac_mode && String(st.attributes.hvac_mode).toLowerCase() === 'heat')
+                return true;
+            return ['heat', 'heating', 'on'].includes(state);
+        },
+
+        _v2HealthIssues() {
+            const cfg = this._v2HealthConfig?.() || {};
+            const homeControls = Array.isArray(this._config?.home_controls)
+                ? this._config.home_controls
+                : [];
+
+            const defaultLightWatch = homeControls.filter((eid) => {
+                const domain = String(eid || '').split('.')[0];
+                return domain === 'light' || domain === 'switch';
+            });
+
+            const lightsWatch = (cfg.lights_watch_entities?.length
+                ? cfg.lights_watch_entities
+                : defaultLightWatch
+            ).filter(Boolean);
+            const windows = (cfg.window_entities || []).filter(Boolean);
+            const heating = (cfg.heating_entities || []).filter(Boolean);
+            const deviceWatch = Array.from(
+                new Set([
+                    ...(cfg.device_watch_entities || []),
+                    ...homeControls,
+                    ...windows,
+                    ...heating,
+                    ...lightsWatch,
+                ].filter(Boolean))
+            );
+
+            const issues = [];
+            const onLights = lightsWatch.filter((eid) => this._v2IsEntityOn?.(eid));
+            if (onLights.length) {
+                issues.push({
+                    key: 'lights-left-on',
+                    severity: onLights.length >= 4 ? 'warn' : 'info',
+                    title: 'Lights left on',
+                    detail: `${onLights.length} active: ${onLights.slice(0, 3).join(', ')}${
+                        onLights.length > 3 ? '…' : ''
+                    }`,
+                    entityIds: onLights,
+                });
+            }
+
+            const openWindows = windows.filter((eid) => this._v2IsEntityOn?.(eid));
+            if (openWindows.length) {
+                issues.push({
+                    key: 'windows-open',
+                    severity: 'warn',
+                    title: 'Windows open',
+                    detail: `${openWindows.length} open: ${openWindows.slice(0, 3).join(', ')}${
+                        openWindows.length > 3 ? '…' : ''
+                    }`,
+                    entityIds: openWindows,
+                });
+            }
+
+            const heatingActive = heating.filter((eid) => this._v2ClimateHeatingActive?.(eid));
+            if (heatingActive.length && openWindows.length) {
+                issues.push({
+                    key: 'heating-window-conflict',
+                    severity: 'critical',
+                    title: 'Heating conflict',
+                    detail: `${heatingActive.length} heating while ${openWindows.length} window(s) open`,
+                    entityIds: [...heatingActive, ...openWindows],
+                });
+            }
+
+            const unreachable = deviceWatch.filter((eid) => this._v2IsEntityUnavailable?.(eid));
+            if (unreachable.length) {
+                issues.push({
+                    key: 'devices-unreachable',
+                    severity: 'warn',
+                    title: 'Unreachable devices',
+                    detail: `${unreachable.length} unavailable/unknown: ${unreachable
+                        .slice(0, 3)
+                        .join(', ')}${unreachable.length > 3 ? '…' : ''}`,
+                    entityIds: unreachable,
+                });
+            }
+
+            return issues;
+        },
+
+        _v2HealthSummary() {
+            const issues = this._v2HealthIssues?.() || [];
+            const critical = issues.filter((i) => i.severity === 'critical').length;
+            const warn = issues.filter((i) => i.severity === 'warn').length;
+            const info = issues.filter((i) => i.severity === 'info').length;
+            return {
+                issues,
+                total: issues.length,
+                critical,
+                warn,
+                info,
+                status: critical ? 'critical' : warn ? 'warn' : issues.length ? 'info' : 'ok',
+            };
+        },
+
+        _v2HealthRenderSig() {
+            const cfg = this._v2HealthConfig?.() || {};
+            const homeControls = Array.isArray(this._config?.home_controls)
+                ? this._config.home_controls
+                : [];
+            const ids = Array.from(
+                new Set([
+                    ...homeControls,
+                    ...(cfg.window_entities || []),
+                    ...(cfg.heating_entities || []),
+                    ...(cfg.lights_watch_entities || []),
+                    ...(cfg.device_watch_entities || []),
+                ].filter(Boolean))
+            ).sort();
+            return ids
+                .map((eid) => {
+                    const st = this._hass?.states?.[eid];
+                    return `${eid}:${st?.state || 'missing'}:${st?.attributes?.hvac_action || ''}`;
+                })
+                .join('|');
+        },
+
         _v2AdminConfig() {
             const cfg = this._config?.admin_v2;
             const base = cfg && typeof cfg === 'object' ? cfg : {};

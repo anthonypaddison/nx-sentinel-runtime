@@ -86,6 +86,9 @@ export class FbAdminView extends LitElement {
         .badge.warn {
             color: var(--warning);
         }
+        .badge.info {
+            color: var(--info);
+        }
         .badge.err {
             color: var(--urgent);
         }
@@ -98,6 +101,24 @@ export class FbAdminView extends LitElement {
             min-height: 64px;
             text-align: left;
             border-radius: 12px;
+        }
+        .issueList {
+            display: grid;
+            gap: 8px;
+        }
+        .issueItem {
+            border: 1px solid var(--fb-grid);
+            border-radius: 10px;
+            background: var(--fb-surface-2);
+            padding: 8px 10px;
+            display: grid;
+            gap: 4px;
+        }
+        .issueHead {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
         }
         @media (max-width: 1000px) {
             .grid {
@@ -137,11 +158,14 @@ export class FbAdminView extends LitElement {
             },
         ];
         const backup = card._v2BackupStatus?.() || {};
+        const health = card._v2HealthSummary?.() || { issues: [], total: 0 };
 
         const badgeClass = (state) => {
             const s = String(state || '').toLowerCase();
             if (s === 'ok' || s === 'idle') return 'badge ok';
+            if (s === 'info') return 'badge info';
             if (s.includes('error')) return 'badge err';
+            if (s.includes('critical')) return 'badge err';
             return 'badge warn';
         };
 
@@ -255,6 +279,46 @@ export class FbAdminView extends LitElement {
                                     <div class="value">Admin configuration and advanced tools</div>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="fb-card">
+                        <div class="fb-card-header">House Health & Drift</div>
+                        <div class="panelBody">
+                            ${health.total
+                                ? html`
+                                      <div class="issueList">
+                                          ${health.issues.map(
+                                              (issue) => html`
+                                                  <div class="issueItem">
+                                                      <div class="issueHead">
+                                                          <div class="label">${issue.title}</div>
+                                                          <div
+                                                              class=${badgeClass(
+                                                                  issue.severity || 'warn'
+                                                              )}
+                                                          >
+                                                              ${issue.severity || 'warn'}
+                                                          </div>
+                                                      </div>
+                                                      <div class="value">${issue.detail}</div>
+                                                  </div>
+                                              `
+                                          )}
+                                      </div>
+                                  `
+                                : html`
+                                      <div class="row">
+                                          <div>
+                                              <div class="label">No current issues</div>
+                                              <div class="value">
+                                                  No drift conditions detected from the configured
+                                                  watch lists / Home Controls.
+                                              </div>
+                                          </div>
+                                          <div class="badge ok">OK</div>
+                                      </div>
+                                  `}
                         </div>
                     </div>
                 </div>

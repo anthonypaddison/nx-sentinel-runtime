@@ -45,6 +45,12 @@ views:
                 backup_stale_hours: 48
                 snapshot_service: ''
 
+            health_v2:
+                window_entities: []
+                heating_entities: []
+                lights_watch_entities: []
+                device_watch_entities: []
+
             house_modes_v2:
                 - id: home
                   label: Home

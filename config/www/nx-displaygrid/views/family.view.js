@@ -114,6 +114,7 @@ export class FbFamilyView extends LitElement {
         const actions = card._v2IntentActions?.() || [];
         const summary = Array.isArray(card._summaryCounts?.()) ? card._summaryCounts() : [];
         const topPeople = summary.slice(0, 4);
+        const health = card._v2HealthSummary?.() || { total: 0, issues: [] };
 
         return html`
             <div class="canvas">
@@ -150,6 +151,10 @@ export class FbFamilyView extends LitElement {
                                             : 'Not set'}
                                     </div>
                                 </div>
+                                <div class="stat">
+                                    <div class="statLabel">House issues</div>
+                                    <div class="statValue">${health.total || 0}</div>
+                                </div>
                             </div>
 
                             <div class="actionGrid">
@@ -169,6 +174,14 @@ export class FbFamilyView extends LitElement {
                         <div class="fb-card-header">People & Upcoming</div>
                         <div class="panelBody">
                             <div class="list">
+                                ${health.issues.slice(0, 2).map(
+                                    (issue) => html`
+                                        <div class="item">
+                                            <div class="itemTitle">${issue.title}</div>
+                                            <div class="itemMeta">${issue.detail}</div>
+                                        </div>
+                                    `
+                                )}
                                 ${topPeople.length
                                     ? topPeople.map(
                                           (p) => html`

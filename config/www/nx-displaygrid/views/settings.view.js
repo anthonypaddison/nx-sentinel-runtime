@@ -1106,6 +1106,8 @@ export class FbSettingsView extends LitElement {
                 : {};
         const adminV2 =
             cfg.admin_v2 && typeof cfg.admin_v2 === 'object' ? cfg.admin_v2 : {};
+        const healthV2 =
+            cfg.health_v2 && typeof cfg.health_v2 === 'object' ? cfg.health_v2 : {};
         const backupStatus = card._v2BackupStatus?.() || {
             configured: false,
             available: false,
@@ -1114,6 +1116,24 @@ export class FbSettingsView extends LitElement {
             entityId: '',
             thresholdHours: 48,
         };
+        const healthSummary = card._v2HealthSummary?.() || { total: 0, issues: [] };
+        const healthWindowsCsv = Array.isArray(healthV2.window_entities)
+            ? healthV2.window_entities.join(', ')
+            : '';
+        const healthHeatingCsv = Array.isArray(healthV2.heating_entities)
+            ? healthV2.heating_entities.join(', ')
+            : '';
+        const healthLightsCsv = Array.isArray(healthV2.lights_watch_entities)
+            ? healthV2.lights_watch_entities.join(', ')
+            : '';
+        const healthDevicesCsv = Array.isArray(healthV2.device_watch_entities)
+            ? healthV2.device_watch_entities.join(', ')
+            : '';
+        const parseEntityCsv = (value) =>
+            String(value || '')
+                .split(',')
+                .map((v) => v.trim())
+                .filter(Boolean);
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -2887,6 +2907,89 @@ export class FbSettingsView extends LitElement {
                                               ${backupStatus.detail
                                                   ? ` · ${backupStatus.detail}`
                                                   : ''}
+                                          </div>
+                                      `
+                                    : html``}
+                                ${card._v2FeatureEnabled?.('admin_dashboard')
+                                    ? html`
+                                          <div class="subTitle">V2 House Health & Drift</div>
+                                          <div class="muted">
+                                              Dashboard-visible issue list (instead of push alerts)
+                                              for lights left on, windows open, heating conflicts,
+                                              and unreachable devices.
+                                          </div>
+                                          <div class="row">
+                                              <div>Window sensors</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="binary_sensor.kitchen_window, binary_sensor.bedroom_window"
+                                                  .value=${healthWindowsCsv}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          health_v2: {
+                                                              ...healthV2,
+                                                              window_entities: parseEntityCsv(
+                                                                  e.target.value
+                                                              ),
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Heating entities</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="climate.house, switch.boiler"
+                                                  .value=${healthHeatingCsv}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          health_v2: {
+                                                              ...healthV2,
+                                                              heating_entities: parseEntityCsv(
+                                                                  e.target.value
+                                                              ),
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Lights watch list</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="Optional; blank uses Home Controls lights/switches"
+                                                  .value=${healthLightsCsv}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          health_v2: {
+                                                              ...healthV2,
+                                                              lights_watch_entities:
+                                                                  parseEntityCsv(
+                                                                      e.target.value
+                                                                  ),
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="row">
+                                              <div>Extra device watch list</div>
+                                              <input
+                                                  class="input"
+                                                  placeholder="Optional entities to flag when unavailable"
+                                                  .value=${healthDevicesCsv}
+                                                  @change=${(e) =>
+                                                      card._updateConfigPartial({
+                                                          health_v2: {
+                                                              ...healthV2,
+                                                              device_watch_entities:
+                                                                  parseEntityCsv(
+                                                                      e.target.value
+                                                                  ),
+                                                          },
+                                                      })}
+                                              />
+                                          </div>
+                                          <div class="muted">
+                                              Current issues detected: ${healthSummary.total || 0}
                                           </div>
                                       `
                                     : html``}
