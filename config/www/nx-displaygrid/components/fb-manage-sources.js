@@ -6,6 +6,7 @@ const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles } from '../views/shared.styles.js';
 import { serializeNxDisplaygridCardConfig } from '../util/config-yaml.util.js';
+import { configHasSourceData } from '../util/source-validation.util.js';
 
 export class FbManageSources extends LitElement {
     static properties = {
@@ -166,11 +167,8 @@ export class FbManageSources extends LitElement {
     }
 
     _configHasData(config) {
+        if (configHasSourceData(config)) return true;
         if (!config || typeof config !== 'object') return false;
-        if (Array.isArray(config.people) && config.people.length) return true;
-        if (Array.isArray(config.calendars) && config.calendars.length) return true;
-        if (Array.isArray(config.todos) && config.todos.length) return true;
-        if (config.shopping?.entity) return true;
         return Object.keys(config).length > 0;
     }
 

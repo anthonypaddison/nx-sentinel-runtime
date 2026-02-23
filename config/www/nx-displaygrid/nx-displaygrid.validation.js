@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 import { isControllableEntity } from './nx-displaygrid.util.js';
+import { configHasSources } from './util/source-validation.util.js';
 
 export function applyValidation(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
@@ -93,11 +94,7 @@ export function applyValidation(FamilyBoardCard) {
 
         _runStartupChecks(config) {
             if (this._onboardingRequired?.(config)) return;
-            const calendars = Array.isArray(config?.calendars) ? config.calendars : [];
-            const todos = Array.isArray(config?.todos) ? config.todos : [];
-            const hasShopping = Boolean(config?.shopping?.entity);
-            const hasSources = calendars.length || todos.length || hasShopping;
-            if (!hasSources) {
+            if (!configHasSources(config)) {
                 if (this._shouldNotifyError?.('startup-no-sources', 120_000)) {
                     this._showToast(
                         'No sources configured',
