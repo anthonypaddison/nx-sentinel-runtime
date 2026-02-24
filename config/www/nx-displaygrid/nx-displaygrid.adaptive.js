@@ -315,7 +315,7 @@ export function applyAdaptive(FamilyBoardCard) {
 
             const idleSeconds = Math.max(30, Number(adaptive.auto_screen_idle_seconds || 180));
             const sinceManual = Date.now() - Number(this._lastManualNavTs || 0);
-            if (!force && this._lastManualNavTs && sinceManual < idleSeconds * 1000) return;
+            if (this._lastManualNavTs && sinceManual < idleSeconds * 1000) return;
 
             this._screen = recommended;
             this._adaptiveScreenTs = Date.now();

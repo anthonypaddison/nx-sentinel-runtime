@@ -14,7 +14,7 @@ function withFakeNow(now, fn) {
     }
 }
 
-test('manual nav temporarily blocks forced adaptive auto-screen overrides', () => {
+test('manual nav blocks forced adaptive auto-screen until adaptive idle timeout', () => {
     class TestCard {}
     applyNavigation(TestCard);
     applyAdaptive(TestCard);
@@ -49,6 +49,11 @@ test('manual nav temporarily blocks forced adaptive auto-screen overrides', () =
     assert.equal(card._screen, 'shopping');
 
     withFakeNow(1_006_000, () => {
+        card._maybeApplyV2AdaptiveScreen({ force: true });
+    });
+    assert.equal(card._screen, 'shopping');
+
+    withFakeNow(1_181_000, () => {
         card._maybeApplyV2AdaptiveScreen({ force: true });
     });
     assert.equal(card._screen, 'schedule');
