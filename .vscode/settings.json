@@ -171,7 +171,7 @@
 
     // --- Misc ---
     "better-comments.highlightPlainText": true,
-    "spellright.language": ["en-GB", "en-US"],
+    "spellright.language": ["en"],
     "spellright.documentTypes": ["markdown", "plaintext", "javascript", "php"],
 
     // --- Terminal ---
