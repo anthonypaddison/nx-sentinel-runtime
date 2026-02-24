@@ -2573,8 +2573,8 @@ export class FbSettingsView extends LitElement {
                                               </button>
                                           </div>
                                           <div class="muted">
-                                              Empty `days` means every day. Use 0-6 checkboxes for
-                                              Sun-Sat.
+                                              Empty <code>days</code> means every day. Use 0-6
+                                              checkboxes for Sun-Sat.
                                           </div>
                                           ${remindersV2.length
                                               ? html`${remindersV2.map((reminder, idx) => {
