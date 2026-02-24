@@ -12,6 +12,8 @@ export class FbSidebar extends LitElement {
         isAdmin: { type: Boolean },
         collapsed: { type: Boolean },
         extraScreens: { type: Array },
+        _visiblePrimaryCount: { state: true },
+        _overflowMenuOpen: { state: true },
     };
 
     static styles = [
@@ -34,6 +36,7 @@ export class FbSidebar extends LitElement {
             gap: 16px;
             height: 100%;
             padding-top: 0;
+            position: relative;
         }
 
         .nav {
@@ -42,7 +45,8 @@ export class FbSidebar extends LitElement {
             gap: 0;
             width: 100%;
             flex: 1;
-            overflow: auto;
+            min-height: 0;
+            overflow: hidden;
             padding-top: max(
                 0px,
                 calc(var(--fb-topbar-height, 0px) + (var(--fb-gutter) * 2) + 24px - 64px)
@@ -78,10 +82,6 @@ export class FbSidebar extends LitElement {
             color: #ffffff;
             background: color-mix(in srgb, #ffffff 20%, transparent);
         }
-        .navbtn.settings {
-            margin-top: auto;
-        }
-
         .navicon {
             width: 28px;
             height: 28px;
@@ -120,6 +120,85 @@ export class FbSidebar extends LitElement {
             align-items: center;
         }
 
+        .bottomDock {
+            display: grid;
+            gap: 0;
+            width: 100%;
+            margin-top: auto;
+            padding-bottom: 8px;
+        }
+
+        .menuWrap {
+            position: relative;
+        }
+
+        .overflowMenu {
+            position: absolute;
+            right: 6px;
+            bottom: calc(100% + 8px);
+            min-width: 200px;
+            max-width: 260px;
+            max-height: min(60vh, 420px);
+            overflow: auto;
+            background: var(--fb-surface);
+            border: 1px solid var(--fb-border);
+            border-radius: 12px;
+            box-shadow: var(--fb-shadow);
+            padding: 6px;
+            z-index: 20;
+            display: grid;
+            gap: 4px;
+        }
+
+        .overflowItem {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 20px 1fr auto;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+            --fb-btn-bg: transparent;
+            --fb-btn-border-width: 0;
+            --fb-btn-radius: 8px;
+            --fb-btn-padding: 8px 10px;
+            --fb-btn-min-height: 38px;
+        }
+
+        .overflowItem.active {
+            --fb-btn-bg: color-mix(in srgb, var(--fb-accent-teal) 18%, var(--fb-surface));
+            color: var(--fb-text);
+            font-weight: 700;
+        }
+
+        .overflowIcon {
+            display: grid;
+            place-items: center;
+            color: var(--fb-muted);
+        }
+
+        .overflowItem.active .overflowIcon {
+            color: var(--fb-accent-teal);
+        }
+
+        .overflowLabel {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            line-height: 1.2;
+        }
+
+        .overflowMeta {
+            font-size: 12px;
+            color: var(--fb-muted);
+            background: color-mix(in srgb, var(--fb-bg) 50%, transparent);
+            border-radius: 999px;
+            padding: 2px 7px;
+            min-width: 22px;
+            text-align: center;
+        }
+
         .rail.collapsed .navbtn {
             grid-template-columns: 1fr;
             padding: 12px 0;
@@ -137,7 +216,95 @@ export class FbSidebar extends LitElement {
     `,
     ];
 
+    constructor() {
+        super();
+        this._visiblePrimaryCount = null;
+        this._overflowMenuOpen = false;
+        this._overflowMeasureQueued = false;
+    }
+
+    disconnectedCallback() {
+        this._overflowResizeObserver?.disconnect?.();
+        this._overflowResizeObserver = null;
+        super.disconnectedCallback();
+    }
+
+    firstUpdated() {
+        if (typeof ResizeObserver !== 'undefined') {
+            this._overflowResizeObserver = new ResizeObserver(() => this._scheduleOverflowMeasure());
+            this._overflowResizeObserver.observe(this);
+            const nav = this.renderRoot?.querySelector?.('.nav');
+            if (nav) this._overflowResizeObserver.observe(nav);
+        }
+        this._scheduleOverflowMeasure();
+    }
+
+    updated() {
+        this._scheduleOverflowMeasure();
+    }
+
+    _primaryItems() {
+        const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
+        return [
+            { key: 'schedule', label: 'Schedule', icon: 'mdi:calendar-multiselect' },
+            { key: 'important', label: 'Important', icon: 'mdi:alert-circle-outline' },
+            { key: 'chores', label: 'Chores', icon: 'mdi:check-circle-outline' },
+            { key: 'shopping', label: 'Shopping', icon: 'mdi:cart-outline' },
+            ...extraScreens.map((s) => ({
+                key: s?.key,
+                label: s?.label || s?.key || 'View',
+                icon: s?.icon || 'mdi:view-grid-outline',
+            })),
+            { key: 'home', label: 'Home', icon: 'mdi:home-automation' },
+        ].filter((item) => item.key);
+    }
+
+    _scheduleOverflowMeasure() {
+        if (this._overflowMeasureQueued) return;
+        this._overflowMeasureQueued = true;
+        requestAnimationFrame(() => {
+            this._overflowMeasureQueued = false;
+            this._measureOverflowLayout();
+        });
+    }
+
+    _measureOverflowLayout() {
+        const nav = this.renderRoot?.querySelector?.('.nav');
+        if (!nav) return;
+        const totalPrimary = this._primaryItems().length;
+        if (!totalPrimary) {
+            if (this._visiblePrimaryCount !== 0) this._visiblePrimaryCount = 0;
+            if (this._overflowMenuOpen) this._overflowMenuOpen = false;
+            return;
+        }
+
+        const sampleBtn = this.renderRoot?.querySelector?.('.navbtn');
+        const sampleHeight = Number(sampleBtn?.offsetHeight || 0);
+        if (!sampleHeight) return;
+
+        const style = getComputedStyle(nav);
+        const padTop = Number.parseFloat(style.paddingTop || '0') || 0;
+        const padBottom = Number.parseFloat(style.paddingBottom || '0') || 0;
+        const available = Math.max(0, nav.clientHeight - padTop - padBottom);
+        const nextVisible = Math.max(
+            0,
+            Math.min(totalPrimary, Math.floor(available / Math.max(sampleHeight, 1)))
+        );
+
+        if (this._visiblePrimaryCount !== nextVisible) {
+            this._visiblePrimaryCount = nextVisible;
+        }
+        if (nextVisible >= totalPrimary && this._overflowMenuOpen) {
+            this._overflowMenuOpen = false;
+        }
+    }
+
+    _toggleOverflowMenu() {
+        this._overflowMenuOpen = !this._overflowMenuOpen;
+    }
+
     _click(target) {
+        this._overflowMenuOpen = false;
         this.dispatchEvent(
             new CustomEvent('fb-nav', {
                 detail: { target },
@@ -153,18 +320,35 @@ export class FbSidebar extends LitElement {
         const meta = (k) => (counts?.[k] ? counts[k] : null);
         const isAdmin = Boolean(this.isAdmin);
         const collapsed = true;
-        const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
+        const primaryItems = this._primaryItems();
+        const measuredVisible =
+            Number.isFinite(this._visiblePrimaryCount) && this._visiblePrimaryCount !== null
+                ? this._visiblePrimaryCount
+                : primaryItems.length;
+        const visibleCount = Math.max(0, Math.min(primaryItems.length, measuredVisible));
+        let visiblePrimary = primaryItems.slice(0, visibleCount);
+        let visibleKeys = new Set(visiblePrimary.map((entry) => entry.key));
+        const activePrimary = primaryItems.find((entry) => entry.key === active) || null;
+        if (activePrimary && !visibleKeys.has(activePrimary.key) && visiblePrimary.length) {
+            visiblePrimary = [...visiblePrimary.slice(0, -1), activePrimary];
+            visibleKeys = new Set(visiblePrimary.map((entry) => entry.key));
+        }
+        const hiddenPrimary = primaryItems.filter((entry) => !visibleKeys.has(entry.key));
+        const hasOverflow = hiddenPrimary.length > 0;
+        const overflowButtonActive = hiddenPrimary.some((entry) => entry.key === active);
 
-        const item = (key, label, icon) => html`
+        const item = (entry, { extraClass = '' } = {}) => html`
             <button
-                class="btn navbtn ${active === key ? 'active' : ''}"
-                @click=${() => this._click(key)}
+                class="btn navbtn ${extraClass} ${active === entry.key ? 'active' : ''}"
+                @click=${() => this._click(entry.key)}
+                title=${entry.label || entry.key}
+                aria-label=${entry.label || entry.key}
             >
                 <span class="navicon">
-                    <ha-icon icon=${icon}></ha-icon>
+                    <ha-icon icon=${entry.icon}></ha-icon>
                 </span>
-                <span class="navlabel">${label}</span>
-                ${meta(key) ? html`<span class="navmeta">${meta(key)}</span>` : html``}
+                <span class="navlabel">${entry.label}</span>
+                ${meta(entry.key) ? html`<span class="navmeta">${meta(entry.key)}</span>` : html``}
             </button>
         `;
 
@@ -172,22 +356,52 @@ export class FbSidebar extends LitElement {
             <div class="rail ${collapsed ? 'collapsed' : ''}">
                 <div class="brand">${collapsed ? 'FB' : 'nx-displaygrid'}</div>
                 <div class="nav">
-                    ${item('schedule', 'Schedule', 'mdi:calendar-multiselect')}
-                    ${item('important', 'Important', 'mdi:alert-circle-outline')}
-                    ${item('chores', 'Chores', 'mdi:check-circle-outline')}
-                    ${item('shopping', 'Shopping', 'mdi:cart-outline')}
-                    ${extraScreens.map((s) => item(s.key, s.label, s.icon))}
-                    ${item('home', 'Home', 'mdi:home-automation')}
+                    ${visiblePrimary.map((entry) => item(entry))}
+                </div>
+                <div class="bottomDock">
+                    ${hasOverflow
+                        ? html`<div class="menuWrap">
+                              <button
+                                  class="btn navbtn ${overflowButtonActive ? 'active' : ''}"
+                                  @click=${this._toggleOverflowMenu}
+                                  title="More menu items"
+                                  aria-label="More menu items"
+                                  aria-expanded=${this._overflowMenuOpen ? 'true' : 'false'}
+                              >
+                                  <span class="navicon">
+                                      <ha-icon icon="mdi:menu"></ha-icon>
+                                  </span>
+                                  <span class="navlabel">More</span>
+                              </button>
+                              ${this._overflowMenuOpen
+                                  ? html`<div class="overflowMenu">
+                                        ${hiddenPrimary.map(
+                                            (entry) => html`<button
+                                                class="btn overflowItem ${active === entry.key
+                                                    ? 'active'
+                                                    : ''}"
+                                                @click=${() => this._click(entry.key)}
+                                            >
+                                                <span class="overflowIcon">
+                                                    <ha-icon icon=${entry.icon}></ha-icon>
+                                                </span>
+                                                <span class="overflowLabel">${entry.label}</span>
+                                                ${meta(entry.key)
+                                                    ? html`<span class="overflowMeta"
+                                                          >${meta(entry.key)}</span
+                                                      >`
+                                                    : html``}
+                                            </button>`
+                                        )}
+                                    </div>`
+                                  : html``}
+                          </div>`
+                        : html``}
                     ${isAdmin
-                        ? html`<button
-                              class="btn navbtn settings ${active === 'settings' ? 'active' : ''}"
-                              @click=${() => this._click('settings')}
-                          >
-                              <span class="navicon">
-                                  <ha-icon icon="mdi:cog-outline"></ha-icon>
-                              </span>
-                              <span class="navlabel">Settings</span>
-                          </button>`
+                        ? item(
+                              { key: 'settings', label: 'Settings', icon: 'mdi:cog-outline' },
+                              { extraClass: 'settings' }
+                          )
                         : html``}
                 </div>
             </div>
