@@ -7,6 +7,7 @@
 - Added a service-version inventory audit script and runbook for comparing HA/media services against official stable release channels.
 - Deduplicated shared `nx-displaygrid` Lovelace card config blocks across the v1/v2 dashboards using reusable YAML include fragments.
 - Centralized `nx-sentinel-watchtower` alert notifier service usage behind a script helper to reduce notify-service drift across automations.
+- Fixed Lovelace YAML compatibility by inlining dashboard layout tuning keys instead of using a merge-key `<<: !include` pattern rejected by Home Assistant's YAML loader.
 
 ## 2026-02-23
 
