@@ -4,6 +4,7 @@
 
 - Hardened `nx_displaygrid` websocket config writes with HA admin-only access checks and payload validation/size limits.
 - Hardened `nx-displaygrid` admin PIN handling by hashing stored values, migrating legacy plaintext on successful unlock, and omitting PINs from YAML exports by default.
+- Added a service-version inventory audit script and runbook for comparing HA/media services against official stable release channels.
 
 ## 2026-02-23
 
