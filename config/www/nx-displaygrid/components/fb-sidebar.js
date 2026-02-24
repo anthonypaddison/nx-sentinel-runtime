@@ -157,6 +157,8 @@ export class FbSidebar extends LitElement {
             align-items: center;
             gap: 8px;
             text-align: left;
+            color: var(--fb-text);
+            --fb-btn-color: var(--fb-text);
             --fb-btn-bg: transparent;
             --fb-btn-border-width: 0;
             --fb-btn-radius: 8px;
@@ -174,6 +176,10 @@ export class FbSidebar extends LitElement {
             display: grid;
             place-items: center;
             color: var(--fb-muted);
+        }
+
+        .overflowIcon ha-icon {
+            color: inherit;
         }
 
         .overflowItem.active .overflowIcon {
