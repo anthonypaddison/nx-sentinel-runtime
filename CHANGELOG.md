@@ -12,6 +12,7 @@
 - Fixed V2 sidebar navigation being immediately overridden back to the adaptive/recommended screen after manual menu clicks by honoring a short manual-navigation lock even during forced adaptive ticks, and added a regression test.
 - Fixed a follow-up V2 sidebar bounce case where periodic forced adaptive refresh ticks could still override manual navigation after a few seconds, by honoring the full adaptive idle timeout before any auto-screen switch.
 - Fixed current `yamllint` line-length errors in `home_infra` disk-alert templates/messages with YAML-safe wrapping/text tweaks (no logic changes).
+- Removed `home_infra` queue-stuck automation YAML merge-key overrides that produced duplicate-key warnings in HA logs, using explicit automation blocks for clean startup parsing.
 
 ## 2026-02-23
 

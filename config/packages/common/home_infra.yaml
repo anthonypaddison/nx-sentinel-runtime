@@ -229,8 +229,7 @@ automation:
                     🟢 **NX-BASTION VPN UP**
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
-    - &queue_stuck_template
-      id: nx_sentinel_watchtower_nx_beacon_sonar_queue_stuck
+    - id: nx_sentinel_watchtower_nx_beacon_sonar_queue_stuck
       alias: nx-sentinel-watchtower - nx-beacon-sonar Queue Stuck
       mode: single
       trigger:
@@ -246,9 +245,9 @@ automation:
                 queue_sensor: sensor.nx_beacon_sonar_queue_count
                 missing_sensor: sensor.nx_beacon_sonar_missing_episodes
 
-    - <<: *queue_stuck_template
-      id: nx_sentinel_watchtower_nx_beacon_radar_queue_stuck
+    - id: nx_sentinel_watchtower_nx_beacon_radar_queue_stuck
       alias: nx-sentinel-watchtower - nx-beacon-radar Queue Stuck
+      mode: single
       trigger:
           - platform: numeric_state
             entity_id: sensor.nx_beacon_radar_queue_count
