@@ -11,6 +11,7 @@
 - Fixed a `settings.view.js` template-string syntax error in V2 Settings and bumped the Lovelace resource cache-bust version so browsers load the corrected frontend code.
 - Fixed V2 sidebar navigation being immediately overridden back to the adaptive/recommended screen after manual menu clicks by honoring a short manual-navigation lock even during forced adaptive ticks, and added a regression test.
 - Fixed a follow-up V2 sidebar bounce case where periodic forced adaptive refresh ticks could still override manual navigation after a few seconds, by honoring the full adaptive idle timeout before any auto-screen switch.
+- Fixed current `yamllint` line-length errors in `home_infra` disk-alert templates/messages with YAML-safe wrapping/text tweaks (no logic changes).
 
 ## 2026-02-23
 

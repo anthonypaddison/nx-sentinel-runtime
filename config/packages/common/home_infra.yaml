@@ -269,7 +269,8 @@ automation:
           - platform: template
             value_template: >-
                 {{ states('sensor.downloads_free_gb')|int(0) > 0 and
-                   states('sensor.downloads_free_gb')|int(0) <= states('input_number.downloads_free_gb_warn')|int(0) }}
+                   states('sensor.downloads_free_gb')|int(0) <=
+                   states('input_number.downloads_free_gb_warn')|int(0) }}
             for:
                 minutes: 10
       action:
@@ -278,7 +279,7 @@ automation:
                 message: |-
                     🔴 **LOW DISK: /srv/downloads**
                     Free: {{ states('sensor.downloads_free_gb') }} GB
-                    Threshold: {{ states('input_number.downloads_free_gb_warn') }} GB
+                    Warn: {{ states('input_number.downloads_free_gb_warn') }} GB
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
     - id: nx_sentinel_watchtower_media_low_disk
@@ -288,7 +289,8 @@ automation:
           - platform: template
             value_template: >-
                 {{ states('sensor.media_free_gb')|int(0) > 0 and
-                   states('sensor.media_free_gb')|int(0) <= states('input_number.media_free_gb_warn')|int(0) }}
+                   states('sensor.media_free_gb')|int(0) <=
+                   states('input_number.media_free_gb_warn')|int(0) }}
             for:
                 minutes: 10
       action:
@@ -297,7 +299,7 @@ automation:
                 message: |-
                     🔴 **LOW DISK: /srv/media**
                     Free: {{ states('sensor.media_free_gb') }} GB
-                    Threshold: {{ states('input_number.media_free_gb_warn') }} GB
+                    Warn: {{ states('input_number.media_free_gb_warn') }} GB
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
 script:
