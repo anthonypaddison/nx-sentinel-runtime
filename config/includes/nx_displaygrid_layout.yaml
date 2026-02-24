@@ -1,0 +1,5 @@
+day_start_hour: 6
+day_end_hour: 22
+slot_minutes: 30
+px_per_hour: 120
+refresh_interval_ms: 300000

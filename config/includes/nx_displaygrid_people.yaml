@@ -1,0 +1,12 @@
+- id: person_one
+  name: Person One
+  color: '#36B37E'
+  header_row: 1
+- id: person_two
+  name: Person Two
+  color: '#7E57C2'
+  header_row: 1
+- id: person_three
+  name: Person Three
+  color: '#F4B400'
+  header_row: 2

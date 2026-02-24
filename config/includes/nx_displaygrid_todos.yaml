@@ -1,0 +1,6 @@
+- entity: todo.person_one
+  name: Person One
+  person_id: person_one
+- entity: todo.person_two
+  name: Person Two
+  person_id: person_two

@@ -1,0 +1,10 @@
+- entity: calendar.person_one
+  person_id: person_one
+- entity: calendar.person_two
+  person_id: person_two
+- entity: calendar.family
+  person_id: person_one
+  role: family
+- entity: calendar.routine
+  person_id: person_one
+  role: routine

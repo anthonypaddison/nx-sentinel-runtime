@@ -74,50 +74,16 @@ views:
                   label: Calm
 
             # Layout tuning
-            day_start_hour: 6
-            day_end_hour: 22
-            slot_minutes: 30
-            px_per_hour: 120
-            refresh_interval_ms: 300000
+            <<: !include ../includes/nx_displaygrid_layout.yaml
 
             # People palette
-            people:
-                - id: person_one
-                  name: Person One
-                  color: '#36B37E'
-                  header_row: 1
-                - id: person_two
-                  name: Person Two
-                  color: '#7E57C2'
-                  header_row: 1
-                - id: person_three
-                  name: Person Three
-                  color: '#F4B400'
-                  header_row: 2
+            people: !include ../includes/nx_displaygrid_people.yaml
 
-            calendars:
-                - entity: calendar.person_one
-                  person_id: person_one
-                - entity: calendar.person_two
-                  person_id: person_two
-                - entity: calendar.family
-                  person_id: person_one
-                  role: family
-                - entity: calendar.routine
-                  person_id: person_one
-                  role: routine
+            calendars: !include ../includes/nx_displaygrid_calendars.yaml
 
-            todos:
-                - entity: todo.person_one
-                  name: Person One
-                  person_id: person_one
-                - entity: todo.person_two
-                  name: Person Two
-                  person_id: person_two
+            todos: !include ../includes/nx_displaygrid_todos.yaml
 
-            shopping:
-                entity: todo.shopping_list_2
-                name: Shopping
+            shopping: !include ../includes/nx_displaygrid_shopping.yaml
 
             # Home controls: entities shown on Home Controls screen
             home_controls: !include ../includes/home_controls.yaml
