@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-02-24
+
+- Hardened `nx_displaygrid` websocket config writes with HA admin-only access checks and payload validation/size limits.
+
 ## 2026-02-23
 
 - Added deploy-time backup/export tooling for Home Assistant runtime config and `nx-displaygrid` setup snapshots.
