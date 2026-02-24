@@ -2317,6 +2317,10 @@ export class FbSettingsView extends LitElement {
                                 card._hasAdminAccess?.()
                                     ? html`<option value="admin">Admin</option>`
                                     : html``}
+                                ${card._v2FeatureEnabled?.('audit_timeline') &&
+                                card._hasAdminAccess?.()
+                                    ? html`<option value="audit">Audit</option>`
+                                    : html``}
                                 <option value="home">Home</option>
                             </select>
                                 </div>

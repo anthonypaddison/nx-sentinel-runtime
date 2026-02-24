@@ -38,6 +38,7 @@
 - Added V2 house health/drift status lists (lights left on, windows open, heating conflicts, unreachable devices) for Admin/Family dashboards with configurable watch lists.
 - Added V2 presence-confidence scaffolding (confidence entity + threshold) to drive adaptive theme/screen behavior, Intent UI cues, and notification gating for uncertain presence states.
 - Added V2 audit/explainability foundation with local timeline storage plus event capture hooks (errors, notification suppression/sends, mode changes, reminders, sync/admin maintenance actions).
+- Added V2 admin-only `Audit` timeline dashboard view with filters, local summary rollups, and timeline event browsing/clearing.
 
 ## 2026-02-19
 

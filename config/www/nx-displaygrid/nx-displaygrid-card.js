@@ -63,6 +63,7 @@ import './views/family.view.js';
 import './views/intent.view.js';
 import './views/ambient.view.js';
 import './views/admin.view.js';
+import './views/audit.view.js';
 import './views/settings.view.js';
 import './views/setup.view.js';
 import './views/important.view.js';
@@ -711,6 +712,7 @@ class FamilyBoardCard extends LitElement {
         const ambientSig = `${this._eventsVersion || 0}|${this._todoVersion || 0}|${this._shoppingVersion || 0}|${this._lastRefreshTs || 0}`;
         const healthSig = this._v2HealthRenderSig?.() || '';
         const presenceSig = this._v2PresenceRenderSig?.() || '';
+        const auditSig = this._v2AuditRenderSig?.() || '';
         const reminderBanner = this._activeReminderBanner || this._v2CurrentReminderBanner?.() || null;
         const reminderSuppressed =
             reminderBanner && this._v2ShouldSuppressReminderBanner?.(reminderBanner);
@@ -861,6 +863,11 @@ class FamilyBoardCard extends LitElement {
                                   .card=${this}
                                   .renderKey=${`${ambientSig}|${settingsRenderKey}|${healthSig}`}
                               ></fb-admin-view>`
+                            : screen === 'audit'
+                            ? html`<fb-audit-view
+                                  .card=${this}
+                                  .renderKey=${`${auditSig}|${settingsRenderKey}`}
+                              ></fb-audit-view>`
                             : screen === 'settings'
                             ? html`<fb-settings-view
                                   .card=${this}

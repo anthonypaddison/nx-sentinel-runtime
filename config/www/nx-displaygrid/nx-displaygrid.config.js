@@ -40,6 +40,9 @@ export function applyConfigHelpers(FamilyBoardCard) {
             if (this._v2FeatureEnabled('admin_dashboard') && this._hasAdminAccess?.()) {
                 screens.push({ key: 'admin', label: 'Admin', icon: 'mdi:shield-crown-outline' });
             }
+            if (this._v2FeatureEnabled('audit_timeline') && this._hasAdminAccess?.()) {
+                screens.push({ key: 'audit', label: 'Audit', icon: 'mdi:timeline-text-outline' });
+            }
             return screens;
         },
 

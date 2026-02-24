@@ -27,6 +27,7 @@ views:
                 notification_policy: true
                 family_dashboard: true
                 admin_dashboard: true
+                audit_timeline: true
 
             adaptive_v2:
                 auto_screen: true
@@ -52,6 +53,11 @@ views:
                 heating_entities: []
                 lights_watch_entities: []
                 device_watch_entities: []
+
+            audit_v2:
+                enabled: true
+                max_entries: 400
+                default_days: 7
 
             house_modes_v2:
                 - id: home

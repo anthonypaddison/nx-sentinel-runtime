@@ -148,6 +148,11 @@ export function applyAudit(FamilyBoardCard) {
                 topComponents,
             };
         },
+
+        _v2AuditRenderSig() {
+            const list = Array.isArray(this._v2AuditLog) ? this._v2AuditLog : [];
+            const first = list[0];
+            return `${list.length}|${first?.id || ''}|${first?.ts || 0}`;
+        },
     });
 }
-
