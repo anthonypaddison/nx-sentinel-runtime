@@ -19,7 +19,12 @@ export function applyNavigation(FamilyBoardCard) {
             const from = this._screen || '';
             this._screen = target;
             debugLog(this._debug, 'nav', { target });
-            if (source !== 'adaptive') this._lastManualNavTs = Date.now();
+            if (source !== 'adaptive') {
+                const now = Date.now();
+                this._lastManualNavTs = now;
+                // Prevent an immediate adaptive auto-screen flip on the next render tick.
+                this._manualNavAdaptiveLockUntilTs = now + 5_000;
+            }
             if (source !== 'adaptive') {
                 this._v2AuditRecord?.({
                     type: 'navigation',
