@@ -221,9 +221,16 @@ export class FbSidebar extends LitElement {
         this._visiblePrimaryCount = null;
         this._overflowMenuOpen = false;
         this._overflowMeasureQueued = false;
+        this._onDocumentPointerDown = (ev) => this._handleDocumentPointerDown(ev);
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        document.addEventListener('pointerdown', this._onDocumentPointerDown, true);
     }
 
     disconnectedCallback() {
+        document.removeEventListener('pointerdown', this._onDocumentPointerDown, true);
         this._overflowResizeObserver?.disconnect?.();
         this._overflowResizeObserver = null;
         super.disconnectedCallback();
@@ -301,6 +308,13 @@ export class FbSidebar extends LitElement {
 
     _toggleOverflowMenu() {
         this._overflowMenuOpen = !this._overflowMenuOpen;
+    }
+
+    _handleDocumentPointerDown(ev) {
+        if (!this._overflowMenuOpen) return;
+        const path = typeof ev?.composedPath === 'function' ? ev.composedPath() : [];
+        if (Array.isArray(path) && path.includes(this)) return;
+        this._overflowMenuOpen = false;
     }
 
     _click(target) {

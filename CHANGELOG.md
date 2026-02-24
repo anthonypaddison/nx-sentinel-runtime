@@ -16,6 +16,7 @@
 - Hardened `disk_free.sh` SSH host-key handling by pinning SSH to a persisted `/config/ssh/known_hosts` file (and ignoring global known-hosts state), reducing breakage from container/root SSH state drift.
 - Reworked `home_infra` TCP port checks to send a lightweight HTTP `HEAD` probe with an explicit response match, eliminating repeated timeouts caused by sending an empty payload to HTTP services.
 - Updated the V2 sidebar to avoid internal scrolling by collapsing overflowed items into a bottom burger menu that reveals hidden navigation entries.
+- Updated the V2 sidebar overflow burger menu to close when clicking outside the sidebar/menu area.
 
 ## 2026-02-23
 
