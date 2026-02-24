@@ -18,6 +18,7 @@
 - Updated the V2 sidebar to avoid internal scrolling by collapsing overflowed items into a bottom burger menu that reveals hidden navigation entries.
 - Updated the V2 sidebar overflow burger menu to close when clicking outside the sidebar/menu area.
 - Fixed the V2 sidebar overflow burger-menu item icon/text contrast so menu entries remain visible against the menu background.
+- Fixed the V2 sidebar overflow burger menu popup positioning so it opens on-screen to the right of the collapsed sidebar instead of rendering off the left viewport edge.
 
 ## 2026-02-23
 

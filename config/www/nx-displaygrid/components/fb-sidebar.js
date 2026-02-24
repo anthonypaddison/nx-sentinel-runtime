@@ -211,6 +211,11 @@ export class FbSidebar extends LitElement {
             justify-items: center;
         }
 
+        .rail.collapsed .overflowMenu {
+            left: calc(100% + 8px);
+            right: auto;
+        }
+
         .rail.collapsed .navlabel,
         .rail.collapsed .navmeta {
             display: none;
