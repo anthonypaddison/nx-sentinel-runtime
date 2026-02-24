@@ -19,7 +19,10 @@ binary_sensor:
     - platform: tcp
       name: nx-transmit Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 15
       port: 8080
@@ -27,7 +30,10 @@ binary_sensor:
     - platform: tcp
       name: nx-beacon-sonar Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 8989
@@ -35,7 +41,10 @@ binary_sensor:
     - platform: tcp
       name: nx-beacon-radar Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 7878
@@ -43,7 +52,10 @@ binary_sensor:
     - platform: tcp
       name: nx-beacon-prowlarr Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 9696
@@ -51,7 +63,10 @@ binary_sensor:
     - platform: tcp
       name: nx-spectrum Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 8096
@@ -59,7 +74,10 @@ binary_sensor:
     - platform: tcp
       name: nx-observer Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 5055
@@ -67,7 +85,10 @@ binary_sensor:
     - platform: tcp
       name: nx-watchtower Port
       host: !secret media_host_ip
-      payload: ''
+      payload: "HEAD / HTTP/1.0\r\nHost: localhost\r\n\r\n"
+      value_template: >-
+          {{ '1' if (value | default('')).startswith('HTTP/') else '0' }}
+      value_on: '1'
       timeout: 3
       scan_interval: 30
       port: 3001

@@ -14,6 +14,7 @@
 - Fixed current `yamllint` line-length errors in `home_infra` disk-alert templates/messages with YAML-safe wrapping/text tweaks (no logic changes).
 - Removed `home_infra` queue-stuck automation YAML merge-key overrides that produced duplicate-key warnings in HA logs, using explicit automation blocks for clean startup parsing.
 - Hardened `disk_free.sh` SSH host-key handling by pinning SSH to a persisted `/config/ssh/known_hosts` file (and ignoring global known-hosts state), reducing breakage from container/root SSH state drift.
+- Reworked `home_infra` TCP port checks to send a lightweight HTTP `HEAD` probe with an explicit response match, eliminating repeated timeouts caused by sending an empty payload to HTTP services.
 
 ## 2026-02-23
 
