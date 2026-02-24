@@ -206,7 +206,7 @@ automation:
             for:
                 minutes: 2
       action:
-          - service: notify.home_infra_alerts_anthony_paddison_8006541880
+          - service: script.nx_sentinel_watchtower_alert_notify
             data:
                 message: |-
                     🔴 **NX-BASTION VPN DOWN**
@@ -223,7 +223,7 @@ automation:
             for:
                 seconds: 30
       action:
-          - service: notify.home_infra_alerts_anthony_paddison_8006541880
+          - service: script.nx_sentinel_watchtower_alert_notify
             data:
                 message: |-
                     🟢 **NX-BASTION VPN UP**
@@ -273,7 +273,7 @@ automation:
             for:
                 minutes: 10
       action:
-          - service: notify.home_infra_alerts_anthony_paddison_8006541880
+          - service: script.nx_sentinel_watchtower_alert_notify
             data:
                 message: |-
                     🔴 **LOW DISK: /srv/downloads**
@@ -292,7 +292,7 @@ automation:
             for:
                 minutes: 10
       action:
-          - service: notify.home_infra_alerts_anthony_paddison_8006541880
+          - service: script.nx_sentinel_watchtower_alert_notify
             data:
                 message: |-
                     🔴 **LOW DISK: /srv/media**
@@ -301,6 +301,17 @@ automation:
                     {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
 
 script:
+    nx_sentinel_watchtower_alert_notify:
+        alias: nx-sentinel-watchtower - Alert Notify
+        mode: queued
+        fields:
+            message:
+                description: Fully rendered message body.
+        sequence:
+            - service: notify.home_infra_alerts_anthony_paddison_8006541880
+              data:
+                  message: '{{ message }}'
+
     nx_sentinel_watchtower_queue_stuck_notify:
         alias: nx-sentinel-watchtower - Queue Stuck Notify
         mode: queued
@@ -312,7 +323,7 @@ script:
             missing_sensor:
                 description: Sensor entity_id for missing items.
         sequence:
-            - service: notify.home_infra_alerts_anthony_paddison_8006541880
+            - service: script.nx_sentinel_watchtower_alert_notify
               data:
                   message: |-
                       🟠 **{{ service_name | upper }} QUEUE STUCK**

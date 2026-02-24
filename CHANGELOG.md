@@ -6,6 +6,7 @@
 - Hardened `nx-displaygrid` admin PIN handling by hashing stored values, migrating legacy plaintext on successful unlock, and omitting PINs from YAML exports by default.
 - Added a service-version inventory audit script and runbook for comparing HA/media services against official stable release channels.
 - Deduplicated shared `nx-displaygrid` Lovelace card config blocks across the v1/v2 dashboards using reusable YAML include fragments.
+- Centralized `nx-sentinel-watchtower` alert notifier service usage behind a script helper to reduce notify-service drift across automations.
 
 ## 2026-02-23
 
