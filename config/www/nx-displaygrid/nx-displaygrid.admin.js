@@ -1,6 +1,8 @@
 /* nx-displaygrid - admin helpers
  * SPDX-License-Identifier: MIT
  */
+import { hashAdminPin, verifyAdminPin } from './util/admin-pin.util.js';
+
 export function applyAdmin(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
         _v2HealthConfig() {
@@ -310,13 +312,20 @@ export function applyAdmin(FamilyBoardCard) {
             return Boolean(this._hass?.user?.is_admin || this._adminUnlocked);
         },
 
-        _tryAdminUnlock(pin) {
+        async _tryAdminUnlock(pin) {
             const configured = String(this._config?.admin_pin || '');
             if (!configured) {
                 this._showToast('No admin PIN set');
                 return false;
             }
-            if (String(pin || '') === configured) {
+            let result;
+            try {
+                result = await verifyAdminPin(pin, configured);
+            } catch (error) {
+                this._showErrorToast('Admin unlock failed', String(error?.message || error || ''));
+                return false;
+            }
+            if (result?.ok) {
                 this._adminUnlocked = true;
                 this._savePrefs();
                 this._showToast('Admin access unlocked');
@@ -327,6 +336,17 @@ export function applyAdmin(FamilyBoardCard) {
                     title: 'Admin access unlocked',
                 });
                 this.requestUpdate();
+                if (result.isLegacy) {
+                    try {
+                        await this._setAdminPin(pin);
+                        this._showToast('Admin PIN upgraded', 'Stored as a hash');
+                    } catch (error) {
+                        this._showErrorToast(
+                            'Admin PIN upgrade failed',
+                            String(error?.message || error || '')
+                        );
+                    }
+                }
                 return true;
             }
             this._showErrorToast('Invalid PIN');
@@ -348,7 +368,12 @@ export function applyAdmin(FamilyBoardCard) {
 
         async _setAdminPin(pin) {
             const trimmed = String(pin || '').trim();
-            await this._updateConfigPartial({ admin_pin: trimmed || '' });
+            if (!trimmed) {
+                await this._updateConfigPartial({ admin_pin: '' });
+                return;
+            }
+            const hashed = await hashAdminPin(trimmed);
+            await this._updateConfigPartial({ admin_pin: hashed });
         },
     });
 }

@@ -781,8 +781,10 @@ export class FbSettingsView extends LitElement {
                                           />
                                           <button
                                               class="btn"
-                                              @click=${() => {
-                                                  const ok = card._tryAdminUnlock?.(this._pinValue);
+                                              @click=${async () => {
+                                                  const ok = await card._tryAdminUnlock?.(
+                                                      this._pinValue
+                                                  );
                                                   if (ok) this._pinValue = '';
                                               }}
                                           >

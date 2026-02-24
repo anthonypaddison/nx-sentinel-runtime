@@ -7,6 +7,7 @@ test('serializeNxDisplaygridCardConfig omits optional background theme and home 
         title: 'Test Board',
         background_theme: 'mint',
         home_controls: ['light.kitchen'],
+        admin_pin: 'sha256$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa$bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
         shopping: { entity: 'todo.shopping' },
     });
     assert.match(yaml, /type: custom:nx-displaygrid/);
@@ -15,6 +16,7 @@ test('serializeNxDisplaygridCardConfig omits optional background theme and home 
     assert.match(yaml, /shopping:\n  entity: 'todo\.shopping'/);
     assert.doesNotMatch(yaml, /background_theme:/);
     assert.doesNotMatch(yaml, /home_controls:/);
+    assert.doesNotMatch(yaml, /admin_pin:/);
 });
 
 test('serializeNxDisplaygridCardConfig includes optional sections when requested', () => {

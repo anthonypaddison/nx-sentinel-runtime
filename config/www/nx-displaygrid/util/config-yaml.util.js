@@ -6,7 +6,7 @@ import { yamlString } from './yaml.util.js';
 
 export function serializeNxDisplaygridCardConfig(
     cfg,
-    { includeBackgroundTheme = false, includeHomeControls = false } = {}
+    { includeBackgroundTheme = false, includeHomeControls = false, includeAdminPin = false } = {}
 ) {
     const draft = cfg || {};
     const lines = [];
@@ -47,7 +47,8 @@ export function serializeNxDisplaygridCardConfig(
         }
     }
 
-    if (draft.admin_pin !== undefined) {
+    // Admin PIN is sensitive and should not be copied into exported YAML by default.
+    if (includeAdminPin && draft.admin_pin !== undefined) {
         push(`admin_pin: ${yamlString(draft.admin_pin)}`);
     }
 

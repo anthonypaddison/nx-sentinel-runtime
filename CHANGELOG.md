@@ -3,6 +3,7 @@
 ## 2026-02-24
 
 - Hardened `nx_displaygrid` websocket config writes with HA admin-only access checks and payload validation/size limits.
+- Hardened `nx-displaygrid` admin PIN handling by hashing stored values, migrating legacy plaintext on successful unlock, and omitting PINs from YAML exports by default.
 
 ## 2026-02-23
 
