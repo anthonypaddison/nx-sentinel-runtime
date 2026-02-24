@@ -118,6 +118,13 @@ export function applyReminders(FamilyBoardCard) {
             if (!occurrenceKey) return;
             if (!this._v2ReminderDismissed) this._v2ReminderDismissed = new Set();
             this._v2ReminderDismissed.add(occurrenceKey);
+            this._v2AuditRecord?.({
+                type: 'reminder',
+                component: 'reminders',
+                severity: 'info',
+                title: 'Reminder dismissed',
+                reason: occurrenceKey,
+            });
             this.requestUpdate();
         },
 
@@ -149,6 +156,13 @@ export function applyReminders(FamilyBoardCard) {
             const ctx = this._v2EnsureAudioContext?.();
             if (!ctx) {
                 this._showToast?.('Reminder sound unavailable', 'Browser audio context not supported');
+                this._v2AuditRecord?.({
+                    type: 'reminder',
+                    component: 'reminders',
+                    severity: 'warn',
+                    title: 'Reminder sound unavailable',
+                    reason: 'Browser audio context not supported',
+                });
                 return false;
             }
             if (ctx.state === 'suspended') {
@@ -178,6 +192,13 @@ export function applyReminders(FamilyBoardCard) {
                 osc.start(now + offset);
                 osc.stop(now + offset + (pattern === 'long' ? 0.35 : 0.12));
             }
+            this._v2AuditRecord?.({
+                type: 'reminder',
+                component: 'reminders',
+                severity: 'info',
+                title: 'Reminder sound played',
+                reason: pattern,
+            });
             return true;
         },
 

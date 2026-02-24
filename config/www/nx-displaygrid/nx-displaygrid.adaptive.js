@@ -346,6 +346,14 @@ export function applyAdaptive(FamilyBoardCard) {
                     option,
                 });
                 this._showToast?.('House mode', `Set to ${option}`);
+                this._v2AuditRecord?.({
+                    type: 'mode_change',
+                    component: 'modes',
+                    severity: 'info',
+                    title: 'House mode changed',
+                    reason: `Set to ${option}`,
+                    context: { entityId, modeId: target, option },
+                });
                 return;
             }
             this._openMoreInfo?.(entityId);

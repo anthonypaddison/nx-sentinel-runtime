@@ -3,8 +3,8 @@
  */
 
 const DB_NAME = 'nx-displaygrid';
-const DB_VERSION = 1;
-const STORES = ['config', 'prefs', 'cache'];
+const DB_VERSION = 2;
+const STORES = ['config', 'prefs', 'cache', 'audit'];
 
 let _dbPromise = null;
 let _idbFailure = null;

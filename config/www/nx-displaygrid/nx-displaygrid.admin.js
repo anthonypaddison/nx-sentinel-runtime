@@ -293,6 +293,14 @@ export function applyAdmin(FamilyBoardCard) {
             try {
                 await this._hass.callService(domain, service, { ...(cfg.snapshot_service_data || {}) });
                 this._showToast('Snapshot started');
+                this._v2AuditRecord?.({
+                    type: 'action',
+                    component: 'system',
+                    severity: 'info',
+                    title: 'Snapshot now',
+                    reason: `Triggered ${domain}.${service}`,
+                    context: { service: `${domain}.${service}` },
+                });
             } catch (error) {
                 this._reportError?.('Snapshot now', error);
             }
@@ -312,6 +320,12 @@ export function applyAdmin(FamilyBoardCard) {
                 this._adminUnlocked = true;
                 this._savePrefs();
                 this._showToast('Admin access unlocked');
+                this._v2AuditRecord?.({
+                    type: 'auth',
+                    component: 'system',
+                    severity: 'info',
+                    title: 'Admin access unlocked',
+                });
                 this.requestUpdate();
                 return true;
             }
@@ -323,6 +337,12 @@ export function applyAdmin(FamilyBoardCard) {
             this._adminUnlocked = false;
             this._savePrefs();
             this._showToast('Admin access locked');
+            this._v2AuditRecord?.({
+                type: 'auth',
+                component: 'system',
+                severity: 'info',
+                title: 'Admin access locked',
+            });
             this.requestUpdate();
         },
 

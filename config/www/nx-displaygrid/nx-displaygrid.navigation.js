@@ -16,9 +16,20 @@ export function applyNavigation(FamilyBoardCard) {
             const target = ev?.detail?.target;
             if (!target) return;
             const source = ev?.detail?.source || '';
+            const from = this._screen || '';
             this._screen = target;
             debugLog(this._debug, 'nav', { target });
             if (source !== 'adaptive') this._lastManualNavTs = Date.now();
+            if (source !== 'adaptive') {
+                this._v2AuditRecord?.({
+                    type: 'navigation',
+                    component: 'system',
+                    severity: 'info',
+                    title: `Open ${target}`,
+                    reason: from ? `From ${from}` : '',
+                    context: { from, to: target, source: source || 'manual' },
+                });
+            }
             this._savePrefs();
             this._queueRefresh();
         },
@@ -59,6 +70,13 @@ export function applyNavigation(FamilyBoardCard) {
         async _onSyncCalendars() {
             if (this._syncingCalendars || this._calendarFetchInFlight) return;
             this._syncingCalendars = true;
+            this._v2AuditRecord?.({
+                type: 'action',
+                component: 'system',
+                severity: 'info',
+                title: 'Sync now',
+                reason: 'Manual refresh requested',
+            });
             this.requestUpdate();
             try {
                 this._calendarService?.clearCache?.();
@@ -68,6 +86,16 @@ export function applyNavigation(FamilyBoardCard) {
                     this._refreshShopping(),
                 ]);
                 if (!this._calendarStale) this._showToast('Calendars synced');
+                this._v2AuditRecord?.({
+                    type: 'action_result',
+                    component: 'system',
+                    severity: this._calendarStale || this._todoStale || this._shoppingStale ? 'warn' : 'info',
+                    title: 'Sync completed',
+                    reason:
+                        this._calendarStale || this._todoStale || this._shoppingStale
+                            ? 'Completed with stale data'
+                            : 'Calendars, chores, and shopping refreshed',
+                });
             } finally {
                 this._syncingCalendars = false;
                 this.requestUpdate();

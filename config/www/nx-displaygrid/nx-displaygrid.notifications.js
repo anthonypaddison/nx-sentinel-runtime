@@ -53,6 +53,13 @@ export function applyNotifications(FamilyBoardCard) {
 
             const currentScreen = this._screen || '';
             if (policy.suppressWhenVisible && visibleScreen && visibleScreen === currentScreen) {
+                this._v2AuditExplainBlocked?.('Phone notification', 'Issue already visible on dashboard', {
+                    component: 'notifications',
+                    severity: 'info',
+                    visibleScreen,
+                    currentScreen,
+                    action,
+                });
                 return false;
             }
 
@@ -60,11 +67,26 @@ export function applyNotifications(FamilyBoardCard) {
                 this._v2SeverityRank?.(severity) <
                 this._v2SeverityRank?.(policy.minSeverity || 'warn')
             ) {
+                this._v2AuditExplainBlocked?.('Phone notification', 'Below configured minimum severity', {
+                    component: 'notifications',
+                    severity: 'info',
+                    threshold: policy.minSeverity || 'warn',
+                    attemptedSeverity: severity,
+                    action,
+                });
                 return false;
             }
 
             const presence = this._v2PresenceState?.();
             if (presence?.uncertain && this._v2SeverityRank?.(severity) < this._v2SeverityRank?.('critical')) {
+                this._v2AuditExplainBlocked?.('Phone notification', 'Presence confidence uncertain (non-critical suppressed)', {
+                    component: 'notifications',
+                    severity: 'warn',
+                    attemptedSeverity: severity,
+                    confidence: presence?.confidence?.value,
+                    threshold: presence?.confidence?.threshold,
+                    action,
+                });
                 return false;
             }
 
@@ -102,8 +124,32 @@ export function applyNotifications(FamilyBoardCard) {
                         reason: reason || '',
                     },
                 });
+                this._v2AuditRecord?.({
+                    type: 'notification_sent',
+                    component: 'notifications',
+                    severity,
+                    title: title || 'Notification sent',
+                    reason,
+                    context: {
+                        action,
+                        notifyService: policy.notifyService,
+                        visibleScreen,
+                        currentScreen,
+                    },
+                });
                 return true;
-            } catch {
+            } catch (error) {
+                this._v2AuditRecord?.({
+                    type: 'notification_failed',
+                    component: 'notifications',
+                    severity: 'warn',
+                    title: 'Phone notification failed',
+                    reason: String(error?.message || error || 'notify service failed'),
+                    context: {
+                        action,
+                        notifyService: policy.notifyService,
+                    },
+                });
                 return false;
             }
         },
@@ -155,6 +201,17 @@ export function applyNotifications(FamilyBoardCard) {
             this._showToast(message, detail);
             const severity = this._v2NotificationSeverityForError?.(action, info) || 'warn';
             const visibleScreen = this._v2VisibleScreenForAction?.(action) || '';
+            this._v2AuditRecord?.({
+                type: 'error',
+                component: visibleScreen || info.category || 'system',
+                severity,
+                title: message,
+                reason: info.userDetail,
+                context: {
+                    action,
+                    category: info.category,
+                },
+            });
             const calendarState = this._calendarError
                 ? 'error'
                 : this._calendarStale

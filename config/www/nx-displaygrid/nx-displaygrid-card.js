@@ -43,6 +43,7 @@ import { applyFood } from './nx-displaygrid.food.js';
 import { applyIntent } from './nx-displaygrid.intent.js';
 import { applyAdaptive } from './nx-displaygrid.adaptive.js';
 import { applyReminders } from './nx-displaygrid.reminders.js';
+import { applyAudit } from './nx-displaygrid.audit.js';
 
 import { CALENDAR_FEATURES } from './services/calendar.service.js';
 
@@ -359,6 +360,9 @@ class FamilyBoardCard extends LitElement {
         this._activeReminderBanner = null;
         this._v2ReminderDismissed = new Set();
         this._v2ReminderSoundPlayedKey = '';
+        this._v2AuditLog = [];
+        this._v2AuditLoaded = false;
+        this._v2AuditHydrated = false;
     }
 
     setConfig(config) {
@@ -488,6 +492,8 @@ class FamilyBoardCard extends LitElement {
         });
         this._loadPrefs();
         this._loadPrefsAsync();
+        this._loadAuditLog?.();
+        this._loadAuditLogAsync?.();
         this._loadStoredConfig();
         this._loadDataCache?.();
         this._queueRefresh({ reason: 'startup' });
@@ -614,6 +620,12 @@ class FamilyBoardCard extends LitElement {
         this._loadPrefs();
         this._loadPrefsAsync();
         this._showToast('Prefs cache cleared');
+        this._v2AuditRecord?.({
+            type: 'maintenance',
+            component: 'system',
+            severity: 'info',
+            title: 'Prefs cache cleared',
+        });
     }
 
     async _clearConfigCacheAndReload() {
@@ -623,11 +635,23 @@ class FamilyBoardCard extends LitElement {
         this._storageLoadPromise = null;
         await this._refreshStoredConfig?.();
         this._showToast('Config cache cleared');
+        this._v2AuditRecord?.({
+            type: 'maintenance',
+            component: 'system',
+            severity: 'info',
+            title: 'Config cache cleared',
+        });
     }
 
     async _clearDataCacheAndRefresh() {
         await this._clearDataCache?.();
         this._showToast('Data cache cleared');
+        this._v2AuditRecord?.({
+            type: 'maintenance',
+            component: 'system',
+            severity: 'info',
+            title: 'Data cache cleared',
+        });
         this._queueRefresh({ reason: 'manual' });
     }
 
@@ -986,6 +1010,7 @@ applyFood(FamilyBoardCard);
 applyIntent(FamilyBoardCard);
 applyAdaptive(FamilyBoardCard);
 applyReminders(FamilyBoardCard);
+applyAudit(FamilyBoardCard);
 customElements.define('nx-displaygrid', FamilyBoardCard);
 
 window.customCards = window.customCards || [];
