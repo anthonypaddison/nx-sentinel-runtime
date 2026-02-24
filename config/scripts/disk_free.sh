@@ -43,6 +43,8 @@ if [[ -z "$target" ]]; then
 fi
 
 ssh -o BatchMode=yes -o ConnectTimeout=5 \
+  -o UserKnownHostsFile=/config/ssh/known_hosts \
+  -o GlobalKnownHostsFile=/dev/null \
   -i /config/ssh/id_ed25519 \
   "$target" \
   "df -BG --output=avail \"$path\" | tail -n1 | tr -dc '0-9'"
