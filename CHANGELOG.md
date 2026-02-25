@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-02-25
+
+- Added a new Lovelace sidebar dashboard entry `NX - Family Dashboard` backed by `config/lovelace/nx-family-dashboard.yaml`.
+- Added family-mode navigation constraints for that dashboard: sidebar now prioritizes Calendar, Chores, Food, Family Dashboard, and Ambient, with admin items gated to admins and configurable via Settings.
+- Reworked Ambient view for family mode with:
+  - Bin-day single-line status messaging (including put-out-day context),
+  - Home-control collection buttons (`Heating`, `Lighting`) that open toggle modals,
+  - A focus/landscape ambient mode (hides topbar/sidebar, exits on double tap/double click),
+  - Important todo countdown rows.
+- Expanded Food workflows to include meal search, a dedicated Recipes tab, editable ingredients/instructions, per-user 1-5 star ratings, add-single-ingredient, add-full-recipe, and a pre-add selection modal when pushing meal items to shopping.
+- Updated shopping merge behavior to consolidate same-name items across differing quantity notations and sum quantities with unit-aware normalization where possible.
+- Added configurable food quantity units in Settings (`food_v2.units`) and retained compatibility with existing food data.
+- Added all-day event creation support in add-event dialogs and replaced fragile date/time input handling with Safari/Chrome-safe date/time picker rows.
+- Fixed month-view “today events” list scrolling with an internal scroll container.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260225-214500`.
+
 ## 2026-02-24
 
 - Hardened `nx_displaygrid` websocket config writes with HA admin-only access checks and payload validation/size limits.

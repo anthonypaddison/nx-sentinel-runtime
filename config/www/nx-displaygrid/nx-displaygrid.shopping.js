@@ -12,12 +12,16 @@ export function applyShopping(FamilyBoardCard) {
             if (!base) return;
             const existing = this._findShoppingItemByName(base);
             if (existing) {
-                const nextQty = existing.parsed.qty + parsed.qty;
-                const nextText = this._formatShoppingText(existing.parsed.base, nextQty);
+                const merged = this._mergeShoppingQuantities(existing.parsed, parsed);
+                const nextText = this._formatShoppingText(
+                    existing.parsed.base,
+                    merged.qty,
+                    merged.unit
+                );
                 await this._updateShoppingItemText(existing.item, nextText);
                 return;
             }
-            const formatted = this._formatShoppingText(base, parsed.qty);
+            const formatted = this._formatShoppingText(base, parsed.qty, parsed.unit);
             const optimistic = this._optimisticShoppingAdd(formatted);
             try {
                 await this._shoppingService.addItem(this._hass, this._config?.shopping, formatted);
@@ -195,25 +199,123 @@ export function applyShopping(FamilyBoardCard) {
 
         _parseShoppingText(text) {
             const raw = String(text || '').trim();
-            if (!raw) return { base: '', qty: 1 };
-            const match = raw.match(/^(.*?)(?:\s+x(\d+))$/i);
-            if (!match) return { base: raw, qty: 1 };
-            const base = String(match[1] || '').trim();
-            const qty = Math.max(1, Number(match[2] || 1));
-            if (!base) return { base: raw, qty: 1 };
-            return { base, qty };
+            if (!raw) return { base: '', qty: 1, unit: '' };
+
+            const counted = raw.match(/^(.*?)(?:\s+x(\d+(?:\.\d+)?))$/i);
+            if (counted) {
+                const base = String(counted[1] || '').trim();
+                const qty = Math.max(1, Number(counted[2] || 1));
+                return { base: this._normaliseShoppingBase(base), qty, unit: '' };
+            }
+
+            const leading = /^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s+(.+)$/.exec(raw);
+            if (leading) {
+                const base = this._normaliseShoppingBase(leading[3]);
+                const qty = Math.max(1, Number(leading[1] || 1));
+                const unit = this._canonicalShoppingUnit(leading[2] || '');
+                return { base, qty, unit };
+            }
+
+            const trailing = /^(.+?)\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/.exec(raw);
+            if (trailing) {
+                const base = this._normaliseShoppingBase(trailing[1]);
+                const qty = Math.max(1, Number(trailing[2] || 1));
+                const unit = this._canonicalShoppingUnit(trailing[3] || '');
+                return { base, qty, unit };
+            }
+
+            return { base: this._normaliseShoppingBase(raw), qty: 1, unit: '' };
         },
 
-        _formatShoppingText(base, qty) {
+        _formatShoppingText(base, qty, unit = '') {
             const name = String(base || '').trim();
             if (!name) return '';
             const count = Number.isFinite(qty) ? Math.max(1, Number(qty)) : 1;
+            const safeUnit = this._canonicalShoppingUnit(unit);
+            if (safeUnit) {
+                const rounded = Math.round(count * 100) / 100;
+                const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded);
+                return `${name} ${qtyLabel} ${safeUnit}`.trim();
+            }
             if (count <= 1) return name;
-            return `${name} x${count}`;
+            const rounded = Math.round(count * 100) / 100;
+            const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded);
+            return `${name} x${qtyLabel}`;
+        },
+
+        _normaliseShoppingBase(baseName) {
+            return String(baseName || '')
+                .trim()
+                .replace(/\s+/g, ' ');
+        },
+
+        _canonicalShoppingUnit(unit) {
+            const raw = String(unit || '')
+                .trim()
+                .toLowerCase();
+            if (!raw) return '';
+            const map = {
+                g: 'g',
+                gram: 'g',
+                grams: 'g',
+                kg: 'kg',
+                kilo: 'kg',
+                kilos: 'kg',
+                kilogram: 'kg',
+                kilograms: 'kg',
+                oz: 'oz',
+                ounce: 'oz',
+                ounces: 'oz',
+                lb: 'lb',
+                lbs: 'lb',
+                pound: 'lb',
+                pounds: 'lb',
+                item: '',
+                items: '',
+                each: '',
+                ea: '',
+            };
+            return map[raw] !== undefined ? map[raw] : raw;
+        },
+
+        _shoppingUnitFactor(unit) {
+            const canonical = this._canonicalShoppingUnit(unit);
+            const factors = {
+                g: 1,
+                kg: 1000,
+                oz: 28.3495,
+                lb: 453.592,
+            };
+            return factors[canonical] || 0;
+        },
+
+        _mergeShoppingQuantities(existingParsed, nextParsed) {
+            const currentQty = Math.max(1, Number(existingParsed?.qty || 1));
+            const nextQty = Math.max(1, Number(nextParsed?.qty || 1));
+            const currentUnit = this._canonicalShoppingUnit(existingParsed?.unit || '');
+            const nextUnit = this._canonicalShoppingUnit(nextParsed?.unit || '');
+            if (!currentUnit && !nextUnit) {
+                return { qty: currentQty + nextQty, unit: '' };
+            }
+            if (currentUnit === nextUnit) {
+                return { qty: currentQty + nextQty, unit: currentUnit };
+            }
+            const currentFactor = this._shoppingUnitFactor(currentUnit);
+            const nextFactor = this._shoppingUnitFactor(nextUnit);
+            if (currentFactor > 0 && nextFactor > 0) {
+                const combinedBase = currentQty * currentFactor + nextQty * nextFactor;
+                const targetUnit = currentUnit || nextUnit;
+                const targetFactor = this._shoppingUnitFactor(targetUnit) || 1;
+                return { qty: combinedBase / targetFactor, unit: targetUnit };
+            }
+            if (!currentUnit && nextUnit) {
+                return { qty: currentQty + nextQty, unit: nextUnit };
+            }
+            return { qty: currentQty + nextQty, unit: currentUnit || nextUnit };
         },
 
         _findShoppingItemByName(baseName) {
-            const key = String(baseName || '').trim().toLowerCase();
+            const key = this._normaliseShoppingBase(baseName).toLowerCase();
             if (!key) return null;
             const list = Array.isArray(this._shoppingItems) ? this._shoppingItems : [];
             for (const item of list) {
@@ -278,7 +380,7 @@ export function applyShopping(FamilyBoardCard) {
                 await this._deleteShoppingItem(item);
                 return;
             }
-            const nextText = this._formatShoppingText(parsed.base, nextQty);
+            const nextText = this._formatShoppingText(parsed.base, nextQty, parsed.unit);
             await this._updateShoppingItemText(item, nextText);
         },
 

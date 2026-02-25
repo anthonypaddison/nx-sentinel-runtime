@@ -103,6 +103,7 @@ class FamilyBoardCard extends LitElement {
         _calendarError: { state: true },
         _calendarFetchInFlight: { state: true },
         _forceSetupWizard: { state: true },
+        _focusLandscape: { state: true },
     };
 
     static async getConfigElement() {
@@ -174,6 +175,18 @@ class FamilyBoardCard extends LitElement {
                 min-height: 0;
                 overflow: hidden;
                 background: var(--fb-bg);
+            }
+            .app.focusLandscape {
+                grid-template-columns: 1fr;
+            }
+            .app.focusLandscape .sidebar {
+                display: none;
+            }
+            .app.focusLandscape .main {
+                padding-right: 0;
+            }
+            .app.focusLandscape .topbar {
+                display: none;
             }
             .toast {
                 position: absolute;
@@ -364,6 +377,7 @@ class FamilyBoardCard extends LitElement {
         this._v2AuditLog = [];
         this._v2AuditLoaded = false;
         this._v2AuditHydrated = false;
+        this._focusLandscape = false;
     }
 
     setConfig(config) {
@@ -671,9 +685,11 @@ class FamilyBoardCard extends LitElement {
 
         const screen = this._screen || 'schedule';
         const mainMode = this._mainMode || 'schedule';
+        const familyMode = this._isFamilyDashboardMode?.() === true;
+        const adminMenu = this._familyAdminMenuConfig?.() || {};
         const isAdmin = this._hasAdminAccess();
         const hasPin = Boolean(this._config?.admin_pin);
-        const showSettings = isAdmin || hasPin;
+        const showSettings = familyMode ? isAdmin && adminMenu.settings !== false : isAdmin || hasPin;
         const needsSetup =
             this._forceSetupWizard || (this._onboardingRequired?.(this._config) ?? true);
         const personFilterSig = Array.from(this._personFilterSet || []).sort().join(',');
@@ -716,9 +732,13 @@ class FamilyBoardCard extends LitElement {
         const reminderBanner = this._activeReminderBanner || this._v2CurrentReminderBanner?.() || null;
         const reminderSuppressed =
             reminderBanner && this._v2ShouldSuppressReminderBanner?.(reminderBanner);
+        const hideTopbar = this._focusLandscape || (familyMode && ['ambient', 'food'].includes(screen));
 
         return html`
-            <div class="app" style="--fb-sidebar-width:${sidebarWidth}">
+            <div
+                class="app ${this._focusLandscape ? 'focusLandscape' : ''}"
+                style="--fb-sidebar-width:${sidebarWidth}"
+            >
                 <div class="sidebar">
                     <fb-sidebar
                         .active=${screen}
@@ -726,7 +746,10 @@ class FamilyBoardCard extends LitElement {
                         .isAdmin=${showSettings}
                         .collapsed=${true}
                         .extraScreens=${extraScreens}
+                        .familyMode=${familyMode}
+                        .showAdd=${true}
                         @fb-nav=${this._onNav}
+                        @fb-add=${this._onFab}
                     ></fb-sidebar>
                 </div>
 
@@ -780,43 +803,46 @@ class FamilyBoardCard extends LitElement {
                               </div>
                           </div>`
                         : html``}
-                    <div class="topbar">
-                        <fb-topbar
-                            .title=${this._config.title || 'nx-displaygrid'}
-                            .screen=${screen}
-                            .mainMode=${mainMode}
-                            .summary=${this._summaryCounts()}
-                            .shoppingCount=${shoppingCount}
-                            .binIndicators=${binIndicators}
-                            .dateLabel=${this._dateLabel()}
-                            .dateValue=${this._selectedDayValue()}
-                            .activeFilters=${Array.from(this._personFilterSet || [])}
-                            .isAdmin=${isAdmin}
-                            .syncing=${this._syncingCalendars || this._calendarFetchInFlight}
-                            .calendarStale=${this._calendarStale}
-                            .calendarError=${this._calendarError}
-                            .calendarInFlight=${this._calendarFetchInFlight}
-                            .todoRetrying=${this._todoRetrying}
-                            .todoStale=${this._todoStale}
-                            .todoError=${this._todoError}
-                            .shoppingRetrying=${this._shoppingRetrying}
-                            .shoppingStale=${this._shoppingStale}
-                            .shoppingError=${this._shoppingError}
-                            .extraScreens=${extraScreens}
-                            .idbFailed=${this._idbFailed}
-                            .idbError=${this._idbError}
-                            @fb-main-mode=${this._onMainMode}
-                            @fb-date-nav=${this._onDateNav}
-                            @fb-date-today=${this._onToday}
-                            @fb-date-set=${this._onDateSet}
-                            @fb-sync-calendars=${this._onSyncCalendars}
-                            @fb-calendar-try-again=${this._onCalendarTryAgain}
-                            @fb-person-toggle=${this._onPersonToggle}
-                            @fb-open-sources=${() => this._openManageSources()}
-                            @fb-add=${this._onFab}
-                            @fb-nav=${this._onNav}
-                        ></fb-topbar>
-                    </div>
+                    ${hideTopbar
+                        ? html``
+                        : html`<div class="topbar">
+                              <fb-topbar
+                                  .title=${this._config.title || 'nx-displaygrid'}
+                                  .screen=${screen}
+                                  .mainMode=${mainMode}
+                                  .summary=${this._summaryCounts()}
+                                  .shoppingCount=${shoppingCount}
+                                  .binIndicators=${binIndicators}
+                                  .dateLabel=${this._dateLabel()}
+                                  .dateValue=${this._selectedDayValue()}
+                                  .activeFilters=${Array.from(this._personFilterSet || [])}
+                                  .isAdmin=${isAdmin}
+                                  .syncing=${this._syncingCalendars || this._calendarFetchInFlight}
+                                  .calendarStale=${this._calendarStale}
+                                  .calendarError=${this._calendarError}
+                                  .calendarInFlight=${this._calendarFetchInFlight}
+                                  .todoRetrying=${this._todoRetrying}
+                                  .todoStale=${this._todoStale}
+                                  .todoError=${this._todoError}
+                                  .shoppingRetrying=${this._shoppingRetrying}
+                                  .shoppingStale=${this._shoppingStale}
+                                  .shoppingError=${this._shoppingError}
+                                  .extraScreens=${extraScreens}
+                                  .idbFailed=${this._idbFailed}
+                                  .idbError=${this._idbError}
+                                  .familyMode=${familyMode}
+                                  @fb-main-mode=${this._onMainMode}
+                                  @fb-date-nav=${this._onDateNav}
+                                  @fb-date-today=${this._onToday}
+                                  @fb-date-set=${this._onDateSet}
+                                  @fb-sync-calendars=${this._onSyncCalendars}
+                                  @fb-calendar-try-again=${this._onCalendarTryAgain}
+                                  @fb-person-toggle=${this._onPersonToggle}
+                                  @fb-open-sources=${() => this._openManageSources()}
+                                  @fb-add=${this._onFab}
+                                  @fb-nav=${this._onNav}
+                              ></fb-topbar>
+                          </div>`}
 
                     <div class="content">
                         ${needsSetup
@@ -857,6 +883,8 @@ class FamilyBoardCard extends LitElement {
                             ? html`<fb-ambient-view
                                   .card=${this}
                                   .renderKey=${`${ambientSig}|${presenceSig}`}
+                                  .focusMode=${this._focusLandscape}
+                                  @fb-focus-toggle=${this._onFocusToggle}
                               ></fb-ambient-view>`
                             : screen === 'admin'
                             ? html`<fb-admin-view
@@ -971,6 +999,25 @@ class FamilyBoardCard extends LitElement {
         this._dialogOpen = true;
         const screen = this._screen || 'schedule';
         this._openAddDialogForScreen(screen === 'settings' ? 'schedule' : screen);
+    };
+
+    _onFocusToggle = (ev) => {
+        const enabled = ev?.detail?.enabled;
+        if (enabled === false) {
+            this._focusLandscape = false;
+            this._screen = 'ambient';
+            this.requestUpdate();
+            return;
+        }
+        if (enabled === true) {
+            if (this._screen !== 'ambient') this._screen = 'ambient';
+            this._focusLandscape = true;
+            this.requestUpdate();
+            return;
+        }
+        this._focusLandscape = !this._focusLandscape;
+        if (this._focusLandscape && this._screen !== 'ambient') this._screen = 'ambient';
+        this.requestUpdate();
     };
 
     _setHomeEntityState(entityId, on) {

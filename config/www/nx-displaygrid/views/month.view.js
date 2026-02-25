@@ -117,6 +117,13 @@ export class FbMonthView extends LitElement {
             flex-direction: column;
             gap: 10px;
         }
+        .dayListEvents {
+            min-height: 0;
+            overflow: auto;
+            display: grid;
+            gap: 8px;
+            padding-right: 2px;
+        }
         .dayListHeader {
             font-weight: 700;
             display: flex;
@@ -299,34 +306,36 @@ export class FbMonthView extends LitElement {
                         </span>
                         <span class="muted">${todayEvents.length} events</span>
                     </div>
-                    ${todayEvents.length
-                        ? repeatItems(
-                              todayEvents,
-                              (event) => event?._fbKey || event?.summary || '',
-                              (event) => {
-                                  const entityId = event?._fbEntityId || '';
-                                  const person = card._personForEntity(entityId);
-                                  const color = person?.color || card._neutralColor();
-                                  const title =
-                                      event?.summary || event?.title || event?.name || '(Event)';
-                                  const allDay = Boolean(event?.all_day || event?.allDay);
-                                  const start =
-                                      event?._start && event._start > today ? event._start : today;
-                                  const end =
-                                      event?._end && event._end < todayEnd ? event._end : todayEnd;
-                                  const timeLabel = allDay
-                                      ? 'All day'
-                                      : `${formatTimeShort(start)} - ${formatTimeShort(end)}`;
-                                  return html`
-                                      <div class="eventRow" style="border-left-color:${color}">
-                                          <span class="eventDot" style="background:${color}"></span>
-                                          <span class="eventTime">${timeLabel}</span>
-                                          <span class="eventTitle">${title}</span>
-                                      </div>
-                                  `;
-                              }
-                          )
-                        : html`<div class="muted">No events today.</div>`}
+                    <div class="dayListEvents">
+                        ${todayEvents.length
+                            ? repeatItems(
+                                  todayEvents,
+                                  (event) => event?._fbKey || event?.summary || '',
+                                  (event) => {
+                                      const entityId = event?._fbEntityId || '';
+                                      const person = card._personForEntity(entityId);
+                                      const color = person?.color || card._neutralColor();
+                                      const title =
+                                          event?.summary || event?.title || event?.name || '(Event)';
+                                      const allDay = Boolean(event?.all_day || event?.allDay);
+                                      const start =
+                                          event?._start && event._start > today ? event._start : today;
+                                      const end =
+                                          event?._end && event._end < todayEnd ? event._end : todayEnd;
+                                      const timeLabel = allDay
+                                          ? 'All day'
+                                          : `${formatTimeShort(start)} - ${formatTimeShort(end)}`;
+                                      return html`
+                                          <div class="eventRow" style="border-left-color:${color}">
+                                              <span class="eventDot" style="background:${color}"></span>
+                                              <span class="eventTime">${timeLabel}</span>
+                                              <span class="eventTitle">${title}</span>
+                                          </div>
+                                      `;
+                                  }
+                              )
+                            : html`<div class="muted">No events today.</div>`}
+                    </div>
                 </div>
             </div>
         `;

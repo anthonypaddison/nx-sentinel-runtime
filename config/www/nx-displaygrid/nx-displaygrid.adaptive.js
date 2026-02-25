@@ -32,8 +32,16 @@ function defaultHouseModes() {
 export function applyAdaptive(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
         _allowedViews() {
-            const base = ['schedule', 'important', 'chores', 'shopping', 'home', 'settings'];
             const extras = (this._v2NavScreens?.() || []).map((s) => s.key).filter(Boolean);
+            const familyMode = this._isFamilyDashboardMode?.();
+            if (familyMode) {
+                const familyBase = ['schedule', 'chores', 'food', 'family', 'ambient'];
+                const isAdmin = this._hasAdminAccess?.();
+                const adminMenu = this._familyAdminMenuConfig?.() || {};
+                if (isAdmin && adminMenu.settings !== false) familyBase.push('settings');
+                return [...new Set([...familyBase, ...extras])];
+            }
+            const base = ['schedule', 'important', 'chores', 'shopping', 'home', 'settings'];
             return [...base, ...extras];
         },
 
@@ -277,9 +285,11 @@ export function applyAdaptive(FamilyBoardCard) {
             if (!this._v2FeatureEnabled?.('adaptive_layout')) return '';
             const adaptive = this._v2AdaptiveConfig();
             if (!adaptive.auto_screen) return '';
+            const familyMode = this._isFamilyDashboardMode?.();
 
             const severity = this._v2AdaptiveSeverity();
-            if (severity !== 'normal' && this._v2FeatureEnabled?.('intent_view')) return 'intent';
+            if (severity !== 'normal' && this._v2FeatureEnabled?.('intent_view') && !familyMode)
+                return 'intent';
 
             const bucket = timeBucket(new Date());
             const occupancy = this._v2OccupancyState();
@@ -288,18 +298,21 @@ export function applyAdaptive(FamilyBoardCard) {
             const choresDue = this._v2TodoDueTodayCount?.() || 0;
             const shoppingCount = this._shoppingQuantityCount?.(this._shoppingItems || []) || 0;
 
-            if (presence?.uncertain && this._v2FeatureEnabled?.('intent_view')) {
+            if (presence?.uncertain && this._v2FeatureEnabled?.('intent_view') && !familyMode) {
                 return 'intent';
             }
 
             if ((bucket === 'night' || bucket === 'evening') && this._v2FeatureEnabled?.('ambient_view')) {
                 return 'ambient';
             }
-            if (bucket === 'morning' && (choresDue > 0 || shoppingCount > 0)) return 'important';
+            if (bucket === 'morning' && (choresDue > 0 || shoppingCount > 0)) {
+                return familyMode ? 'family' : 'important';
+            }
             if (occupancy.available && occupancy.away && this._v2FeatureEnabled?.('ambient_view')) {
                 return 'ambient';
             }
             if (eventsNow > 0) return 'schedule';
+            if (familyMode) return 'family';
             if (this._v2FeatureEnabled?.('intent_view')) return 'intent';
             return '';
         },
@@ -310,6 +323,8 @@ export function applyAdaptive(FamilyBoardCard) {
             if (!adaptive.auto_screen) return;
             const recommended = this._v2RecommendedScreen?.();
             if (!recommended) return;
+            const allowed = this._allowedViews?.() || [];
+            if (allowed.length && !allowed.includes(recommended)) return;
             if (this._screen === recommended) return;
             if (Number(this._manualNavAdaptiveLockUntilTs || 0) > Date.now()) return;
 

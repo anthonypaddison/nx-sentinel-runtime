@@ -1111,6 +1111,15 @@ export class FbSettingsView extends LitElement {
             cfg.notifications_v2 && typeof cfg.notifications_v2 === 'object'
                 ? cfg.notifications_v2
                 : {};
+        const familyDashboardV3 =
+            cfg.family_dashboard_v3 && typeof cfg.family_dashboard_v3 === 'object'
+                ? cfg.family_dashboard_v3
+                : {};
+        const familyAdminMenu =
+            familyDashboardV3.admin_menu && typeof familyDashboardV3.admin_menu === 'object'
+                ? familyDashboardV3.admin_menu
+                : {};
+        const foodV2 = cfg.food_v2 && typeof cfg.food_v2 === 'object' ? cfg.food_v2 : {};
         const adminV2 =
             cfg.admin_v2 && typeof cfg.admin_v2 === 'object' ? cfg.admin_v2 : {};
         const healthV2 =
@@ -1141,6 +1150,12 @@ export class FbSettingsView extends LitElement {
                 .split(',')
                 .map((v) => v.trim())
                 .filter(Boolean);
+        const parseTextCsv = (value) =>
+            String(value || '')
+                .split(',')
+                .map((v) => v.trim())
+                .filter(Boolean);
+        const foodUnitsCsv = Array.isArray(foodV2.units) ? foodV2.units.join(', ') : '';
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
             : 0;
@@ -1372,6 +1387,98 @@ export class FbSettingsView extends LitElement {
                                           </div>
                                       `
                                     : html``}
+
+                                <div class="subTitle">Family dashboard menu</div>
+                                <div class="muted">
+                                    Control which admin-only menu entries are visible to admins on
+                                    the Family Dashboard.
+                                </div>
+                                <div class="row">
+                                    <div>Show Settings menu</div>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            .checked=${familyAdminMenu.settings !== false}
+                                            @change=${(e) =>
+                                                card._updateConfigPartial({
+                                                    family_dashboard_v3: {
+                                                        ...familyDashboardV3,
+                                                        admin_menu: {
+                                                            ...familyAdminMenu,
+                                                            settings: e.target.checked,
+                                                        },
+                                                    },
+                                                })}
+                                        />
+                                        <span class="muted">
+                                            ${familyAdminMenu.settings !== false ? 'On' : 'Off'}
+                                        </span>
+                                    </label>
+                                </div>
+                                <div class="row">
+                                    <div>Show Admin menu</div>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            .checked=${familyAdminMenu.admin !== false}
+                                            @change=${(e) =>
+                                                card._updateConfigPartial({
+                                                    family_dashboard_v3: {
+                                                        ...familyDashboardV3,
+                                                        admin_menu: {
+                                                            ...familyAdminMenu,
+                                                            admin: e.target.checked,
+                                                        },
+                                                    },
+                                                })}
+                                        />
+                                        <span class="muted">
+                                            ${familyAdminMenu.admin !== false ? 'On' : 'Off'}
+                                        </span>
+                                    </label>
+                                </div>
+                                <div class="row">
+                                    <div>Show Audit menu</div>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            .checked=${familyAdminMenu.audit !== false}
+                                            @change=${(e) =>
+                                                card._updateConfigPartial({
+                                                    family_dashboard_v3: {
+                                                        ...familyDashboardV3,
+                                                        admin_menu: {
+                                                            ...familyAdminMenu,
+                                                            audit: e.target.checked,
+                                                        },
+                                                    },
+                                                })}
+                                        />
+                                        <span class="muted">
+                                            ${familyAdminMenu.audit !== false ? 'On' : 'Off'}
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div class="subTitle">Food quantity units</div>
+                                <div class="muted">
+                                    Comma-separated units available in recipe ingredients.
+                                </div>
+                                <div class="row">
+                                    <div>Units</div>
+                                    <input
+                                        class="input"
+                                        placeholder="grams, oz, kg, breasts, legs"
+                                        .value=${foodUnitsCsv}
+                                        @change=${(e) =>
+                                            card._updateConfigPartial({
+                                                food_v2: {
+                                                    ...foodV2,
+                                                    units: parseTextCsv(e.target.value),
+                                                },
+                                            })}
+                                    />
+                                </div>
 
                                 <div class="subTitle">Home controls</div>
                                 <div class="muted">Pick entities to show on the Home view.</div>

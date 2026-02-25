@@ -7,6 +7,25 @@ import { configHasPeople } from './util/source-validation.util.js';
 
 export function applyConfigHelpers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _familyDashboardConfig() {
+            const cfg = this._config?.family_dashboard_v3;
+            return cfg && typeof cfg === 'object' ? cfg : {};
+        },
+
+        _isFamilyDashboardMode() {
+            return this._familyDashboardConfig().enabled === true;
+        },
+
+        _familyAdminMenuConfig() {
+            const cfg = this._familyDashboardConfig()?.admin_menu;
+            const base = cfg && typeof cfg === 'object' ? cfg : {};
+            return {
+                settings: base.settings !== false,
+                admin: base.admin !== false,
+                audit: base.audit !== false,
+            };
+        },
+
         _v2Features(config = this._config) {
             const flags = config?.v2_features;
             return flags && typeof flags === 'object' ? flags : {};
@@ -25,22 +44,36 @@ export function applyConfigHelpers(FamilyBoardCard) {
 
         _v2NavScreens() {
             const screens = [];
+            const familyMode = this._isFamilyDashboardMode?.();
+            const adminMenu = this._familyAdminMenuConfig?.();
             if (this._v2FeatureEnabled('food_view')) {
                 screens.push({ key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' });
             }
             if (this._v2FeatureEnabled('family_dashboard')) {
-                screens.push({ key: 'family', label: 'Family', icon: 'mdi:home-heart' });
+                screens.push({
+                    key: 'family',
+                    label: familyMode ? 'Family Dashboard' : 'Family',
+                    icon: 'mdi:home-heart',
+                });
             }
-            if (this._v2FeatureEnabled('intent_view')) {
+            if (this._v2FeatureEnabled('intent_view') && !familyMode) {
                 screens.push({ key: 'intent', label: 'Intent', icon: 'mdi:gesture-tap-button' });
             }
             if (this._v2FeatureEnabled('ambient_view')) {
                 screens.push({ key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' });
             }
-            if (this._v2FeatureEnabled('admin_dashboard') && this._hasAdminAccess?.()) {
+            if (
+                this._v2FeatureEnabled('admin_dashboard') &&
+                this._hasAdminAccess?.() &&
+                (!familyMode || adminMenu?.admin)
+            ) {
                 screens.push({ key: 'admin', label: 'Admin', icon: 'mdi:shield-crown-outline' });
             }
-            if (this._v2FeatureEnabled('audit_timeline') && this._hasAdminAccess?.()) {
+            if (
+                this._v2FeatureEnabled('audit_timeline') &&
+                this._hasAdminAccess?.() &&
+                (!familyMode || adminMenu?.audit)
+            ) {
                 screens.push({ key: 'audit', label: 'Audit', icon: 'mdi:timeline-text-outline' });
             }
             return screens;

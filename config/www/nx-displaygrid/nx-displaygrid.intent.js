@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { startOfDay } from './nx-displaygrid.util.js';
+import { parseTodoDueInfo, startOfDay, todoItemText } from './nx-displaygrid.util.js';
 
 function hourBucket(date = new Date()) {
     const h = date.getHours();
@@ -11,6 +11,51 @@ function hourBucket(date = new Date()) {
     if (h < 17) return 'day';
     if (h < 22) return 'evening';
     return 'night';
+}
+
+function normaliseStringList(value) {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+    return [];
+}
+
+function isTodoImportant(item) {
+    if (!item || typeof item !== 'object') return false;
+    if (item.important === true || item.starred === true) return true;
+    const priority = Number(item.priority || 0);
+    if (Number.isFinite(priority) && priority > 0) return true;
+    const labels = normaliseStringList(item.labels || item.tags || item.label_names).map((label) =>
+        label.toLowerCase()
+    );
+    if (labels.some((label) => ['important', 'urgent', 'high'].includes(label))) return true;
+    const text = todoItemText(item, '').toLowerCase();
+    return text.includes('[!]') || text.includes('important');
+}
+
+function normaliseCollection(value, fallback = {}) {
+    const source = value && typeof value === 'object' ? value : {};
+    const label = String(source.label || fallback.label || '').trim();
+    if (!label) return null;
+    const domains = Array.isArray(source.domains)
+        ? source.domains.map((domain) => String(domain || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+    const nameContains = Array.isArray(source.name_contains)
+        ? source.name_contains.map((part) => String(part || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+    return {
+        id: String(source.id || fallback.id || label.toLowerCase().replace(/\s+/g, '_')),
+        label,
+        icon: String(source.icon || fallback.icon || 'mdi:toggle-switch-outline'),
+        domains,
+        nameContains,
+    };
 }
 
 export function applyIntent(FamilyBoardCard) {
@@ -181,6 +226,92 @@ export function applyIntent(FamilyBoardCard) {
                 binIndicators: this._binIndicators?.() || { today: [], tomorrow: [] },
                 lastRefreshTs: this._lastRefreshTs || 0,
             };
+        },
+
+        _v2ImportantTodoCountdowns(limit = 8) {
+            const todos = Array.isArray(this._config?.todos) ? this._config.todos : [];
+            const now = startOfDay(new Date());
+            const msPerDay = 24 * 60 * 60 * 1000;
+            const rows = [];
+            for (const todoCfg of todos) {
+                if (!this._isPersonAllowed(this._personIdForConfig(todoCfg, todoCfg.entity))) continue;
+                const person = this._personForEntity?.(todoCfg.entity);
+                const personName = person?.name || todoCfg?.name || '';
+                const items = Array.isArray(this._todoItems?.[todoCfg.entity])
+                    ? this._todoItems[todoCfg.entity]
+                    : [];
+                for (const item of items) {
+                    const status = String(item?.status || '').toLowerCase();
+                    if (status === 'completed' || status === 'done' || item?.completed) continue;
+                    if (!isTodoImportant(item)) continue;
+                    const dueInfo = parseTodoDueInfo(item?.due || item?.due_date || item?.due_datetime);
+                    if (!dueInfo?.date) continue;
+                    const dueDate = startOfDay(dueInfo.date);
+                    if (Number.isNaN(dueDate.getTime())) continue;
+                    const daysUntil = Math.round((dueDate.getTime() - now.getTime()) / msPerDay);
+                    rows.push({
+                        entityId: todoCfg.entity || '',
+                        item,
+                        personName,
+                        title: todoItemText(item, '(Todo)'),
+                        dueDate,
+                        daysUntil,
+                    });
+                }
+            }
+            rows.sort((a, b) => {
+                const scoreA = a.daysUntil < 0 ? a.daysUntil - 1000 : a.daysUntil;
+                const scoreB = b.daysUntil < 0 ? b.daysUntil - 1000 : b.daysUntil;
+                return scoreA - scoreB;
+            });
+            return rows.slice(0, Math.max(1, Number(limit || 8)));
+        },
+
+        _v2FamilyHomeControlCollections() {
+            const controls = Array.isArray(this._config?.home_controls) ? this._config.home_controls : [];
+            const eligible = controls.filter((entityId) => this._isHomeControlEntityEligible?.(entityId));
+            const configured = Array.isArray(this._familyDashboardConfig?.()?.home_control_collections)
+                ? this._familyDashboardConfig().home_control_collections
+                : [];
+            const defaults = [
+                {
+                    id: 'heating',
+                    label: 'Heating',
+                    icon: 'mdi:radiator',
+                    domains: ['climate', 'switch', 'input_boolean'],
+                    name_contains: ['heat', 'heating', 'boiler', 'radiator', 'thermostat'],
+                },
+                {
+                    id: 'lighting',
+                    label: 'Lighting',
+                    icon: 'mdi:lightbulb-group',
+                    domains: ['light', 'switch'],
+                    name_contains: ['light', 'lamp'],
+                },
+            ];
+            const sourceCollections = configured.length ? configured : defaults;
+            return sourceCollections
+                .map((entry, index) => normaliseCollection(entry, defaults[index] || {}))
+                .filter(Boolean)
+                .map((collection) => {
+                    const items = eligible.filter((entityId) => {
+                        const domain = String(entityId || '')
+                            .split('.')[0]
+                            .toLowerCase();
+                        const slug = String(entityId || '').toLowerCase();
+                        const domainMatch = collection.domains.length
+                            ? collection.domains.includes(domain)
+                            : true;
+                        const textMatch = collection.nameContains.length
+                            ? collection.nameContains.some((part) => slug.includes(part))
+                            : false;
+                        return domainMatch || textMatch;
+                    });
+                    return {
+                        ...collection,
+                        entities: items,
+                    };
+                });
         },
     });
 }

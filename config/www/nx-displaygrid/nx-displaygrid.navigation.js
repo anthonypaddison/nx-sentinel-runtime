@@ -15,9 +15,12 @@ export function applyNavigation(FamilyBoardCard) {
         _onNav(ev) {
             const target = ev?.detail?.target;
             if (!target) return;
+            const allowed = this._allowedViews?.() || [];
+            if (allowed.length && !allowed.includes(target)) return;
             const source = ev?.detail?.source || '';
             const from = this._screen || '';
             this._screen = target;
+            if (target !== 'ambient' && this._focusLandscape) this._focusLandscape = false;
             debugLog(this._debug, 'nav', { target });
             if (source !== 'adaptive') {
                 const now = Date.now();

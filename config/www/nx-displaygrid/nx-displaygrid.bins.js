@@ -59,5 +59,64 @@ export function applyBins(FamilyBoardCard) {
                 return weeksDiff % every === 0;
             });
         },
+
+        _nextBinCollectionInfo(daysAhead = 28) {
+            const today = startOfDay(new Date());
+            const todayBins = this._binsDueOn(today);
+            if (todayBins.length) {
+                return {
+                    status: 'today',
+                    dueDate: today,
+                    putOutDate: addDays(today, -1),
+                    bins: todayBins,
+                    line: 'Bins today',
+                };
+            }
+
+            const tomorrow = addDays(today, 1);
+            const tomorrowBins = this._binsDueOn(tomorrow);
+            if (tomorrowBins.length) {
+                const dueLabel = tomorrow.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                });
+                return {
+                    status: 'put_out',
+                    dueDate: tomorrow,
+                    putOutDate: today,
+                    bins: tomorrowBins,
+                    line: `Put bins out today (for ${dueLabel})`,
+                };
+            }
+
+            for (let offset = 2; offset <= Math.max(2, Number(daysAhead || 28)); offset += 1) {
+                const date = addDays(today, offset);
+                const bins = this._binsDueOn(date);
+                if (!bins.length) continue;
+                const dueLabel = date.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'short',
+                });
+                const putOut = addDays(date, -1);
+                const putOutLabel = putOut.toLocaleDateString(undefined, {
+                    weekday: 'long',
+                });
+                return {
+                    status: 'upcoming',
+                    dueDate: date,
+                    putOutDate: putOut,
+                    bins,
+                    line: `Bin day: ${dueLabel} (put out ${putOutLabel})`,
+                };
+            }
+
+            return {
+                status: 'none',
+                dueDate: null,
+                putOutDate: null,
+                bins: [],
+                line: 'Bin day: not scheduled',
+            };
+        },
     });
 }

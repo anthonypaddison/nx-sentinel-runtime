@@ -28,6 +28,7 @@ export class FbTopbar extends LitElement {
         shoppingStale: { type: Boolean },
         shoppingError: { type: Boolean },
         extraScreens: { type: Array },
+        familyMode: { type: Boolean },
         idbFailed: { type: Boolean },
         idbError: { type: String },
         _timeLabel: { state: true },
@@ -580,6 +581,7 @@ export class FbTopbar extends LitElement {
         const statusNotes = [];
         const showTodoStatus = ['schedule', 'important', 'chores'].includes(screen);
         const showShoppingStatus = ['schedule', 'important', 'shopping'].includes(screen);
+        const familyMode = this.familyMode === true;
 
         if (showTodoStatus) {
             if (this.todoError) statusChips.push('Chores failed');
@@ -660,15 +662,27 @@ export class FbTopbar extends LitElement {
             <div class="menuWrap" @click=${(e) => e.stopPropagation()}>
                 ${(() => {
                     const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
-                    const menuScreens = [
-                        { key: 'schedule', label: 'Schedule' },
-                        { key: 'important', label: 'Important' },
-                        { key: 'chores', label: 'Chores' },
-                        { key: 'shopping', label: 'Shopping' },
-                        ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
-                        { key: 'home', label: 'Home' },
-                        ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
-                    ];
+                    const menuScreens = familyMode
+                        ? [
+                              { key: 'schedule', label: 'Calendar' },
+                              { key: 'chores', label: 'Chores' },
+                              { key: 'food', label: 'Food' },
+                              { key: 'family', label: 'Family Dashboard' },
+                              { key: 'ambient', label: 'Ambient' },
+                              ...extraScreens
+                                  .filter((s) => s?.key === 'admin' || s?.key === 'audit')
+                                  .map((s) => ({ key: s.key, label: s.label })),
+                              ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
+                          ]
+                        : [
+                              { key: 'schedule', label: 'Schedule' },
+                              { key: 'important', label: 'Important' },
+                              { key: 'chores', label: 'Chores' },
+                              { key: 'shopping', label: 'Shopping' },
+                              ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
+                              { key: 'home', label: 'Home' },
+                              ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
+                          ];
                     return html`
                 <button
                     class="btn settingsBtn menuBtn"

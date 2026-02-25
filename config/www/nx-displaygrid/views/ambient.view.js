@@ -5,21 +5,31 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import {
-    formatWeekdayLongDayMonthLong,
-    formatTimeRange,
-} from '../nx-displaygrid.util.js';
+import { formatTimeRange, formatWeekdayLongDayMonthLong } from '../nx-displaygrid.util.js';
+
+function daysLabel(daysUntil) {
+    if (!Number.isFinite(daysUntil)) return 'No due date';
+    if (daysUntil < 0) return `${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} overdue`;
+    if (daysUntil === 0) return 'Due today';
+    if (daysUntil === 1) return 'Due tomorrow';
+    return `Due in ${daysUntil} days`;
+}
 
 export class FbAmbientView extends LitElement {
     static properties = {
         card: { type: Object },
         renderKey: { type: String },
+        focusMode: { type: Boolean },
         _nowTick: { state: true },
+        _collectionModal: { state: true },
+        _tapTs: { state: true },
     };
 
     constructor() {
         super();
         this._nowTick = Date.now();
+        this._collectionModal = null;
+        this._tapTs = 0;
         this._timer = null;
     }
 
@@ -49,6 +59,9 @@ export class FbAmbientView extends LitElement {
             display: grid;
             gap: 14px;
             align-content: start;
+        }
+        .canvas.focus {
+            padding: 0;
         }
         .hero {
             border-radius: 16px;
@@ -121,17 +134,146 @@ export class FbAmbientView extends LitElement {
             color: var(--fb-muted);
             font-size: 12px;
         }
-        .pillRow {
-            display: flex;
+        .binLine {
+            display: inline-flex;
+            align-items: center;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 8px;
+            border: 1px solid var(--fb-grid);
+            border-radius: 12px;
+            background: var(--fb-surface-2);
+            padding: 8px 10px;
+            font-size: 14px;
+            font-weight: 700;
         }
-        .pill {
-            border: 1px solid var(--fb-border);
-            background: var(--fb-surface);
+        .binLabel {
+            color: var(--fb-muted);
+            font-weight: 600;
+        }
+        .binIcon {
+            display: inline-grid;
+            place-items: center;
+            width: 22px;
+            height: 22px;
             border-radius: 999px;
-            padding: 4px 8px;
+            border: 1px solid var(--fb-border);
+            color: var(--bin-colour);
+            background: color-mix(in srgb, var(--bin-colour) 12%, var(--fb-surface));
+        }
+        .collectionRow {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+        }
+        .collectionBtn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 42px;
+        }
+        .focusBtn {
+            min-width: 48px;
+            min-height: 42px;
+            padding: 0 10px;
+        }
+        .todoRow {
+            border: 1px solid var(--fb-grid);
+            border-radius: 10px;
+            background: var(--fb-surface-2);
+            padding: 8px 10px;
+            display: grid;
+            gap: 2px;
+        }
+        .todoTitle {
+            font-weight: 700;
+        }
+        .todoMeta {
+            color: var(--fb-muted);
             font-size: 12px;
+        }
+        .modalBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+        }
+        .modal {
+            width: min(640px, 100%);
+            max-height: min(86vh, 760px);
+            overflow: auto;
+            background: var(--fb-surface);
+            border: 1px solid var(--fb-border);
+            border-radius: 14px;
+            box-shadow: var(--fb-shadow);
+            padding: 12px;
+            display: grid;
+            gap: 8px;
+        }
+        .modalHead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: 800;
+        }
+        .controlRow {
+            border: 1px solid var(--fb-grid);
+            border-radius: 10px;
+            background: var(--fb-surface-2);
+            padding: 8px 10px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 10px;
+        }
+        .controlName {
+            font-weight: 700;
+        }
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: color-mix(in srgb, var(--fb-border) 70%, #ffffff);
+            border: 1px solid var(--fb-border);
+            border-radius: 999px;
+            transition: 0.2s;
+        }
+        .slider::before {
+            position: absolute;
+            content: '';
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            top: 50%;
+            background-color: var(--fb-surface);
+            border: 1px solid var(--fb-border);
+            border-radius: 50%;
+            transition: 0.2s;
+            transform: translateY(-50%);
+        }
+        .toggle input:checked + .slider {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+        .toggle input:checked + .slider::before {
+            transform: translate(24px, -50%);
+            border-color: var(--success);
         }
         @media (max-width: 1100px) {
             .hero {
@@ -143,9 +285,61 @@ export class FbAmbientView extends LitElement {
             .time {
                 font-size: 34px;
             }
+            .collectionRow {
+                grid-template-columns: 1fr;
+            }
+            .focusBtn {
+                width: 100%;
+            }
         }
         `,
     ];
+
+    _friendlyName(card, entityId) {
+        const state = card?._hass?.states?.[entityId];
+        const name = state?.attributes?.friendly_name;
+        if (name) return name;
+        const raw = String(entityId || '').split('.')[1] || entityId || '';
+        return raw
+            .split('_')
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+    }
+
+    _isEntityOn(card, entityId) {
+        const state = String(card?._hass?.states?.[entityId]?.state || '').toLowerCase();
+        return ['on', 'heat', 'heating', 'open'].includes(state);
+    }
+
+    _openCollection(collection) {
+        this._collectionModal = collection || null;
+    }
+
+    _closeCollection() {
+        this._collectionModal = null;
+    }
+
+    _toggleFocus(enabled) {
+        this.dispatchEvent(
+            new CustomEvent('fb-focus-toggle', {
+                detail: { enabled },
+                bubbles: true,
+                composed: true,
+            })
+        );
+    }
+
+    _handlePointerUp(ev) {
+        if (!this.focusMode) return;
+        if (ev?.pointerType !== 'touch') return;
+        const now = Date.now();
+        if (now - (this._tapTs || 0) < 350) {
+            this._toggleFocus(false);
+            this._tapTs = 0;
+            return;
+        }
+        this._tapTs = now;
+    }
 
     render() {
         const card = this.card;
@@ -153,13 +347,19 @@ export class FbAmbientView extends LitElement {
         const ambient = card._v2AmbientSummary?.() || {};
         const now = new Date(this._nowTick || Date.now());
         const nextEvents = Array.isArray(ambient.nextEvents) ? ambient.nextEvents : [];
-        const binsToday = Array.isArray(ambient.binIndicators?.today) ? ambient.binIndicators.today : [];
-        const binsTomorrow = Array.isArray(ambient.binIndicators?.tomorrow)
-            ? ambient.binIndicators.tomorrow
-            : [];
+        const importantTodos = card._v2ImportantTodoCountdowns?.(8) || [];
+        const collections = card._v2FamilyHomeControlCollections?.() || [];
+        const bins = card._nextBinCollectionInfo?.() || {
+            line: 'Bin day: not scheduled',
+            bins: [],
+        };
 
         return html`
-            <div class="canvas">
+            <div
+                class="canvas ${this.focusMode ? 'focus' : ''}"
+                @dblclick=${() => this.focusMode && this._toggleFocus(false)}
+                @pointerup=${this._handlePointerUp}
+            >
                 <div class="hero">
                     <div>
                         <div class="time">
@@ -195,6 +395,52 @@ export class FbAmbientView extends LitElement {
                     <div class="fb-card">
                         <div class="fb-card-header">Upcoming</div>
                         <div class="panelBody">
+                            <div class="binLine">
+                                <span class="binLabel">Bin day:</span>
+                                <span>${bins.line || 'Not scheduled'}</span>
+                                ${(Array.isArray(bins.bins) ? bins.bins : []).map(
+                                    (bin) => html`
+                                        <span
+                                            class="binIcon"
+                                            style="--bin-colour:${bin.colour || '#999999'}"
+                                            title=${bin.name || 'Bin'}
+                                        >
+                                            <ha-icon icon=${bin.icon || 'mdi:trash-can'}></ha-icon>
+                                        </span>
+                                    `
+                                )}
+                            </div>
+
+                            <div class="collectionRow">
+                                ${(collections.length ? collections.slice(0, 2) : []).map(
+                                    (collection) => html`
+                                        <button
+                                            class="btn collectionBtn"
+                                            @click=${() => this._openCollection(collection)}
+                                        >
+                                            <ha-icon icon=${collection.icon || 'mdi:toggle-switch-outline'}></ha-icon>
+                                            <span>${collection.label}</span>
+                                        </button>
+                                    `
+                                )}
+                                ${collections.length < 2
+                                    ? html`<button
+                                          class="btn collectionBtn"
+                                          @click=${() => this._openCollection(collections[0] || null)}
+                                      >
+                                          <ha-icon icon="mdi:toggle-switch-outline"></ha-icon>
+                                          <span>Home Controls</span>
+                                      </button>`
+                                    : html``}
+                                <button
+                                    class="btn focusBtn"
+                                    title="Ambient focus mode"
+                                    @click=${() => this._toggleFocus(true)}
+                                >
+                                    <ha-icon icon="mdi:monitor-screenshot"></ha-icon>
+                                </button>
+                            </div>
+
                             ${nextEvents.length
                                 ? nextEvents.map(
                                       (entry) => html`
@@ -206,11 +452,7 @@ export class FbAmbientView extends LitElement {
                                           >
                                               <div class="eventTitle">${entry.title}</div>
                                               <div class="eventMeta">
-                                                  ${formatTimeRange(
-                                                      entry.start,
-                                                      entry.end,
-                                                      entry.allDay
-                                                  )}
+                                                  ${formatTimeRange(entry.start, entry.end, entry.allDay)}
                                               </div>
                                           </div>
                                       `
@@ -222,42 +464,65 @@ export class FbAmbientView extends LitElement {
                     <div class="fb-card">
                         <div class="fb-card-header">Glance</div>
                         <div class="panelBody">
-                            <div>
-                                <div class="muted">Bins today</div>
-                                <div class="pillRow">
-                                    ${binsToday.length
-                                        ? binsToday.map(
-                                              (bin) =>
-                                                  html`<span class="pill">${bin.name || 'Bin'}</span>`
-                                          )
-                                        : html`<span class="muted">None</span>`}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="muted">Bins tomorrow</div>
-                                <div class="pillRow">
-                                    ${binsTomorrow.length
-                                        ? binsTomorrow.map(
-                                              (bin) =>
-                                                  html`<span class="pill">${bin.name || 'Bin'}</span>`
-                                          )
-                                        : html`<span class="muted">None</span>`}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="muted">Last refresh</div>
-                                <div class="pill">
-                                    ${ambient.lastRefreshTs
-                                        ? new Date(ambient.lastRefreshTs).toLocaleTimeString([], {
-                                              hour: '2-digit',
-                                              minute: '2-digit',
-                                          })
-                                        : 'Never'}
-                                </div>
+                            ${importantTodos.length
+                                ? importantTodos.map(
+                                      (row) => html`
+                                          <div class="todoRow">
+                                              <div class="todoTitle">${row.title}</div>
+                                              <div class="todoMeta">
+                                                  ${daysLabel(row.daysUntil)}
+                                                  ${row.personName ? ` · ${row.personName}` : ''}
+                                              </div>
+                                          </div>
+                                      `
+                                  )
+                                : html`<div class="muted">No important chores with due dates.</div>`}
+                            <div class="todoMeta">
+                                Double tap or double click exits focus mode.
                             </div>
                         </div>
                     </div>
                 </div>
+
+                ${this._collectionModal
+                    ? html`
+                          <div
+                              class="modalBackdrop"
+                              @click=${(e) => e.target === e.currentTarget && this._closeCollection()}
+                          >
+                              <div class="modal">
+                                  <div class="modalHead">
+                                      <div>${this._collectionModal.label || 'Collection'}</div>
+                                      <button class="btn" @click=${this._closeCollection}>Close</button>
+                                  </div>
+                                  ${Array.isArray(this._collectionModal.entities) &&
+                                  this._collectionModal.entities.length
+                                      ? this._collectionModal.entities.map(
+                                            (entityId) => html`
+                                                <div class="controlRow">
+                                                    <div class="controlName">
+                                                        ${this._friendlyName(card, entityId)}
+                                                    </div>
+                                                    <label class="toggle">
+                                                        <input
+                                                            type="checkbox"
+                                                            .checked=${this._isEntityOn(card, entityId)}
+                                                            @change=${(e) =>
+                                                                card._setHomeEntityState(
+                                                                    entityId,
+                                                                    e.target.checked
+                                                                )}
+                                                        />
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </div>
+                                            `
+                                        )
+                                      : html`<div class="muted">No controls in this collection.</div>`}
+                              </div>
+                          </div>
+                      `
+                    : html``}
             </div>
         `;
     }

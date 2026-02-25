@@ -23,5 +23,12 @@ lovelace:
             show_in_sidebar: true
             require_admin: false
             filename: lovelace/nx-displaygrid-v2.yaml
+        nx-family-dashboard:
+            mode: yaml
+            title: NX - Family Dashboard
+            icon: mdi:account-group
+            show_in_sidebar: true
+            require_admin: false
+            filename: lovelace/nx-family-dashboard.yaml
 
 nx_displaygrid:

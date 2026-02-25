@@ -6,21 +6,22 @@ import { debugLog } from './nx-displaygrid.util.js';
 export function applyHandlers(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
         _onAddCalendar: async function (ev) {
-            const { entityId, summary, start, end } = ev?.detail || {};
+            const { entityId, summary, start, end, allDay } = ev?.detail || {};
             if (!entityId || !summary || !start || !end) return;
             if (!this._calendarSupports(entityId, CALENDAR_FEATURES.CREATE)) return;
-            debugLog(this._debug, 'addCalendar', { entityId, summary, start, end });
+            debugLog(this._debug, 'addCalendar', { entityId, summary, start, end, allDay });
             const optimistic = this._optimisticCalendarAdd(entityId, {
                 summary,
                 start,
                 end,
-                allDay: false,
+                allDay: Boolean(allDay),
             });
             try {
                 await this._calendarService.createEvent(this._hass, entityId, {
                     summary,
                     start,
                     end,
+                    allDay: Boolean(allDay),
                 });
             } catch (error) {
                 this._optimisticCalendarRemove(entityId, optimistic);
@@ -109,7 +110,7 @@ export function applyHandlers(FamilyBoardCard) {
             if (!item || !text) return;
             debugLog(this._debug, 'editShopping', { text });
             const parsed = this._parseShoppingText(text);
-            const normalised = this._formatShoppingText(parsed.base, parsed.qty);
+            const normalised = this._formatShoppingText(parsed.base, parsed.qty, parsed.unit);
             this._trackShoppingCommon(parsed.base);
             await this._updateShoppingItemText(item, normalised);
         },
