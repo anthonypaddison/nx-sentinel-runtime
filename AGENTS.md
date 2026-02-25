@@ -180,3 +180,14 @@ If forced:
 - Provide rollback instructions (git revert)
 - Commit per step
 - Document each step
+
+---
+
+## 9) NX Boundary Guardrails
+
+- This repo is the always-on ops layer (`monitoring`, `automation/eventing`, `alerting`, `control-plane`).
+- Do not add infra provisioning assets here (`roles/`, `inventory/`, `group_vars/`, `site.yml`, compose stacks).
+- Do not add one-off tooling sprawl here (ad-hoc dumps, scratch utilities, ETL scripts).
+- Keep one-off tools in `nx-servicebay`.
+- Keep deployment brain logic in `nx-orchestrator`.
+- Run `./scripts/check_structure.sh` before finalizing changes.
