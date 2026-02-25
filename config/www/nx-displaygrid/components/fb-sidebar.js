@@ -49,10 +49,7 @@ export class FbSidebar extends LitElement {
             flex: 1;
             min-height: 0;
             overflow: hidden;
-            padding-top: max(
-                0px,
-                calc(var(--fb-topbar-height, 0px) + (var(--fb-gutter) * 2) + 24px - 64px)
-            );
+            padding-top: 0;
         }
 
         .navbtn {
@@ -128,6 +125,9 @@ export class FbSidebar extends LitElement {
             width: 100%;
             margin-top: auto;
             padding-bottom: 8px;
+        }
+        .topAdd {
+            margin-bottom: 10px;
         }
 
         .menuWrap {
@@ -224,7 +224,7 @@ export class FbSidebar extends LitElement {
         }
 
         .rail.collapsed .brand {
-            visibility: hidden;
+            display: none;
         }
     `,
     ];
@@ -266,26 +266,12 @@ export class FbSidebar extends LitElement {
     _primaryItems() {
         const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
         if (this.familyMode) {
-            const base = [
+            return [
                 { key: 'schedule', label: 'Calendar', icon: 'mdi:calendar-multiselect' },
                 { key: 'chores', label: 'Chores', icon: 'mdi:check-circle-outline' },
                 { key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' },
                 { key: 'family', label: 'Family Dashboard', icon: 'mdi:home-heart' },
                 { key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' },
-            ];
-            const seen = new Set(base.map((entry) => entry.key));
-            const adminExtras = extraScreens.filter((entry) => {
-                const key = entry?.key;
-                if (!key || seen.has(key)) return false;
-                return key === 'admin' || key === 'audit';
-            });
-            return [
-                ...base,
-                ...adminExtras.map((s) => ({
-                    key: s?.key,
-                    label: s?.label || s?.key || 'View',
-                    icon: s?.icon || 'mdi:view-grid-outline',
-                })),
             ];
         }
         return [
@@ -415,23 +401,23 @@ export class FbSidebar extends LitElement {
         return html`
             <div class="rail ${collapsed ? 'collapsed' : ''}">
                 <div class="brand">${collapsed ? 'FB' : 'nx-displaygrid'}</div>
+                ${this.showAdd !== false
+                    ? html`<button
+                          class="btn navbtn topAdd"
+                          @click=${this._add}
+                          title="Add"
+                          aria-label="Add"
+                      >
+                          <span class="navicon">
+                              <ha-icon icon="mdi:plus"></ha-icon>
+                          </span>
+                          <span class="navlabel">Add</span>
+                      </button>`
+                    : html``}
                 <div class="nav">
                     ${visiblePrimary.map((entry) => item(entry))}
                 </div>
                 <div class="bottomDock">
-                    ${this.showAdd !== false
-                        ? html`<button
-                              class="btn navbtn"
-                              @click=${this._add}
-                              title="Add"
-                              aria-label="Add"
-                          >
-                              <span class="navicon">
-                                  <ha-icon icon="mdi:plus"></ha-icon>
-                              </span>
-                              <span class="navlabel">Add</span>
-                          </button>`
-                        : html``}
                     ${hasOverflow
                         ? html`<div class="menuWrap">
                               <button

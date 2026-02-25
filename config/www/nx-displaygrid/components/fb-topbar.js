@@ -99,6 +99,20 @@ export class FbTopbar extends LitElement {
             color: var(--fb-text);
             font-variant-numeric: tabular-nums;
         }
+        .titleBlock {
+            display: grid;
+            gap: 2px;
+        }
+        .titleText {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--fb-text);
+            line-height: 1.1;
+        }
+        .titleSub {
+            font-size: 13px;
+            color: var(--fb-muted);
+        }
 
         .subtabs {
             display: inline-flex;
@@ -582,6 +596,12 @@ export class FbTopbar extends LitElement {
         const showTodoStatus = ['schedule', 'important', 'chores'].includes(screen);
         const showShoppingStatus = ['schedule', 'important', 'shopping'].includes(screen);
         const familyMode = this.familyMode === true;
+        const showFamilyHeader = familyMode && screen === 'family';
+        const familyDateLabel = new Date().toLocaleDateString(undefined, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+        });
 
         if (showTodoStatus) {
             if (this.todoError) statusChips.push('Chores failed');
@@ -669,9 +689,6 @@ export class FbTopbar extends LitElement {
                               { key: 'food', label: 'Food' },
                               { key: 'family', label: 'Family Dashboard' },
                               { key: 'ambient', label: 'Ambient' },
-                              ...extraScreens
-                                  .filter((s) => s?.key === 'admin' || s?.key === 'audit')
-                                  .map((s) => ({ key: s.key, label: s.label })),
                               ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
                           ]
                         : [
@@ -734,8 +751,17 @@ export class FbTopbar extends LitElement {
         return html`
             <div class="toprow">
                 <div class="titleWrap">
-                    <div class="time">${this._timeLabel || ''}</div>
-                    ${binIcons}
+                    ${showFamilyHeader
+                        ? html`
+                              <div class="titleBlock">
+                                  <div class="titleText">${this.title || 'Family Dashboard'}</div>
+                                  <div class="titleSub">${familyDateLabel}</div>
+                              </div>
+                          `
+                        : html`
+                              <div class="time">${this._timeLabel || ''}</div>
+                              ${binIcons}
+                          `}
                 </div>
 
                 ${screen === 'schedule'

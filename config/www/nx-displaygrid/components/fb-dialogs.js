@@ -85,6 +85,9 @@ export class FbDialogs extends LitElement {
             gap: 8px;
             align-items: center;
         }
+        .pickerRow.full {
+            grid-template-columns: minmax(0, 1fr);
+        }
         .iconField {
             position: relative;
             display: inline-grid;
@@ -378,20 +381,13 @@ export class FbDialogs extends LitElement {
 
                               <div class="row">
                                   <label>Date</label>
-                                  <div class="pickerRow">
+                                  <div class="pickerRow full">
                                       <input
                                           id="eventDate"
                                           type="date"
                                           .value=${this._eventDateValue || ''}
                                           @change=${(e) => (this._eventDateValue = e.target.value)}
                                       />
-                                      <button
-                                          class="btn icon pickerBtn"
-                                          title="Pick date"
-                                          @click=${() => this._openPickerById('eventDate')}
-                                      >
-                                          <ha-icon icon="mdi:calendar-month-outline"></ha-icon>
-                                      </button>
                                   </div>
                               </div>
 

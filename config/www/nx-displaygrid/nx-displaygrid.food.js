@@ -3,7 +3,7 @@
  */
 
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DEFAULT_FOOD_UNITS = ['grams', 'oz', 'kg', 'breasts', 'legs', 'ml', 'l', 'items'];
+const DEFAULT_FOOD_UNITS = ['quantity', 'grams', 'oz', 'kg', 'breasts', 'legs', 'ml', 'l'];
 
 function makeId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -168,6 +168,35 @@ function normaliseInventoryItem(item, zone) {
     };
 }
 
+function normaliseCookingState(value, recipes = []) {
+    const source = value && typeof value === 'object' ? value : {};
+    const active = source.active === true;
+    const mealId = String(source.mealId || '').trim();
+    const recipe = recipes.find((entry) => entry.id === mealId) || null;
+    if (!active || !mealId || !recipe) {
+        return {
+            active: false,
+            day: null,
+            mealId: '',
+            startedAt: 0,
+            stepChecks: [],
+        };
+    }
+    const dayValue = Number(source.day);
+    const day = Number.isInteger(dayValue) && dayValue >= 0 && dayValue <= 6 ? dayValue : null;
+    const startedAt = Number(source.startedAt);
+    const steps = Array.isArray(recipe.steps) ? recipe.steps : [];
+    const checks = Array.isArray(source.stepChecks) ? source.stepChecks : [];
+    const stepChecks = steps.map((_, idx) => checks[idx] === true);
+    return {
+        active: true,
+        day,
+        mealId,
+        startedAt: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : Date.now(),
+        stepChecks,
+    };
+}
+
 function ingredientToShoppingText(ingredient) {
     const parsed = normaliseIngredient(ingredient);
     if (!parsed) return '';
@@ -236,6 +265,7 @@ export function applyFood(FamilyBoardCard) {
                 acc.push(recipe);
                 return acc;
             }, []);
+            const cooking = normaliseCookingState(data.cooking, recipes);
 
             return {
                 menu,
@@ -244,6 +274,7 @@ export function applyFood(FamilyBoardCard) {
                 recipes,
                 meals: recipes,
                 units: normaliseUnits(Array.isArray(data.units) ? data.units : []),
+                cooking,
             };
         },
 
@@ -367,16 +398,18 @@ export function applyFood(FamilyBoardCard) {
             });
         },
 
-        async _foodAddMeal({ name, itemsText, instructionsText = '' }) {
+        async _foodAddMeal({ name, itemsText, instructionsText = '', ingredients = [], steps = [] }) {
             const mealName = String(name || '').trim();
             if (!mealName) return;
-            const rawIngredients = parseLines(itemsText);
+            const rawIngredients = Array.isArray(ingredients) && ingredients.length
+                ? ingredients
+                : parseLines(itemsText);
             if (!rawIngredients.length) return;
             const recipe = normaliseRecipe({
                 id: makeId('food_recipe'),
                 name: mealName,
                 ingredients: rawIngredients,
-                instructions: instructionsText,
+                instructions: Array.isArray(steps) && steps.length ? steps : instructionsText,
                 note: '',
                 reviews: [],
             });
@@ -407,10 +440,75 @@ export function applyFood(FamilyBoardCard) {
             const nextMenu = food.menu.map((entry) =>
                 entry.mealId === mealId ? { ...entry, mealId: '' } : entry
             );
+            const currentCooking =
+                food.cooking && typeof food.cooking === 'object' ? food.cooking : null;
+            const nextCooking =
+                currentCooking?.mealId === mealId
+                    ? { active: false, day: null, mealId: '', startedAt: 0, stepChecks: [] }
+                    : currentCooking;
             await this._updateFoodData({
                 recipes: nextMeals,
                 meals: nextMeals,
                 menu: nextMenu,
+                cooking: nextCooking,
+            });
+        },
+
+        async _foodBeginCooking(day) {
+            const idx = Number(day);
+            if (!Number.isInteger(idx) || idx < 0 || idx > 6) return false;
+            const food = this._foodData();
+            const entry = food.menu.find((row) => row.day === idx);
+            const mealId = String(entry?.mealId || '').trim();
+            if (!mealId) return false;
+            const meal = this._foodRecipeById(mealId);
+            if (!meal) return false;
+            const steps = Array.isArray(meal.steps) ? meal.steps : [];
+            await this._updateFoodData({
+                cooking: {
+                    active: true,
+                    day: idx,
+                    mealId,
+                    startedAt: Date.now(),
+                    stepChecks: steps.map(() => false),
+                },
+            });
+            return true;
+        },
+
+        async _foodToggleCookingStep(stepIndex, checked) {
+            const idx = Number(stepIndex);
+            if (!Number.isInteger(idx) || idx < 0) return;
+            const food = this._foodData();
+            const cooking = food.cooking && typeof food.cooking === 'object' ? food.cooking : null;
+            if (!cooking?.active || !cooking.mealId) return;
+            const meal = this._foodRecipeById(cooking.mealId);
+            const steps = Array.isArray(meal?.steps) ? meal.steps : [];
+            if (idx >= steps.length) return;
+            const checks = Array.isArray(cooking.stepChecks)
+                ? cooking.stepChecks.slice(0, steps.length)
+                : steps.map(() => false);
+            while (checks.length < steps.length) checks.push(false);
+            checks[idx] = checked === true;
+            await this._updateFoodData({
+                cooking: {
+                    ...cooking,
+                    active: true,
+                    mealId: cooking.mealId,
+                    stepChecks: checks,
+                },
+            });
+        },
+
+        async _foodFinishCooking() {
+            await this._updateFoodData({
+                cooking: {
+                    active: false,
+                    day: null,
+                    mealId: '',
+                    startedAt: 0,
+                    stepChecks: [],
+                },
             });
         },
 

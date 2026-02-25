@@ -119,7 +119,10 @@ export class FbMonthView extends LitElement {
         }
         .dayListEvents {
             min-height: 0;
-            overflow: auto;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
             display: grid;
             gap: 8px;
             padding-right: 2px;

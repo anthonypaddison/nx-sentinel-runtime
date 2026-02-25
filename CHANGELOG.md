@@ -2,6 +2,18 @@
 
 ## 2026-02-25
 
+- Follow-up `NX - Family Dashboard` polish:
+  - Family mode no longer exposes standalone `Admin`/`Audit` navigation entries; admin/audit are now surfaced as tab panels inside `Settings`.
+  - Family/Ambient navigation tiles now route directly to `Schedule`, `Chores`, `Shopping`, and `Home` (house mode) screens.
+  - Ambient bin row no longer wraps icon in a circle and avoids duplicated `Bin day` label text.
+  - Ambient `Heating`, `Lighting`, and `Screensaver` controls are rendered as a three-button equal-width bottom action row.
+  - Food view removed the `In the house` tab and added recipe-builder `+` flows for ingredients and cooking steps with default `quantity` unit.
+  - Added meal-plan driven cooking sessions: `Begin cooking` starts a temporary `Cooking` tab with step checkboxes and `Finish cooking` hides the tab again.
+  - Added two-step destructive confirmation flow for shopping favourites reset/clear actions, with the second-step button order intentionally changed.
+  - Strengthened month-view today-events scrolling behavior by forcing the events list to use a flexed vertical scroller.
+- Added calendar-create success toast (`Event saved`) in add-event flows and kept date picker input full-width.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260225-235900`.
+
 - Added a new Lovelace sidebar dashboard entry `NX - Family Dashboard` backed by `config/lovelace/nx-family-dashboard.yaml`.
 - Added family-mode navigation constraints for that dashboard: sidebar now prioritizes Calendar, Chores, Food, Family Dashboard, and Ambient, with admin items gated to admins and configurable via Settings.
 - Reworked Ambient view for family mode with:

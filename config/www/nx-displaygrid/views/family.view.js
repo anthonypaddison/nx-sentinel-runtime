@@ -5,12 +5,13 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import { formatWeekdayLongDayMonthLong } from '../nx-displaygrid.util.js';
+import { addDays, formatTimeRange, startOfDay } from '../nx-displaygrid.util.js';
 
 export class FbFamilyView extends LitElement {
     static properties = {
         card: { type: Object },
         renderKey: { type: String },
+        _importantOpen: { state: true },
     };
 
     static styles = [
@@ -24,21 +25,6 @@ export class FbFamilyView extends LitElement {
             display: grid;
             gap: 12px;
             align-content: start;
-        }
-        .hero {
-            border: 1px solid var(--fb-border);
-            border-radius: 14px;
-            background: var(--fb-surface);
-            padding: 14px;
-        }
-        .heroTitle {
-            font-size: 22px;
-            font-weight: 800;
-        }
-        .heroSub {
-            margin-top: 4px;
-            color: var(--fb-muted);
-            font-size: 14px;
         }
         .grid {
             display: grid;
@@ -60,6 +46,15 @@ export class FbFamilyView extends LitElement {
             border-radius: 10px;
             background: var(--fb-surface-2);
             padding: 10px;
+        }
+        .statBtn {
+            --fb-btn-bg: var(--fb-surface-2);
+            --fb-btn-border: var(--fb-grid);
+            --fb-btn-border-width: 1px;
+            --fb-btn-radius: 10px;
+            --fb-btn-padding: 10px;
+            text-align: left;
+            width: 100%;
         }
         .statLabel {
             color: var(--fb-muted);
@@ -99,13 +94,98 @@ export class FbFamilyView extends LitElement {
             font-size: 12px;
             color: var(--fb-muted);
         }
+        .modalBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+        }
+        .modal {
+            width: min(920px, 100%);
+            max-height: min(88vh, 780px);
+            overflow: auto;
+            border-radius: 12px;
+            border: 1px solid var(--fb-border);
+            background: var(--fb-surface);
+            box-shadow: var(--fb-shadow);
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+        }
+        .modalHead {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: 800;
+        }
+        .modalGrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .modalCol {
+            border: 1px solid var(--fb-grid);
+            border-radius: 10px;
+            background: var(--fb-surface-2);
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+            align-content: start;
+        }
+        .modalColTitle {
+            font-weight: 800;
+        }
+        .eventItem {
+            border: 1px solid var(--fb-grid);
+            border-radius: 8px;
+            background: var(--fb-surface);
+            padding: 8px 10px;
+            display: grid;
+            gap: 2px;
+            cursor: pointer;
+        }
+        .eventTitle {
+            font-weight: 700;
+        }
+        .eventMeta {
+            font-size: 12px;
+            color: var(--fb-muted);
+        }
         @media (max-width: 1000px) {
             .grid {
+                grid-template-columns: 1fr;
+            }
+            .modalGrid {
                 grid-template-columns: 1fr;
             }
         }
         `,
     ];
+
+    constructor() {
+        super();
+        this._importantOpen = false;
+    }
+
+    _eventsBetween(card, start, end) {
+        const events = Array.isArray(card?._calendarEventsMerged) ? card._calendarEventsMerged : [];
+        const visible = new Set(card?._visibleCalendarEntities?.() || []);
+        return events
+            .filter((event) => event?._start && event?._end)
+            .filter((event) => (visible.size ? visible.has(event._fbEntityId) : true))
+            .filter((event) => event._start < end && event._end > start)
+            .sort((a, b) => (a._start?.getTime?.() || 0) - (b._start?.getTime?.() || 0));
+    }
+
+    _nav(card, target) {
+        if (!target) return;
+        card?._onNav?.({ detail: { target } });
+    }
 
     render() {
         const card = this.card;
@@ -115,42 +195,48 @@ export class FbFamilyView extends LitElement {
         const summary = Array.isArray(card._summaryCounts?.()) ? card._summaryCounts() : [];
         const topPeople = summary.slice(0, 4);
         const health = card._v2HealthSummary?.() || { total: 0, issues: [] };
+        const today = startOfDay(new Date());
+        const tomorrow = addDays(today, 1);
+        const dayAfterTomorrow = addDays(tomorrow, 1);
+        const todayEvents = this._eventsBetween(card, today, tomorrow);
+        const tomorrowEvents = this._eventsBetween(card, tomorrow, dayAfterTomorrow);
 
         return html`
             <div class="canvas">
-                <div class="hero">
-                    <div class="heroTitle">Family Dashboard</div>
-                    <div class="heroSub">
-                        ${formatWeekdayLongDayMonthLong(new Date())} · Clear daily summary, house
-                        status, and common actions.
-                    </div>
-                </div>
-
                 <div class="grid">
                     <div class="fb-card">
                         <div class="fb-card-header">Today Summary</div>
                         <div class="panelBody">
                             <div class="statGrid">
-                                <div class="stat">
+                                <button
+                                    class="btn stat statBtn"
+                                    @click=${() => this._nav(card, 'shopping')}
+                                >
                                     <div class="statLabel">Shopping</div>
                                     <div class="statValue">${ambient.shoppingCount || 0}</div>
-                                </div>
-                                <div class="stat">
+                                </button>
+                                <button
+                                    class="btn stat statBtn"
+                                    @click=${() => this._nav(card, 'chores')}
+                                >
                                     <div class="statLabel">Chores due</div>
                                     <div class="statValue">${ambient.choresDue || 0}</div>
-                                </div>
-                                <div class="stat">
+                                </button>
+                                <button
+                                    class="btn stat statBtn"
+                                    @click=${() => this._nav(card, 'schedule')}
+                                >
                                     <div class="statLabel">Events now</div>
                                     <div class="statValue">${ambient.eventsNow || 0}</div>
-                                </div>
-                                <div class="stat">
+                                </button>
+                                <button class="btn stat statBtn" @click=${() => this._nav(card, 'home')}>
                                     <div class="statLabel">House mode</div>
                                     <div class="statValue" style="font-size:16px">
                                         ${ambient.houseMode?.available
                                             ? ambient.houseMode.state || 'unknown'
                                             : 'Not set'}
                                     </div>
-                                </div>
+                                </button>
                                 <div class="stat">
                                     <div class="statLabel">House issues</div>
                                     <div class="statValue">${health.total || 0}</div>
@@ -199,22 +285,93 @@ export class FbFamilyView extends LitElement {
                             <div class="actionGrid">
                                 <button
                                     class="btn actionBtn"
-                                    @click=${() => card._onNav?.({ detail: { target: 'important' } })}
+                                    @click=${() => (this._importantOpen = true)}
                                 >
                                     <div style="font-weight:800">Open Important</div>
-                                    <div class="itemMeta">Today/tomorrow view</div>
-                                </button>
-                                <button
-                                    class="btn actionBtn"
-                                    @click=${() => card._onNav?.({ detail: { target: 'family' } })}
-                                >
-                                    <div style="font-weight:800">Stay on Family</div>
-                                    <div class="itemMeta">Daily glance mode</div>
+                                    <div class="itemMeta">Today + tomorrow events</div>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                ${this._importantOpen
+                    ? html`
+                          <div
+                              class="modalBackdrop"
+                              @click=${(e) => e.target === e.currentTarget && (this._importantOpen = false)}
+                          >
+                              <div class="modal">
+                                  <div class="modalHead">
+                                      <div>Important events</div>
+                                      <button class="btn" @click=${() => (this._importantOpen = false)}>
+                                          Close
+                                      </button>
+                                  </div>
+                                  <div class="modalGrid">
+                                      <div class="modalCol">
+                                          <div class="modalColTitle">Today</div>
+                                          ${todayEvents.length
+                                              ? todayEvents.map(
+                                                    (event) => html`
+                                                        <div
+                                                            class="eventItem"
+                                                            @click=${() =>
+                                                                event._fbEntityId &&
+                                                                card._openEventDialog?.(
+                                                                    event._fbEntityId,
+                                                                    event
+                                                                )}
+                                                        >
+                                                            <div class="eventTitle">
+                                                                ${event.summary || '(Event)'}
+                                                            </div>
+                                                            <div class="eventMeta">
+                                                                ${formatTimeRange(
+                                                                    event._start,
+                                                                    event._end,
+                                                                    event.all_day
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    `
+                                                )
+                                              : html`<div class="itemMeta">No events today.</div>`}
+                                      </div>
+                                      <div class="modalCol">
+                                          <div class="modalColTitle">Tomorrow</div>
+                                          ${tomorrowEvents.length
+                                              ? tomorrowEvents.map(
+                                                    (event) => html`
+                                                        <div
+                                                            class="eventItem"
+                                                            @click=${() =>
+                                                                event._fbEntityId &&
+                                                                card._openEventDialog?.(
+                                                                    event._fbEntityId,
+                                                                    event
+                                                                )}
+                                                        >
+                                                            <div class="eventTitle">
+                                                                ${event.summary || '(Event)'}
+                                                            </div>
+                                                            <div class="eventMeta">
+                                                                ${formatTimeRange(
+                                                                    event._start,
+                                                                    event._end,
+                                                                    event.all_day
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    `
+                                                )
+                                              : html`<div class="itemMeta">No events tomorrow.</div>`}
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      `
+                    : html``}
             </div>
         `;
     }

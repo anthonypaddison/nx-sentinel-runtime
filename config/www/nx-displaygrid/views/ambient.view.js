@@ -100,6 +100,15 @@ export class FbAmbientView extends LitElement {
             background: var(--fb-surface-2);
             padding: 10px 12px;
         }
+        .statBtn {
+            --fb-btn-bg: var(--fb-surface-2);
+            --fb-btn-border: var(--fb-grid);
+            --fb-btn-border-width: 1px;
+            --fb-btn-radius: 12px;
+            --fb-btn-padding: 10px 12px;
+            text-align: left;
+            width: 100%;
+        }
         .statLabel {
             color: var(--fb-muted);
             font-size: 12px;
@@ -146,36 +155,17 @@ export class FbAmbientView extends LitElement {
             font-size: 14px;
             font-weight: 700;
         }
-        .binLabel {
-            color: var(--fb-muted);
-            font-weight: 600;
-        }
         .binIcon {
-            display: inline-grid;
-            place-items: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 999px;
-            border: 1px solid var(--fb-border);
-            color: var(--bin-colour);
-            background: color-mix(in srgb, var(--bin-colour) 12%, var(--fb-surface));
-        }
-        .collectionRow {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 8px;
-        }
-        .collectionBtn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            min-height: 42px;
+            color: var(--bin-colour);
+            line-height: 0;
         }
-        .focusBtn {
-            min-width: 48px;
-            min-height: 42px;
-            padding: 0 10px;
+        .binIcon ha-icon {
+            --mdc-icon-size: 18px;
+            width: 18px;
+            height: 18px;
         }
         .todoRow {
             border: 1px solid var(--fb-grid);
@@ -191,6 +181,18 @@ export class FbAmbientView extends LitElement {
         .todoMeta {
             color: var(--fb-muted);
             font-size: 12px;
+        }
+        .actionDock {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .dockBtn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 46px;
         }
         .modalBackdrop {
             position: fixed;
@@ -285,12 +287,6 @@ export class FbAmbientView extends LitElement {
             .time {
                 font-size: 34px;
             }
-            .collectionRow {
-                grid-template-columns: 1fr;
-            }
-            .focusBtn {
-                width: 100%;
-            }
         }
         `,
     ];
@@ -349,6 +345,15 @@ export class FbAmbientView extends LitElement {
         const nextEvents = Array.isArray(ambient.nextEvents) ? ambient.nextEvents : [];
         const importantTodos = card._v2ImportantTodoCountdowns?.(8) || [];
         const collections = card._v2FamilyHomeControlCollections?.() || [];
+        const collectionList = Array.isArray(collections) ? collections : [];
+        const findCollection = (id) =>
+            collectionList.find((entry) => String(entry?.id || '').toLowerCase() === id) || null;
+        const heatingCollection = findCollection('heating') || collectionList[0] || null;
+        const lightingCollection =
+            findCollection('lighting') ||
+            collectionList.find((entry) => entry && entry !== heatingCollection) ||
+            collectionList[1] ||
+            null;
         const bins = card._nextBinCollectionInfo?.() || {
             line: 'Bin day: not scheduled',
             bins: [],
@@ -368,26 +373,26 @@ export class FbAmbientView extends LitElement {
                         <div class="date">${formatWeekdayLongDayMonthLong(now)}</div>
                     </div>
                     <div class="heroStats">
-                        <div class="stat">
+                        <button class="btn stat statBtn" @click=${() => card._onNav?.({ detail: { target: 'schedule' } })}>
                             <div class="statLabel">Events now</div>
                             <div class="statValue">${ambient.eventsNow || 0}</div>
-                        </div>
-                        <div class="stat">
+                        </button>
+                        <button class="btn stat statBtn" @click=${() => card._onNav?.({ detail: { target: 'shopping' } })}>
                             <div class="statLabel">Shopping</div>
                             <div class="statValue">${ambient.shoppingCount || 0}</div>
-                        </div>
-                        <div class="stat">
+                        </button>
+                        <button class="btn stat statBtn" @click=${() => card._onNav?.({ detail: { target: 'chores' } })}>
                             <div class="statLabel">Chores due</div>
                             <div class="statValue">${ambient.choresDue || 0}</div>
-                        </div>
-                        <div class="stat">
+                        </button>
+                        <button class="btn stat statBtn" @click=${() => card._onNav?.({ detail: { target: 'home' } })}>
                             <div class="statLabel">House mode</div>
                             <div class="statValue" style="font-size:15px">
                                 ${ambient.houseMode?.available
                                     ? ambient.houseMode.state || 'unknown'
                                     : 'Not set'}
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
 
@@ -396,7 +401,6 @@ export class FbAmbientView extends LitElement {
                         <div class="fb-card-header">Upcoming</div>
                         <div class="panelBody">
                             <div class="binLine">
-                                <span class="binLabel">Bin day:</span>
                                 <span>${bins.line || 'Not scheduled'}</span>
                                 ${(Array.isArray(bins.bins) ? bins.bins : []).map(
                                     (bin) => html`
@@ -409,36 +413,6 @@ export class FbAmbientView extends LitElement {
                                         </span>
                                     `
                                 )}
-                            </div>
-
-                            <div class="collectionRow">
-                                ${(collections.length ? collections.slice(0, 2) : []).map(
-                                    (collection) => html`
-                                        <button
-                                            class="btn collectionBtn"
-                                            @click=${() => this._openCollection(collection)}
-                                        >
-                                            <ha-icon icon=${collection.icon || 'mdi:toggle-switch-outline'}></ha-icon>
-                                            <span>${collection.label}</span>
-                                        </button>
-                                    `
-                                )}
-                                ${collections.length < 2
-                                    ? html`<button
-                                          class="btn collectionBtn"
-                                          @click=${() => this._openCollection(collections[0] || null)}
-                                      >
-                                          <ha-icon icon="mdi:toggle-switch-outline"></ha-icon>
-                                          <span>Home Controls</span>
-                                      </button>`
-                                    : html``}
-                                <button
-                                    class="btn focusBtn"
-                                    title="Ambient focus mode"
-                                    @click=${() => this._toggleFocus(true)}
-                                >
-                                    <ha-icon icon="mdi:monitor-screenshot"></ha-icon>
-                                </button>
                             </div>
 
                             ${nextEvents.length
@@ -482,6 +456,33 @@ export class FbAmbientView extends LitElement {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="actionDock">
+                    <button
+                        class="btn dockBtn"
+                        ?disabled=${!heatingCollection}
+                        @click=${() => heatingCollection && this._openCollection(heatingCollection)}
+                    >
+                        <ha-icon icon=${heatingCollection?.icon || 'mdi:radiator'}></ha-icon>
+                        <span>${heatingCollection?.label || 'Heating'}</span>
+                    </button>
+                    <button
+                        class="btn dockBtn"
+                        ?disabled=${!lightingCollection}
+                        @click=${() => lightingCollection && this._openCollection(lightingCollection)}
+                    >
+                        <ha-icon icon=${lightingCollection?.icon || 'mdi:lightbulb-group'}></ha-icon>
+                        <span>${lightingCollection?.label || 'Lighting'}</span>
+                    </button>
+                    <button
+                        class="btn dockBtn"
+                        title="Ambient screensaver mode"
+                        @click=${() => this._toggleFocus(true)}
+                    >
+                        <ha-icon icon="mdi:monitor-screenshot"></ha-icon>
+                        <span>Screensaver</span>
+                    </button>
                 </div>
 
                 ${this._collectionModal

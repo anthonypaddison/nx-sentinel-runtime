@@ -45,7 +45,6 @@ export function applyConfigHelpers(FamilyBoardCard) {
         _v2NavScreens() {
             const screens = [];
             const familyMode = this._isFamilyDashboardMode?.();
-            const adminMenu = this._familyAdminMenuConfig?.();
             if (this._v2FeatureEnabled('food_view')) {
                 screens.push({ key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' });
             }
@@ -63,16 +62,16 @@ export function applyConfigHelpers(FamilyBoardCard) {
                 screens.push({ key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' });
             }
             if (
+                !familyMode &&
                 this._v2FeatureEnabled('admin_dashboard') &&
-                this._hasAdminAccess?.() &&
-                (!familyMode || adminMenu?.admin)
+                this._hasAdminAccess?.()
             ) {
                 screens.push({ key: 'admin', label: 'Admin', icon: 'mdi:shield-crown-outline' });
             }
             if (
+                !familyMode &&
                 this._v2FeatureEnabled('audit_timeline') &&
-                this._hasAdminAccess?.() &&
-                (!familyMode || adminMenu?.audit)
+                this._hasAdminAccess?.()
             ) {
                 screens.push({ key: 'audit', label: 'Audit', icon: 'mdi:timeline-text-outline' });
             }
@@ -95,7 +94,42 @@ export function applyConfigHelpers(FamilyBoardCard) {
             );
         },
 
-        async _updateConfigPartial(patch) {
+        _shouldDeferSettingsSave(options = {}) {
+            return this._screen === 'settings' && options?.forceSave !== true;
+        },
+
+        _mergePendingSettingsPatch(patch = {}) {
+            const current =
+                this._pendingSettingsPatch && typeof this._pendingSettingsPatch === 'object'
+                    ? this._pendingSettingsPatch
+                    : {};
+            this._pendingSettingsPatch = { ...current, ...(patch || {}) };
+            this._pendingSettingsDirty = Object.keys(this._pendingSettingsPatch).length > 0;
+        },
+
+        _hasPendingSettingsChanges() {
+            return Boolean(
+                this._pendingSettingsDirty &&
+                    this._pendingSettingsPatch &&
+                    typeof this._pendingSettingsPatch === 'object' &&
+                    Object.keys(this._pendingSettingsPatch).length
+            );
+        },
+
+        async _savePendingSettingsChanges() {
+            if (!this._hasPendingSettingsChanges()) return { saved: false };
+            const patch = { ...(this._pendingSettingsPatch || {}) };
+            this._pendingSettingsPatch = {};
+            this._pendingSettingsDirty = false;
+            return this._updateConfigPartial(patch, { forceSave: true });
+        },
+
+        _discardPendingSettingsChanges() {
+            this._pendingSettingsPatch = {};
+            this._pendingSettingsDirty = false;
+        },
+
+        async _updateConfigPartial(patch, options = {}) {
             if (!patch) return;
             debugLog(this._debug, 'updateConfigPartial', { patch });
             const deviceKeys = new Set([
@@ -113,6 +147,37 @@ export function applyConfigHelpers(FamilyBoardCard) {
             for (const [key, value] of Object.entries(patch)) {
                 if (deviceKeys.has(key)) devicePatch[key] = value;
                 else sharedPatch[key] = value;
+            }
+
+            if (this._shouldDeferSettingsSave(options)) {
+                this._mergePendingSettingsPatch(patch);
+                if (devicePatch.day_start_hour !== undefined)
+                    this._deviceDayStartHour = Number(devicePatch.day_start_hour);
+                if (devicePatch.day_end_hour !== undefined)
+                    this._deviceDayEndHour = Number(devicePatch.day_end_hour);
+                if (devicePatch.px_per_hour !== undefined)
+                    this._devicePxPerHour = Number(devicePatch.px_per_hour);
+                if (devicePatch.refresh_interval_ms !== undefined)
+                    this._deviceRefreshMs = Number(devicePatch.refresh_interval_ms);
+                if (devicePatch.cache_max_age_ms !== undefined)
+                    this._deviceCacheMaxAgeMs = Number(devicePatch.cache_max_age_ms);
+                if (devicePatch.background_theme !== undefined)
+                    this._deviceBackgroundTheme = devicePatch.background_theme || '';
+                if (devicePatch.debug !== undefined)
+                    this._deviceDebug = Boolean(devicePatch.debug);
+                if (devicePatch.people_display !== undefined)
+                    this._devicePeopleDisplay = Array.isArray(devicePatch.people_display)
+                        ? devicePatch.people_display
+                        : [];
+
+                if (Object.keys(sharedPatch).length) {
+                    const sharedBase = this._sharedConfig || this._config || {};
+                    const nextShared = { ...sharedBase, ...sharedPatch };
+                    this._sharedConfig = nextShared;
+                    this._applyConfigImmediate(nextShared, { useDefaults: false });
+                }
+                this.requestUpdate();
+                return { deferred: true };
             }
 
             if (Object.keys(devicePatch).length) {
@@ -154,7 +219,9 @@ export function applyConfigHelpers(FamilyBoardCard) {
             } else {
                 this._showToast('Saved', 'Saved on this device');
             }
+            this._discardPendingSettingsChanges();
             this.requestUpdate();
+            return { saved: true };
         },
 
         _buildYamlConfig(cfg) {

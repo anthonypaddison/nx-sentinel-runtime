@@ -23,6 +23,7 @@ export function applyHandlers(FamilyBoardCard) {
                     end,
                     allDay: Boolean(allDay),
                 });
+                this._showToast?.('Event saved');
             } catch (error) {
                 this._optimisticCalendarRemove(entityId, optimistic);
                 this._reportError?.('Add event', error);

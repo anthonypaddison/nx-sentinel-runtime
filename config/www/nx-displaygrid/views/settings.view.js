@@ -92,6 +92,8 @@ export class FbSettingsView extends LitElement {
         _resetStep: { state: true },
         _resetDashboardStep: { state: true },
         _resetDashboardBusy: { state: true },
+        _shoppingFavouritesResetStep: { state: true },
+        _shoppingFavouritesResetType: { state: true },
         _personWizardOpen: { state: true },
         _personWizardStep: { state: true },
         _personWizardDraft: { state: true },
@@ -101,6 +103,7 @@ export class FbSettingsView extends LitElement {
         _binRotationPattern: { state: true },
         _binRotationWeekday: { state: true },
         _binRotationAnchor: { state: true },
+        _settingsPanel: { state: true },
     };
 
     static styles = [
@@ -123,6 +126,38 @@ export class FbSettingsView extends LitElement {
             gap: 10px;
             height: 100%;
             min-height: 0;
+        }
+        .panelTabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .tabs {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            background: var(--fb-surface-2);
+            border: 1px solid var(--fb-border);
+            border-radius: 999px;
+            width: fit-content;
+        }
+        .tabs .btn {
+            --fb-btn-border-width: 0;
+            --fb-btn-bg: transparent;
+            --fb-btn-radius: 999px;
+            --fb-btn-padding: 6px 12px;
+        }
+        .tabs .btn.active {
+            --fb-btn-bg: var(--fb-surface);
+            box-shadow: var(--shadow-sm);
+            font-weight: 700;
+        }
+        .saveState {
+            font-size: 12px;
+            color: var(--fb-muted);
+            margin-left: 4px;
         }
         .column {
             display: flex;
@@ -305,6 +340,8 @@ export class FbSettingsView extends LitElement {
             display: flex;
             gap: 8px;
             margin-top: 10px;
+            flex-wrap: wrap;
+            align-items: center;
         }
         .subTitle {
             font-weight: 700;
@@ -391,6 +428,13 @@ export class FbSettingsView extends LitElement {
         }
         `,
     ];
+
+    constructor() {
+        super();
+        this._settingsPanel = 'settings';
+        this._shoppingFavouritesResetStep = 0;
+        this._shoppingFavouritesResetType = '';
+    }
 
     _openPersonWizard(person) {
         const card = this.card;
@@ -930,22 +974,29 @@ export class FbSettingsView extends LitElement {
                                   : 'Are you 100% sure you want to reset everything on this device?'}
                           </div>
                           <div class="actions">
-                              <button class="btn" @click=${() => (this._resetStep = 0)}>
-                                  Cancel
-                              </button>
-                              <button
-                                  class="btn"
-                                  @click=${() => {
-                                      if (this._resetStep === 1) {
-                                          this._resetStep = 2;
-                                          return;
-                                      }
-                                      card._resetPrefsToDefaults?.();
-                                      this._resetStep = 0;
-                                  }}
-                              >
-                                  ${this._resetStep === 1 ? 'Yes' : 'Yes, reset'}
-                              </button>
+                              ${this._resetStep === 1
+                                  ? html`
+                                        <button class="btn" @click=${() => (this._resetStep = 0)}>
+                                            Cancel
+                                        </button>
+                                        <button class="btn" @click=${() => (this._resetStep = 2)}>
+                                            Yes
+                                        </button>
+                                    `
+                                  : html`
+                                        <button
+                                            class="btn"
+                                            @click=${() => {
+                                                card._resetPrefsToDefaults?.();
+                                                this._resetStep = 0;
+                                            }}
+                                        >
+                                            Yes, really reset
+                                        </button>
+                                        <button class="btn" @click=${() => (this._resetStep = 0)}>
+                                            Cancel
+                                        </button>
+                                    `}
                           </div>
                       </div>
                   </div>`
@@ -972,43 +1023,56 @@ export class FbSettingsView extends LitElement {
                                   : 'This is destructive. Config, prefs, and cached data will be cleared for this user/device.'}
                           </div>
                           <div class="actions">
-                              <button
-                                  class="btn"
-                                  ?disabled=${this._resetDashboardBusy}
-                                  @click=${() => (this._resetDashboardStep = 0)}
-                              >
-                                  Cancel
-                              </button>
-                              <button
-                                  class="btn"
-                                  ?disabled=${this._resetDashboardBusy}
-                                  @click=${async () => {
-                                      if (this._resetDashboardStep === 1) {
-                                          this._resetDashboardStep = 2;
-                                          return;
-                                      }
-                                      this._resetDashboardBusy = true;
-                                      try {
-                                          const userId = card?._hass?.user?.id || '';
-                                          const result = await card._resetAll?.(userId);
-                                          if (!result?.ok) {
-                                              card._showErrorToast?.(
-                                                  'Reset dashboard failed',
-                                                  'Please try again.'
-                                              );
-                                          }
-                                      } finally {
-                                          this._resetDashboardBusy = false;
-                                          this._resetDashboardStep = 0;
-                                      }
-                                  }}
-                              >
-                                  ${this._resetDashboardBusy
-                                      ? 'Resetting...'
-                                      : this._resetDashboardStep === 1
-                                      ? 'Yes'
-                                      : 'Yes, reset dashboard'}
-                              </button>
+                              ${this._resetDashboardStep === 1
+                                  ? html`
+                                        <button
+                                            class="btn"
+                                            ?disabled=${this._resetDashboardBusy}
+                                            @click=${() => (this._resetDashboardStep = 0)}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            class="btn"
+                                            ?disabled=${this._resetDashboardBusy}
+                                            @click=${() => (this._resetDashboardStep = 2)}
+                                        >
+                                            Yes
+                                        </button>
+                                    `
+                                  : html`
+                                        <button
+                                            class="btn"
+                                            ?disabled=${this._resetDashboardBusy}
+                                            @click=${async () => {
+                                                this._resetDashboardBusy = true;
+                                                try {
+                                                    const userId = card?._hass?.user?.id || '';
+                                                    const result = await card._resetAll?.(userId);
+                                                    if (!result?.ok) {
+                                                        card._showErrorToast?.(
+                                                            'Reset dashboard failed',
+                                                            'Please try again.'
+                                                        );
+                                                    }
+                                                } finally {
+                                                    this._resetDashboardBusy = false;
+                                                    this._resetDashboardStep = 0;
+                                                }
+                                            }}
+                                        >
+                                            ${this._resetDashboardBusy
+                                                ? 'Resetting...'
+                                                : 'Yes, really reset dashboard'}
+                                        </button>
+                                        <button
+                                            class="btn"
+                                            ?disabled=${this._resetDashboardBusy}
+                                            @click=${() => (this._resetDashboardStep = 0)}
+                                        >
+                                            Cancel
+                                        </button>
+                                    `}
                           </div>
                       </div>
                   </div>`
@@ -1029,6 +1093,49 @@ export class FbSettingsView extends LitElement {
                       </div>
                   </div>`
                 : html``}
+        `;
+    }
+
+    _renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel }) {
+        const pending = Boolean(card?._hasPendingSettingsChanges?.());
+        return html`
+            <div class="panelTabs">
+                <div class="tabs" role="tablist" aria-label="Settings panels">
+                    <button
+                        class="btn ${this._settingsPanel === 'settings' ? 'active' : ''}"
+                        @click=${() => (this._settingsPanel = 'settings')}
+                    >
+                        Settings
+                    </button>
+                    ${showAdminPanel
+                        ? html`<button
+                              class="btn ${this._settingsPanel === 'admin' ? 'active' : ''}"
+                              @click=${() => (this._settingsPanel = 'admin')}
+                          >
+                              Admin
+                          </button>`
+                        : html``}
+                    ${showAuditPanel
+                        ? html`<button
+                              class="btn ${this._settingsPanel === 'audit' ? 'active' : ''}"
+                              @click=${() => (this._settingsPanel = 'audit')}
+                          >
+                              Audit
+                          </button>`
+                        : html``}
+                </div>
+                <button
+                    class="btn"
+                    ?disabled=${!pending}
+                    @click=${async () => {
+                        await card?._savePendingSettingsChanges?.();
+                        this.requestUpdate();
+                    }}
+                >
+                    Save changes
+                </button>
+                <span class="saveState">${pending ? 'Unsaved changes' : 'All changes saved'}</span>
+            </div>
         `;
     }
 
@@ -1119,6 +1226,56 @@ export class FbSettingsView extends LitElement {
             familyDashboardV3.admin_menu && typeof familyDashboardV3.admin_menu === 'object'
                 ? familyDashboardV3.admin_menu
                 : {};
+        const familyCollectionDefaults = [
+            {
+                id: 'heating',
+                label: 'Heating',
+                icon: 'mdi:radiator',
+                domains: ['climate', 'switch', 'input_boolean'],
+                name_contains: ['heat', 'heating', 'boiler', 'radiator', 'thermostat'],
+                entities: [],
+            },
+            {
+                id: 'lighting',
+                label: 'Lighting',
+                icon: 'mdi:lightbulb-group',
+                domains: ['light', 'switch'],
+                name_contains: ['light', 'lamp'],
+                entities: [],
+            },
+        ];
+        const familyCollectionsRaw = Array.isArray(familyDashboardV3.home_control_collections)
+            ? familyDashboardV3.home_control_collections
+            : [];
+        const familyCollectionById = new Map(
+            familyCollectionsRaw
+                .filter((entry) => entry && typeof entry === 'object')
+                .map((entry) => [String(entry.id || '').toLowerCase(), entry])
+                .filter(([id]) => Boolean(id))
+        );
+        const heatingCollectionCfg = {
+            ...familyCollectionDefaults[0],
+            ...(familyCollectionById.get('heating') || {}),
+        };
+        const lightingCollectionCfg = {
+            ...familyCollectionDefaults[1],
+            ...(familyCollectionById.get('lighting') || {}),
+        };
+        const heatingEntitiesCsv = Array.isArray(heatingCollectionCfg.entities)
+            ? heatingCollectionCfg.entities.join(', ')
+            : '';
+        const lightingEntitiesCsv = Array.isArray(lightingCollectionCfg.entities)
+            ? lightingCollectionCfg.entities.join(', ')
+            : '';
+        const familyMode = card._isFamilyDashboardMode?.() === true;
+        const showAdminPanel =
+            card._v2FeatureEnabled?.('admin_dashboard') &&
+            hasAdminAccess &&
+            (!familyMode || familyAdminMenu.admin !== false);
+        const showAuditPanel =
+            card._v2FeatureEnabled?.('audit_timeline') &&
+            hasAdminAccess &&
+            (!familyMode || familyAdminMenu.audit !== false);
         const foodV2 = cfg.food_v2 && typeof cfg.food_v2 === 'object' ? cfg.food_v2 : {};
         const adminV2 =
             cfg.admin_v2 && typeof cfg.admin_v2 === 'object' ? cfg.admin_v2 : {};
@@ -1155,6 +1312,29 @@ export class FbSettingsView extends LitElement {
                 .split(',')
                 .map((v) => v.trim())
                 .filter(Boolean);
+        const updateHomeControlCollectionEntities = (id, entities) => {
+            const updates = new Map(
+                familyCollectionDefaults.map((entry) => [entry.id, { ...entry, entities: [] }])
+            );
+            familyCollectionsRaw.forEach((entry) => {
+                if (!entry || typeof entry !== 'object') return;
+                const key = String(entry.id || '').toLowerCase();
+                if (!key || !updates.has(key)) return;
+                updates.set(key, { ...updates.get(key), ...entry });
+            });
+            if (updates.has(id)) {
+                updates.set(id, {
+                    ...updates.get(id),
+                    entities: parseTextCsv(entities),
+                });
+            }
+            card._updateConfigPartial({
+                family_dashboard_v3: {
+                    ...familyDashboardV3,
+                    home_control_collections: Array.from(updates.values()),
+                },
+            });
+        };
         const foodUnitsCsv = Array.isArray(foodV2.units) ? foodV2.units.join(', ') : '';
         const cacheMaxAgeMinutes = Number.isFinite(card._cacheMaxAgeMs)
             ? Math.round(card._cacheMaxAgeMs / 60000)
@@ -1168,6 +1348,8 @@ export class FbSettingsView extends LitElement {
         const personWizardEnabled = Boolean(card._v2FeatureEnabled?.('person_wizard_settings'));
         const weekdayOptions = SETTINGS_WEEKDAY_OPTIONS;
         const binColourOptions = BIN_COLOUR_OPTIONS;
+        const adminRenderKey = `${this.renderKey || ''}|${card._v2HealthRenderSig?.() || ''}|${card._lastRefreshTs || 0}`;
+        const auditRenderKey = `${this.renderKey || ''}|${card._v2AuditRenderSig?.() || ''}`;
         const updateBinConfig = (nextBins, nextSchedule) => {
             card._updateConfigPartial({
                 bins: nextBins,
@@ -1179,19 +1361,42 @@ export class FbSettingsView extends LitElement {
             `bin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
         if (!hasAdminAccess) return this._renderAdminLocked({ card, hasPin });
+        if (this._settingsPanel === 'admin' && !showAdminPanel) this._settingsPanel = 'settings';
+        if (this._settingsPanel === 'audit' && !showAuditPanel) this._settingsPanel = 'settings';
+
+        if (this._settingsPanel === 'admin' && showAdminPanel) {
+            return html`
+                <div class="wrap hidden">
+                    ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
+                    <fb-admin-view .card=${card} .renderKey=${adminRenderKey}></fb-admin-view>
+                </div>
+                ${this._renderDialogs(card)}
+            `;
+        }
+
+        if (this._settingsPanel === 'audit' && showAuditPanel) {
+            return html`
+                <div class="wrap hidden">
+                    ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
+                    <fb-audit-view .card=${card} .renderKey=${auditRenderKey}></fb-audit-view>
+                </div>
+                ${this._renderDialogs(card)}
+            `;
+        }
 
         return html`
             <div class="wrap hidden">
+                ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
                 <div class="layout">
                     <div class="column">
                         <div class="section fb-card">
                             <div class="titleRow">
-                                <div class="title">Sources & Admin</div>
+                                <div class="title">Sources & Dashboard</div>
                                 <button
                                     class="btn icon ghost infoBtn"
                                     title="About sources"
                                     @click=${() => {
-                                        this._infoTitle = 'Sources & Admin';
+                                        this._infoTitle = 'Sources & Dashboard';
                                         this._infoText =
                                             'Manage sources, people order, admin access, home controls, and shopping favourites. Each person needs at least one calendar or todo list.';
                                         this._infoOpen = true;
@@ -1388,13 +1593,12 @@ export class FbSettingsView extends LitElement {
                                       `
                                     : html``}
 
-                                <div class="subTitle">Family dashboard menu</div>
+                                <div class="subTitle">Family dashboard panels</div>
                                 <div class="muted">
-                                    Control which admin-only menu entries are visible to admins on
-                                    the Family Dashboard.
+                                    Control which admin-only settings panels are visible to admins.
                                 </div>
                                 <div class="row">
-                                    <div>Show Settings menu</div>
+                                    <div>Show Settings entry</div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1416,7 +1620,7 @@ export class FbSettingsView extends LitElement {
                                     </label>
                                 </div>
                                 <div class="row">
-                                    <div>Show Admin menu</div>
+                                    <div>Show Admin panel tab</div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1438,7 +1642,7 @@ export class FbSettingsView extends LitElement {
                                     </label>
                                 </div>
                                 <div class="row">
-                                    <div>Show Audit menu</div>
+                                    <div>Show Audit panel tab</div>
                                     <label>
                                         <input
                                             type="checkbox"
@@ -1477,6 +1681,38 @@ export class FbSettingsView extends LitElement {
                                                     units: parseTextCsv(e.target.value),
                                                 },
                                             })}
+                                    />
+                                </div>
+
+                                <div class="subTitle">Home control collections</div>
+                                <div class="muted">
+                                    Override which entities appear in the Ambient Heating and Lighting
+                                    collection buttons.
+                                </div>
+                                <div class="row">
+                                    <div>Heating entities</div>
+                                    <input
+                                        class="input"
+                                        placeholder="climate.house, switch.boiler"
+                                        .value=${heatingEntitiesCsv}
+                                        @change=${(e) =>
+                                            updateHomeControlCollectionEntities(
+                                                'heating',
+                                                e.target.value
+                                            )}
+                                    />
+                                </div>
+                                <div class="row">
+                                    <div>Lighting entities</div>
+                                    <input
+                                        class="input"
+                                        placeholder="light.kitchen, switch.hall_lamp"
+                                        .value=${lightingEntitiesCsv}
+                                        @change=${(e) =>
+                                            updateHomeControlCollectionEntities(
+                                                'lighting',
+                                                e.target.value
+                                            )}
                                     />
                                 </div>
 
@@ -2165,18 +2401,86 @@ export class FbSettingsView extends LitElement {
                                     completely.
                                 </div>
                                 <div class="actions">
-                                    <button
-                                        class="btn"
-                                        @click=${() => card._resetShoppingFavouritesDefaults?.()}
-                                    >
-                                        Reset to defaults
-                                    </button>
-                                    <button
-                                        class="btn"
-                                        @click=${() => card._clearShoppingFavourites?.()}
-                                    >
-                                        Clear all
-                                    </button>
+                                    ${this._shoppingFavouritesResetStep === 0
+                                        ? html`
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => {
+                                                      this._shoppingFavouritesResetType = 'defaults';
+                                                      this._shoppingFavouritesResetStep = 1;
+                                                  }}
+                                              >
+                                                  Reset to defaults
+                                              </button>
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => {
+                                                      this._shoppingFavouritesResetType = 'clear';
+                                                      this._shoppingFavouritesResetStep = 1;
+                                                  }}
+                                              >
+                                                  Clear all
+                                              </button>
+                                          `
+                                        : html``}
+                                    ${this._shoppingFavouritesResetStep === 1
+                                        ? html`
+                                              <div class="muted">
+                                                  Are you sure you want to
+                                                  ${this._shoppingFavouritesResetType === 'clear'
+                                                      ? 'clear all favourites'
+                                                      : 'reset favourites to defaults'}?
+                                              </div>
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => {
+                                                      this._shoppingFavouritesResetStep = 0;
+                                                      this._shoppingFavouritesResetType = '';
+                                                  }}
+                                              >
+                                                  Cancel
+                                              </button>
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => (this._shoppingFavouritesResetStep = 2)}
+                                              >
+                                                  Yes
+                                              </button>
+                                          `
+                                        : html``}
+                                    ${this._shoppingFavouritesResetStep === 2
+                                        ? html`
+                                              <div class="muted">
+                                                  Yeah, but are you really sure?
+                                              </div>
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => {
+                                                      if (
+                                                          this._shoppingFavouritesResetType ===
+                                                          'clear'
+                                                      ) {
+                                                          card._clearShoppingFavourites?.();
+                                                      } else {
+                                                          card._resetShoppingFavouritesDefaults?.();
+                                                      }
+                                                      this._shoppingFavouritesResetStep = 0;
+                                                      this._shoppingFavouritesResetType = '';
+                                                  }}
+                                              >
+                                                  Yes, do it
+                                              </button>
+                                              <button
+                                                  class="btn"
+                                                  @click=${() => {
+                                                      this._shoppingFavouritesResetStep = 0;
+                                                      this._shoppingFavouritesResetType = '';
+                                                  }}
+                                              >
+                                                  Cancel
+                                              </button>
+                                          `
+                                        : html``}
                                 </div>
                             </div>
                         </div>
@@ -2422,15 +2726,8 @@ export class FbSettingsView extends LitElement {
                                 ${card._v2FeatureEnabled?.('ambient_view')
                                     ? html`<option value="ambient">Ambient</option>`
                                     : html``}
-                                ${card._v2FeatureEnabled?.('admin_dashboard') &&
-                                card._hasAdminAccess?.()
-                                    ? html`<option value="admin">Admin</option>`
-                                    : html``}
-                                ${card._v2FeatureEnabled?.('audit_timeline') &&
-                                card._hasAdminAccess?.()
-                                    ? html`<option value="audit">Audit</option>`
-                                    : html``}
                                 <option value="home">Home</option>
+                                <option value="settings">Settings</option>
                             </select>
                                 </div>
                                 <div class="muted">

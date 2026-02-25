@@ -49,12 +49,18 @@ function normaliseCollection(value, fallback = {}) {
     const nameContains = Array.isArray(source.name_contains)
         ? source.name_contains.map((part) => String(part || '').trim().toLowerCase()).filter(Boolean)
         : [];
+    const explicitEntities = Array.isArray(source.entities)
+        ? source.entities.map((entityId) => String(entityId || '').trim()).filter(Boolean)
+        : Array.isArray(source.entity_ids)
+        ? source.entity_ids.map((entityId) => String(entityId || '').trim()).filter(Boolean)
+        : [];
     return {
         id: String(source.id || fallback.id || label.toLowerCase().replace(/\s+/g, '_')),
         label,
         icon: String(source.icon || fallback.icon || 'mdi:toggle-switch-outline'),
         domains,
         nameContains,
+        explicitEntities,
     };
 }
 
@@ -294,19 +300,24 @@ export function applyIntent(FamilyBoardCard) {
                 .map((entry, index) => normaliseCollection(entry, defaults[index] || {}))
                 .filter(Boolean)
                 .map((collection) => {
-                    const items = eligible.filter((entityId) => {
-                        const domain = String(entityId || '')
-                            .split('.')[0]
-                            .toLowerCase();
-                        const slug = String(entityId || '').toLowerCase();
-                        const domainMatch = collection.domains.length
-                            ? collection.domains.includes(domain)
-                            : true;
-                        const textMatch = collection.nameContains.length
-                            ? collection.nameContains.some((part) => slug.includes(part))
-                            : false;
-                        return domainMatch || textMatch;
-                    });
+                    const explicit = Array.isArray(collection.explicitEntities)
+                        ? collection.explicitEntities
+                        : [];
+                    const items = explicit.length
+                        ? eligible.filter((entityId) => explicit.includes(entityId))
+                        : eligible.filter((entityId) => {
+                              const domain = String(entityId || '')
+                                  .split('.')[0]
+                                  .toLowerCase();
+                              const slug = String(entityId || '').toLowerCase();
+                              const domainMatch = collection.domains.length
+                                  ? collection.domains.includes(domain)
+                                  : true;
+                              const textMatch = collection.nameContains.length
+                                  ? collection.nameContains.some((part) => slug.includes(part))
+                                  : false;
+                              return domainMatch || textMatch;
+                          });
                     return {
                         ...collection,
                         entities: items,

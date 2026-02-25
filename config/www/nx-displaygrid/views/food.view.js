@@ -25,49 +25,6 @@ function ingredientSummary(items, max = 4) {
     return `${list.slice(0, max).join(', ')} +${list.length - max}`;
 }
 
-function linesToText(lines) {
-    return (Array.isArray(lines) ? lines : []).map((line) => String(line || '').trim()).filter(Boolean).join('\n');
-}
-
-function parseIngredientLines(text, unitFallback = '') {
-    return String(text || '')
-        .split(/\n|,/g)
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-            const leading = /^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s+(.+)$/.exec(line);
-            if (leading) {
-                return {
-                    name: String(leading[3] || '').trim(),
-                    qty: Number(leading[1] || 1),
-                    unit: String(leading[2] || '').trim() || unitFallback,
-                };
-            }
-            const trailing = /^(.+?)\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/.exec(line);
-            if (trailing) {
-                return {
-                    name: String(trailing[1] || '').trim(),
-                    qty: Number(trailing[2] || 1),
-                    unit: String(trailing[3] || '').trim() || unitFallback,
-                };
-            }
-            const count = /^(.+?)\s+x(\d+(?:\.\d+)?)$/i.exec(line);
-            if (count) {
-                return {
-                    name: String(count[1] || '').trim(),
-                    qty: Number(count[2] || 1),
-                    unit: unitFallback,
-                };
-            }
-            return {
-                name: line,
-                qty: 1,
-                unit: unitFallback,
-            };
-        })
-        .filter((item) => item.name);
-}
-
 function clampRating(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0;
@@ -85,11 +42,11 @@ export class FbFoodView extends LitElement {
         _recipeName: { state: true },
         _recipeIngredients: { state: true },
         _recipeSteps: { state: true },
+        _recipeIngredientName: { state: true },
+        _recipeIngredientQty: { state: true },
+        _recipeIngredientUnit: { state: true },
+        _recipeStepText: { state: true },
         _menuSearch: { state: true },
-        _pantryName: { state: true },
-        _pantryQty: { state: true },
-        _fridgeName: { state: true },
-        _fridgeQty: { state: true },
         _shoppingModal: { state: true },
         _reviewComments: { state: true },
     };
@@ -101,13 +58,13 @@ export class FbFoodView extends LitElement {
         this._savedListItems = '';
         this._recipeId = '';
         this._recipeName = '';
-        this._recipeIngredients = '';
-        this._recipeSteps = '';
+        this._recipeIngredients = [];
+        this._recipeSteps = [];
+        this._recipeIngredientName = '';
+        this._recipeIngredientQty = '1';
+        this._recipeIngredientUnit = 'quantity';
+        this._recipeStepText = '';
         this._menuSearch = {};
-        this._pantryName = '';
-        this._pantryQty = '';
-        this._fridgeName = '';
-        this._fridgeQty = '';
         this._shoppingModal = null;
         this._reviewComments = {};
     }
@@ -177,7 +134,7 @@ export class FbFoodView extends LitElement {
             grid-template-columns: minmax(0, 1fr) auto auto;
         }
         .row.menuRow {
-            grid-template-columns: minmax(120px, 150px) minmax(190px, 1fr) minmax(0, 1fr) auto;
+            grid-template-columns: minmax(120px, 150px) minmax(190px, 1fr) minmax(0, 1fr) auto auto;
             align-items: start;
         }
         .dayLabel {
@@ -272,6 +229,33 @@ export class FbFoodView extends LitElement {
             gap: 8px;
             align-items: center;
         }
+        .ingredientDraft {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: minmax(0, 1fr) 96px 140px auto;
+            align-items: center;
+        }
+        .stepDraft {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+        }
+        .recipeList {
+            display: grid;
+            gap: 8px;
+        }
+        .stepLine {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: start;
+        }
+        .stepIndex {
+            color: var(--fb-muted);
+            font-size: 12px;
+            padding-top: 2px;
+        }
         .reviewInput {
             min-height: 34px;
         }
@@ -321,6 +305,9 @@ export class FbFoodView extends LitElement {
             .row.menuRow {
                 grid-template-columns: 1fr;
             }
+            .ingredientDraft {
+                grid-template-columns: 1fr;
+            }
         }
         `,
     ];
@@ -328,8 +315,12 @@ export class FbFoodView extends LitElement {
     _resetRecipeDraft() {
         this._recipeId = '';
         this._recipeName = '';
-        this._recipeIngredients = '';
-        this._recipeSteps = '';
+        this._recipeIngredients = [];
+        this._recipeSteps = [];
+        this._recipeIngredientName = '';
+        this._recipeIngredientQty = '1';
+        this._recipeIngredientUnit = 'quantity';
+        this._recipeStepText = '';
     }
 
     _openRecipeEditor(recipe) {
@@ -339,29 +330,84 @@ export class FbFoodView extends LitElement {
         }
         this._recipeId = recipe.id || '';
         this._recipeName = recipe.name || '';
-        this._recipeIngredients = linesToText(
-            (recipe.ingredients || []).map((ingredient) => {
-                const name = String(ingredient.name || '').trim();
-                if (!name) return '';
-                const qty = Number(ingredient.qty || 1);
-                const unit = String(ingredient.unit || '').trim();
-                if (qty > 1 && unit) return `${qty} ${unit} ${name}`;
-                if (qty > 1) return `${qty} ${name}`;
-                if (unit) return `${unit} ${name}`;
-                return name;
-            })
-        );
-        this._recipeSteps = linesToText(recipe.steps || []);
+        this._recipeIngredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
+            .map((ingredient, idx) => ({
+                id: String(ingredient?.id || `ingredient_${idx}`),
+                name: String(ingredient?.name || '').trim(),
+                qty: Number(ingredient?.qty || 1),
+                unit: String(ingredient?.unit || 'quantity').trim() || 'quantity',
+            }))
+            .filter((ingredient) => ingredient.name);
+        this._recipeSteps = (Array.isArray(recipe.steps) ? recipe.steps : [])
+            .map((step) => String(step || '').trim())
+            .filter(Boolean);
+        this._recipeIngredientName = '';
+        this._recipeIngredientQty = '1';
+        this._recipeIngredientUnit = 'quantity';
+        this._recipeStepText = '';
+    }
+
+    _addRecipeIngredient() {
+        const names = String(this._recipeIngredientName || '')
+            .split(/\n|,/g)
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (!names.length) return;
+        const qty = Number(this._recipeIngredientQty || 1);
+        const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+        const unit = String(this._recipeIngredientUnit || 'quantity').trim() || 'quantity';
+        this._recipeIngredients = [
+            ...(Array.isArray(this._recipeIngredients) ? this._recipeIngredients : []),
+            ...names.map((name, idx) => ({
+                id: `food_ing_${Date.now().toString(36)}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+                name,
+                qty: safeQty,
+                unit,
+            })),
+        ];
+        this._recipeIngredientName = '';
+        this._recipeIngredientQty = '1';
+        this._recipeIngredientUnit = unit;
+    }
+
+    _removeRecipeIngredient(index) {
+        const idx = Number(index);
+        if (!Number.isInteger(idx) || idx < 0) return;
+        const list = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
+        this._recipeIngredients = list.filter((_, i) => i !== idx);
+    }
+
+    _addRecipeStep() {
+        const lines = String(this._recipeStepText || '')
+            .split('\n')
+            .map((step) => step.trim())
+            .filter(Boolean);
+        if (!lines.length) return;
+        this._recipeSteps = [...(Array.isArray(this._recipeSteps) ? this._recipeSteps : []), ...lines];
+        this._recipeStepText = '';
+    }
+
+    _removeRecipeStep(index) {
+        const idx = Number(index);
+        if (!Number.isInteger(idx) || idx < 0) return;
+        const list = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
+        this._recipeSteps = list.filter((_, i) => i !== idx);
     }
 
     async _submitRecipe(card) {
         const name = String(this._recipeName || '').trim();
         if (!name) return;
-        const ingredients = parseIngredientLines(this._recipeIngredients || '');
+        const ingredients = (Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [])
+            .map((ingredient) => ({
+                id: String(ingredient?.id || ''),
+                name: String(ingredient?.name || '').trim(),
+                qty: Number(ingredient?.qty || 1),
+                unit: String(ingredient?.unit || 'quantity').trim() || 'quantity',
+            }))
+            .filter((ingredient) => ingredient.name);
         if (!ingredients.length) return;
-        const steps = String(this._recipeSteps || '')
-            .split('\n')
-            .map((line) => line.trim())
+        const steps = (Array.isArray(this._recipeSteps) ? this._recipeSteps : [])
+            .map((step) => String(step || '').trim())
             .filter(Boolean);
 
         if (this._recipeId) {
@@ -374,11 +420,16 @@ export class FbFoodView extends LitElement {
         } else {
             await card._foodAddMeal?.({
                 name,
-                itemsText: this._recipeIngredients,
-                instructionsText: this._recipeSteps,
+                ingredients,
+                steps,
             });
         }
         this._resetRecipeDraft();
+    }
+
+    async _beginCooking(card, day) {
+        const started = await card._foodBeginCooking?.(day);
+        if (started) this._tab = 'cooking';
     }
 
     _openShoppingModal(title, items) {
@@ -419,20 +470,6 @@ export class FbFoodView extends LitElement {
         });
         this._savedListName = '';
         this._savedListItems = '';
-    }
-
-    async _submitInventory(card, zone) {
-        const isFridge = zone === 'fridge';
-        const name = isFridge ? this._fridgeName : this._pantryName;
-        const qty = isFridge ? this._fridgeQty : this._pantryQty;
-        await card._foodAddInventoryItem?.(zone, { name, qty });
-        if (isFridge) {
-            this._fridgeName = '';
-            this._fridgeQty = '';
-        } else {
-            this._pantryName = '';
-            this._pantryQty = '';
-        }
     }
 
     _renderRatingStars(card, recipe) {
@@ -576,6 +613,13 @@ export class FbFoodView extends LitElement {
                                         >
                                             Add to shopping
                                         </button>
+                                        <button
+                                            class="btn"
+                                            ?disabled=${!selectedMeal}
+                                            @click=${() => this._beginCooking(card, entry.day)}
+                                        >
+                                            Begin cooking
+                                        </button>
                                     </div>
                                 `;
                             })}
@@ -644,14 +688,16 @@ export class FbFoodView extends LitElement {
     _renderRecipesTab(card, food) {
         const recipes = Array.isArray(food?.recipes) ? food.recipes : [];
         const units = card._foodUnitOptions?.() || [];
+        const ingredientDraft = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
+        const stepDraft = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
         return html`
             <div class="grid2">
                 <div class="panel fb-card">
                     <div class="fb-card-header">${this._recipeId ? 'Edit Recipe' : 'New Recipe'}</div>
                     <div class="panelBody">
                         <div class="sectionHint">
-                            Add ingredients and instruction steps. If a line has no quantity, it defaults
-                            to 1.
+                            Build recipes with itemized ingredients and steps. Ingredient quantity
+                            defaults to 1 and unit defaults to quantity.
                         </div>
                         <input
                             class="input"
@@ -659,17 +705,82 @@ export class FbFoodView extends LitElement {
                             .value=${this._recipeName}
                             @input=${(e) => (this._recipeName = e.target.value)}
                         />
-                        <textarea
-                            placeholder="Ingredients (one per line, e.g. 2 kg chicken breast)"
-                            .value=${this._recipeIngredients}
-                            @input=${(e) => (this._recipeIngredients = e.target.value)}
-                        ></textarea>
-                        <div class="mutedSmall">Units available: ${units.join(', ') || 'items'}</div>
-                        <textarea
-                            placeholder="Instructions (one step per line)"
-                            .value=${this._recipeSteps}
-                            @input=${(e) => (this._recipeSteps = e.target.value)}
-                        ></textarea>
+                        <div class="subTitle">Ingredients</div>
+                        <div class="ingredientDraft">
+                            <input
+                                class="input"
+                                placeholder="Ingredient name"
+                                .value=${this._recipeIngredientName}
+                                @input=${(e) => (this._recipeIngredientName = e.target.value)}
+                            />
+                            <input
+                                class="input"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="Qty"
+                                .value=${this._recipeIngredientQty}
+                                @input=${(e) => (this._recipeIngredientQty = e.target.value)}
+                            />
+                            <select
+                                class="input"
+                                .value=${this._recipeIngredientUnit || 'quantity'}
+                                @change=${(e) => (this._recipeIngredientUnit = e.target.value)}
+                            >
+                                ${(units.length ? units : ['quantity']).map(
+                                    (unit) => html`<option value=${unit}>${unit}</option>`
+                                )}
+                            </select>
+                            <button class="btn" @click=${this._addRecipeIngredient}>+</button>
+                        </div>
+                        <div class="mutedSmall">Units available: ${units.join(', ') || 'quantity'}</div>
+                        <div class="recipeList">
+                            ${ingredientDraft.length
+                                ? ingredientDraft.map(
+                                      (ingredient, idx) => html`
+                                          <div class="ingredientRow">
+                                              <div class="mutedSmall">
+                                                  ${ingredientSummary([ingredient], 1)}
+                                              </div>
+                                              <button
+                                                  class="btn sm ghost"
+                                                  @click=${() => this._removeRecipeIngredient(idx)}
+                                              >
+                                                  Remove
+                                              </button>
+                                          </div>
+                                      `
+                                  )
+                                : html`<div class="mutedSmall">No ingredients added yet.</div>`}
+                        </div>
+                        <div class="subTitle">Steps</div>
+                        <div class="stepDraft">
+                            <input
+                                class="input"
+                                placeholder="Add a cooking step"
+                                .value=${this._recipeStepText}
+                                @input=${(e) => (this._recipeStepText = e.target.value)}
+                            />
+                            <button class="btn" @click=${this._addRecipeStep}>+</button>
+                        </div>
+                        <div class="recipeList">
+                            ${stepDraft.length
+                                ? stepDraft.map(
+                                      (step, idx) => html`
+                                          <div class="stepLine">
+                                              <div class="stepIndex">${idx + 1}.</div>
+                                              <div class="mutedSmall">${step}</div>
+                                              <button
+                                                  class="btn sm ghost"
+                                                  @click=${() => this._removeRecipeStep(idx)}
+                                              >
+                                                  Remove
+                                              </button>
+                                          </div>
+                                      `
+                                  )
+                                : html`<div class="mutedSmall">No steps added yet.</div>`}
+                        </div>
                         <div class="bundleHead">
                             <button
                                 class="btn"
@@ -709,6 +820,12 @@ export class FbFoodView extends LitElement {
                                                   @click=${() => this._openRecipeEditor(recipe)}
                                               >
                                                   Edit
+                                              </button>
+                                              <button
+                                                  class="btn sm ghost"
+                                                  @click=${() => this._tab = 'menu'}
+                                              >
+                                                  Plan in week
                                               </button>
                                               <button
                                                   class="btn sm ghost"
@@ -756,77 +873,67 @@ export class FbFoodView extends LitElement {
         `;
     }
 
-    _renderInventoryColumn(card, title, zone, items) {
-        const isFridge = zone === 'fridge';
-        const nameValue = isFridge ? this._fridgeName : this._pantryName;
-        const qtyValue = isFridge ? this._fridgeQty : this._pantryQty;
+    _renderCookingTab(card, food) {
+        const cooking = food?.cooking && typeof food.cooking === 'object' ? food.cooking : {};
+        if (cooking.active !== true || !cooking.mealId) {
+            return html`
+                <div class="panel fb-card">
+                    <div class="fb-card-header">Cooking</div>
+                    <div class="panelBody">
+                        <div class="muted">Start cooking from the Meals tab to see steps here.</div>
+                    </div>
+                </div>
+            `;
+        }
+        const recipes = Array.isArray(food?.recipes) ? food.recipes : [];
+        const recipe = recipes.find((entry) => entry.id === cooking.mealId) || null;
+        const steps = Array.isArray(recipe?.steps) ? recipe.steps : [];
+        const checks = Array.isArray(cooking.stepChecks) ? cooking.stepChecks : [];
+        const weekdayLabels = card._foodWeekdayLabels?.() || [];
+        const dayLabel =
+            Number.isInteger(Number(cooking.day)) && weekdayLabels[Number(cooking.day)]
+                ? weekdayLabels[Number(cooking.day)]
+                : 'Today';
         return html`
             <div class="panel fb-card">
-                <div class="fb-card-header">${title}</div>
+                <div class="fb-card-header">Cooking</div>
                 <div class="panelBody">
-                    <div class="row compact">
-                        <input
-                            class="input"
-                            placeholder="Item"
-                            .value=${nameValue}
-                            @input=${(e) =>
-                                isFridge ? (this._fridgeName = e.target.value) : (this._pantryName = e.target.value)}
-                            @keydown=${(e) => {
-                                if (e.key !== 'Enter') return;
-                                this._submitInventory(card, zone);
+                    <div class="bundleHead">
+                        <div>
+                            <div style="font-weight:700">${recipe?.name || 'Recipe'}</div>
+                            <div class="mutedSmall">${dayLabel}</div>
+                        </div>
+                        <button
+                            class="btn"
+                            @click=${async () => {
+                                await card._foodFinishCooking?.();
+                                this._tab = 'menu';
                             }}
-                        />
-                        <input
-                            class="input"
-                            placeholder="Qty"
-                            .value=${qtyValue}
-                            @input=${(e) =>
-                                isFridge ? (this._fridgeQty = e.target.value) : (this._pantryQty = e.target.value)}
-                            @keydown=${(e) => {
-                                if (e.key !== 'Enter') return;
-                                this._submitInventory(card, zone);
-                            }}
-                            style="max-width:92px"
-                        />
-                        <button class="btn" @click=${() => this._submitInventory(card, zone)}>Add</button>
+                        >
+                            Finish cooking
+                        </button>
                     </div>
-                    ${items.length
-                        ? html`<div class="stack">
-                              ${items.map(
-                                  (item) => html`
-                                      <div class="invItem">
+                    ${steps.length
+                        ? html`<div class="recipeList">
+                              ${steps.map(
+                                  (step, idx) => html`
+                                      <label class="checkRow">
                                           <input
                                               type="checkbox"
-                                              .checked=${item.inStock !== false}
-                                              @change=${() => card._foodToggleInventoryItem?.(zone, item.id)}
+                                              .checked=${checks[idx] === true}
+                                              @change=${(e) =>
+                                                  card._foodToggleCookingStep?.(
+                                                      idx,
+                                                      e.target.checked
+                                                  )}
                                           />
-                                          <div class="invName ${item.inStock === false ? 'out' : ''}">
-                                              ${item.name}
-                                          </div>
-                                          <div class="invQty">${item.qty || '—'}</div>
-                                          <button
-                                              class="btn sm ghost"
-                                              @click=${() => card._foodRemoveInventoryItem?.(zone, item.id)}
-                                          >
-                                              Delete
-                                          </button>
-                                      </div>
+                                          <span>${idx + 1}. ${step}</span>
+                                      </label>
                                   `
                               )}
                           </div>`
-                        : html`<div class="muted">No items yet.</div>`}
+                        : html`<div class="muted">No steps saved for this recipe.</div>`}
                 </div>
-            </div>
-        `;
-    }
-
-    _renderHouseTab(card, food) {
-        const pantry = Array.isArray(food?.inventory?.pantry) ? food.inventory.pantry : [];
-        const fridge = Array.isArray(food?.inventory?.fridge) ? food.inventory.fridge : [];
-        return html`
-            <div class="grid2">
-                ${this._renderInventoryColumn(card, 'Pantry', 'pantry', pantry)}
-                ${this._renderInventoryColumn(card, 'Fridge', 'fridge', fridge)}
             </div>
         `;
     }
@@ -840,11 +947,13 @@ export class FbFoodView extends LitElement {
         if (!card) return html``;
         const food = card._foodData?.() || {
             menu: [],
-            inventory: { pantry: [], fridge: [] },
             savedLists: [],
             recipes: [],
             units: [],
+            cooking: { active: false, day: null, mealId: '', stepChecks: [] },
         };
+        const cookingActive = food?.cooking?.active === true;
+        if (this._tab === 'cooking' && !cookingActive) this._tab = 'menu';
 
         return html`
             <div class="wrap hidden">
@@ -865,15 +974,20 @@ export class FbFoodView extends LitElement {
                         >
                             Shopping List
                         </button>
-                        <button class="btn ${this._tab === 'house' ? 'active' : ''}" @click=${() => (this._tab = 'house')}>
-                            In the house
-                        </button>
+                        ${cookingActive
+                            ? html`<button
+                                  class="btn ${this._tab === 'cooking' ? 'active' : ''}"
+                                  @click=${() => (this._tab = 'cooking')}
+                              >
+                                  Cooking
+                              </button>`
+                            : html``}
                     </div>
                     <div class="content">
-                        ${this._tab === 'house'
-                            ? this._renderHouseTab(card, food)
-                            : this._tab === 'recipes'
+                        ${this._tab === 'recipes'
                             ? this._renderRecipesTab(card, food)
+                            : this._tab === 'cooking'
+                            ? this._renderCookingTab(card, food)
                             : this._tab === 'shopping'
                             ? this._renderShoppingTab(card)
                             : this._renderMenuTab(card, food)}
