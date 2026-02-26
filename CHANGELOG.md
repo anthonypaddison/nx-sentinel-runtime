@@ -2,6 +2,14 @@
 
 ## 2026-02-26
 
+- Added persistent Food->Shopping add queue with retries:
+  - queued add jobs now persist in scoped local storage,
+  - queue resumes automatically after refresh/reconnect,
+  - jobs process one-at-a-time, persist per-item progress, and retry up to 5 times before being dropped.
+- Updated Food add modal integration:
+  - modal now enqueues to the persistent queue rather than a view-local in-memory queue.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260227-003000`.
+
 - Improved Add-to-shopping modal UX in Food:
   - modal now closes immediately on `Add selected`,
   - shows immediate `Adding to shopping` toast feedback,

@@ -110,7 +110,7 @@ export function applyShopping(FamilyBoardCard) {
         async _addShoppingItem(text) {
             const parsed = this._parseShoppingText(text);
             const base = parsed.base;
-            if (!base) return;
+            if (!base) return false;
             const existing = this._findShoppingItemByName(base);
             if (existing) {
                 const merged = this._mergeShoppingQuantities(existing.parsed, parsed);
@@ -119,19 +119,21 @@ export function applyShopping(FamilyBoardCard) {
                     merged.qty,
                     merged.unit
                 );
-                await this._updateShoppingItemText(existing.item, nextText);
-                return;
+                return await this._updateShoppingItemText(existing.item, nextText);
             }
             const formatted = this._formatShoppingText(base, parsed.qty, parsed.unit);
             const optimistic = this._optimisticShoppingAdd(formatted);
+            let success = true;
             try {
                 await this._shoppingService.addItem(this._hass, this._config?.shopping, formatted);
             } catch (error) {
                 this._optimisticShoppingRemove(optimistic);
                 this._reportError?.('Add shopping item', error);
+                success = false;
             } finally {
                 await this._refreshShopping();
             }
+            return success;
         },
 
         async _addShoppingFavourites() {
@@ -449,11 +451,12 @@ export function applyShopping(FamilyBoardCard) {
         },
 
         async _updateShoppingItemText(item, text) {
-            if (!item || !text) return;
+            if (!item || !text) return false;
             const previousText = this._shoppingItemText(item);
             this._optimisticShoppingUpdate(item, text);
             this._shoppingRefreshHoldUntil = Date.now() + 1500;
             const supportsUpdate = this._supportsService('todo', 'update_item');
+            let success = true;
             try {
                 if (supportsUpdate) {
                     await this._shoppingService.updateItem(
@@ -475,15 +478,17 @@ export function applyShopping(FamilyBoardCard) {
             } catch (error) {
                 if (this._isMissingTodoItemError(error)) {
                     await this._refreshShopping({ force: true });
-                    return;
+                    return false;
                 }
                 if (previousText) this._optimisticShoppingUpdate(item, previousText);
                 this._reportError?.('Edit shopping item', error);
+                success = false;
             } finally {
                 if (!supportsUpdate) {
                     await this._refreshShopping();
                 }
             }
+            return success;
         },
 
         async _adjustShoppingQuantity(item, delta) {

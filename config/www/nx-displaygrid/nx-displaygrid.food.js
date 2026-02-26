@@ -6,6 +6,9 @@ import { makeScopedKey, readJsonLocal, writeJsonLocal, removeLocalKey } from './
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const BLANK_QUANTITY_UNIT = ' ';
 const DEFAULT_QUANTITY_UNIT = 'x';
+const FOOD_SHOPPING_QUEUE_MAX_ATTEMPTS = 5;
+const FOOD_SHOPPING_QUEUE_RETRY_BASE_MS = 1_000;
+const FOOD_SHOPPING_QUEUE_RETRY_CAP_MS = 15_000;
 
 function makeId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -572,6 +575,167 @@ export function applyFood(FamilyBoardCard) {
         _foodRecipeById(recipeId) {
             const food = this._foodData();
             return (food.recipes || []).find((recipe) => recipe.id === recipeId) || null;
+        },
+
+        _foodShoppingQueueKey() {
+            const userId = this._hass?.user?.id || 'unknown';
+            return makeScopedKey('nx-displaygrid:food-shopping-add-queue', userId);
+        },
+
+        _foodLoadShoppingQueue() {
+            const raw = readJsonLocal(this._foodShoppingQueueKey(), []);
+            const list = Array.isArray(raw) ? raw : [];
+            return list
+                .map((job) => {
+                    if (!job || typeof job !== 'object') return null;
+                    const items = (Array.isArray(job.items) ? job.items : [])
+                        .map((item) => String(item || '').trim())
+                        .filter(Boolean);
+                    if (!items.length) return null;
+                    const attemptsRaw = Number(job.attempts || 0);
+                    const attempts =
+                        Number.isFinite(attemptsRaw) && attemptsRaw > 0 ? Math.trunc(attemptsRaw) : 0;
+                    const nextIndexRaw = Number(job.nextIndex || 0);
+                    const nextIndex = Number.isFinite(nextIndexRaw) && nextIndexRaw > 0
+                        ? Math.min(Math.trunc(nextIndexRaw), items.length)
+                        : 0;
+                    return {
+                        id: String(job.id || makeId('food_shop_job')),
+                        label: String(job.label || 'Items').trim() || 'Items',
+                        items,
+                        nextIndex,
+                        attempts,
+                        createdAt: Number(job.createdAt || Date.now()),
+                        updatedAt: Number(job.updatedAt || Date.now()),
+                        lastError: String(job.lastError || ''),
+                    };
+                })
+                .filter(Boolean);
+        },
+
+        _foodSaveShoppingQueue(queue) {
+            const list = Array.isArray(queue) ? queue : [];
+            if (!list.length) {
+                removeLocalKey(this._foodShoppingQueueKey());
+                return;
+            }
+            writeJsonLocal(this._foodShoppingQueueKey(), list);
+        },
+
+        _foodQueueState() {
+            const key = this._foodShoppingQueueKey();
+            if (this._foodShoppingQueueKeyCached !== key || !Array.isArray(this._foodShoppingQueueJobs)) {
+                this._foodShoppingQueueKeyCached = key;
+                this._foodShoppingQueueJobs = this._foodLoadShoppingQueue();
+            }
+            return this._foodShoppingQueueJobs;
+        },
+
+        _foodPersistQueueState() {
+            this._foodSaveShoppingQueue(this._foodQueueState());
+        },
+
+        _foodQueueAddItemsToShopping(items, label = 'Items') {
+            const shoppingEntity = this._config?.shopping?.entity || '';
+            if (!shoppingEntity) {
+                this._showToast?.('Shopping not configured', 'Set a shopping entity in Settings first');
+                return false;
+            }
+            const list = (Array.isArray(items) ? items : [])
+                .map((item) =>
+                    typeof item === 'object' ? ingredientToShoppingText(item) : String(item || '').trim()
+                )
+                .map((item) => String(item || '').trim())
+                .filter(Boolean);
+            if (!list.length) return false;
+
+            const queue = this._foodQueueState();
+            queue.push({
+                id: makeId('food_shop_job'),
+                label: String(label || 'Items').trim() || 'Items',
+                items: list,
+                nextIndex: 0,
+                attempts: 0,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                lastError: '',
+            });
+            this._foodPersistQueueState();
+            this._showToast?.('Adding to shopping', `${list.length} item${list.length === 1 ? '' : 's'}`);
+            this._foodProcessShoppingQueue();
+            return true;
+        },
+
+        _foodResumeShoppingQueue() {
+            const queue = this._foodQueueState();
+            if (!queue.length) return;
+            this._foodProcessShoppingQueue();
+        },
+
+        _foodProcessShoppingQueue() {
+            if (this._foodShoppingQueueRunning) {
+                return this._foodShoppingQueueWorker || Promise.resolve();
+            }
+            this._foodShoppingQueueRunning = true;
+            this._foodShoppingQueueWorker = (async () => {
+                while (true) {
+                    const queue = this._foodQueueState();
+                    const job = queue[0];
+                    if (!job) break;
+                    try {
+                        const shoppingEntity = this._config?.shopping?.entity || '';
+                        if (!shoppingEntity) {
+                            throw new Error('Shopping entity is not configured');
+                        }
+                        const items = Array.isArray(job.items) ? job.items : [];
+                        const startIndexRaw = Number(job.nextIndex || 0);
+                        const startIndex = Number.isFinite(startIndexRaw) && startIndexRaw > 0
+                            ? Math.min(Math.trunc(startIndexRaw), items.length)
+                            : 0;
+                        for (let index = startIndex; index < items.length; index += 1) {
+                            const item = items[index];
+                            const ok = await this._addShoppingItem(item);
+                            if (!ok) {
+                                throw new Error(`Failed to add shopping item: ${item}`);
+                            }
+                            job.nextIndex = index + 1;
+                            job.updatedAt = Date.now();
+                            this._foodPersistQueueState();
+                        }
+                        queue.shift();
+                        this._foodPersistQueueState();
+                        this._showToast?.(
+                            'Added to shopping',
+                            `${job.items.length} ${String(job.label || 'items').toLowerCase()}`
+                        );
+                    } catch (error) {
+                        const attempts = Number(job.attempts || 0) + 1;
+                        job.attempts = attempts;
+                        job.updatedAt = Date.now();
+                        job.lastError = String(error?.message || error || 'Unknown error');
+                        if (attempts >= FOOD_SHOPPING_QUEUE_MAX_ATTEMPTS) {
+                            queue.shift();
+                            this._foodPersistQueueState();
+                            this._showToast?.(
+                                'Shopping add failed',
+                                `${job.label || 'Items'} failed after ${FOOD_SHOPPING_QUEUE_MAX_ATTEMPTS} attempts`
+                            );
+                            this._reportError?.('Food shopping queue', error);
+                        } else {
+                            this._foodPersistQueueState();
+                            const delay = Math.min(
+                                FOOD_SHOPPING_QUEUE_RETRY_CAP_MS,
+                                FOOD_SHOPPING_QUEUE_RETRY_BASE_MS * 2 ** (attempts - 1)
+                            );
+                            await new Promise((resolve) => setTimeout(resolve, delay));
+                        }
+                    }
+                }
+            })().finally(() => {
+                this._foodShoppingQueueRunning = false;
+                this._foodShoppingQueueWorker = null;
+            });
+            return this._foodShoppingQueueWorker;
         },
 
         _foodRecipeIngredients(recipe) {

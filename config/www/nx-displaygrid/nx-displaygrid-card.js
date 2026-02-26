@@ -448,6 +448,7 @@ class FamilyBoardCard extends LitElement {
             }, 60_000);
         }
         this._queueRefresh({ reason: this._lastRefreshTs ? 'resume' : 'startup' });
+        this._foodResumeShoppingQueue?.();
         this._updateViewportHeight();
         setTimeout(() => this._updateViewportHeight(), 0);
         if (!this._resizeHandler) {
@@ -601,6 +602,7 @@ class FamilyBoardCard extends LitElement {
         this._loadAuditLogAsync?.();
         this._loadStoredConfig();
         this._loadDataCache?.();
+        this._foodResumeShoppingQueue?.();
         this._queueRefresh({ reason: 'startup' });
     }
 

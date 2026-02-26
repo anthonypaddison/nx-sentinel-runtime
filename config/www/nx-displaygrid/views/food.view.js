@@ -100,7 +100,6 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientEditQty = '1';
         this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeDraftHydrated = false;
-        this._shoppingAddQueue = Promise.resolve();
     }
 
     connectedCallback() {
@@ -945,33 +944,13 @@ export class FbFoodView extends LitElement {
         this._shoppingModal = null;
     }
 
-    _enqueueShoppingAdd(card, items, title = 'Meal') {
-        const list = Array.isArray(items) ? items.filter(Boolean) : [];
-        if (!list.length) return;
-        const safeTitle = String(title || 'Meal').trim() || 'Meal';
-        card?._showToast?.('Adding to shopping', `${list.length} item${list.length === 1 ? '' : 's'}`);
-        const queue = this._shoppingAddQueue && typeof this._shoppingAddQueue.then === 'function'
-            ? this._shoppingAddQueue
-            : Promise.resolve();
-        const run = queue.then(async () => {
-            await card._foodAddItemsToShopping?.(list, safeTitle);
-        });
-        this._shoppingAddQueue = run.then(
-            () => undefined,
-            (error) => {
-                card?._reportError?.('Add recipe items to shopping', error);
-                card?._showToast?.('Shopping add failed', 'Try again');
-            }
-        );
-    }
-
     async _confirmShoppingModal(card) {
         const modal = this._shoppingModal;
         if (!modal) return;
         const selected = (modal.items || []).filter((item) => item.selected);
         this._closeShoppingModal();
         if (!selected.length) return;
-        this._enqueueShoppingAdd(card, selected, modal.title || 'Meal');
+        card?._foodQueueAddItemsToShopping?.(selected, modal.title || 'Meal');
     }
 
     async _submitSavedList(card) {
