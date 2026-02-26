@@ -18,6 +18,7 @@
 - Removed per-person event/chore counts from topbar people chips and left-aligned chip names for a cleaner layout.
 - Updated Food `Favourites -> Favourite shopping` to use the same combined shopping quick-add list (`favourites + common`) that was previously visible in the Shopping tab side panel.
 - Restyled Food `Favourites -> Favourite shopping` rows to match the previous shopping-favourites look (pill rows, inline plus marker, and star icon state) instead of plain text-action rows.
+- Added `deploy/rsync-restart-logcheck.sh` to run staged rsync, HA restart, 5-minute wait, and remote log fetch/scan from a single terminal command.
 - Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-120816`.
 
 ## 2026-02-25

@@ -78,6 +78,18 @@ Deploy behavior:
 - Prints commit and submodule hashes (submodule list may be empty when vendored).
 - Prints restart options (HAOS and Docker command examples).
 
+One-terminal sync/restart/log check helper:
+```bash
+deploy/rsync-restart-logcheck.sh 100.77.2.5 live
+```
+- Stages env config (`lab` or `live`) and rsyncs to `/config/`.
+- Restarts HA Core using `HA_RESTART_CMD` (defaults to `ha core restart`).
+- Waits 5 minutes by default, then fetches logs and prints a warning/error scan summary.
+- Useful overrides:
+  - `HA_WAIT_SECONDS=120`
+  - `HA_LOG_LINES=300`
+  - `HA_LOG_CMD='ha core logs --no-color | tail -n 300'`
+
 ## Backup and export (recommended before schema/data changes)
 Full remote `/config` snapshot (includes `.storage`, excludes DB/logs; excludes `secrets.yaml` by default):
 ```bash
