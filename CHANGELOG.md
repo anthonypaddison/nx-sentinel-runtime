@@ -2,6 +2,22 @@
 
 ## 2026-02-26
 
+- Updated family dashboard topbar/person chips:
+  - removed child/grownup role icons from chips,
+  - increased name emphasis and left-aligned labels,
+  - added configurable chip columns (`family_dashboard_v3.people_chips_per_row`, default `5`) with capped per-chip width (`35%`) and mobile circular-initial mode.
+- Changed person filter bootstrap behavior so all people are active by default on first load/hard refresh.
+- Fixed adaptive auto-screen bounce after date navigation by applying the same manual-navigation lock for previous/next/today/date-set actions, with a regression test.
+- Added family dashboard title config (`family_dashboard_v3.title`) and wired family header to show this title (default `Family Dashboard`) instead of the generic card title.
+- Reworked kiosk/screensaver controls:
+  - added compact overflow actions for `Kiosk Mode`, `Full Kiosk Mode`, and `Screen saver`,
+  - `Kiosk Mode` hides the dashboard sidebar,
+  - `Full Kiosk Mode` applies full-screen host overlay plus kiosk layout,
+  - `Screen saver` applies full kiosk and a full-screen landscape overlay with double-tap/double-click unlock that returns to the prior screen.
+- Updated compact overflow menu behavior:
+  - menu is now compact-only (hidden on desktop widths),
+  - mobile menu is one-item-per-row, scrollable, and full-height slide-out style.
+- Removed ambient-view legacy focus-mode controls/text and the old bottom screensaver button (screensaver control now lives in overflow menu).
 - Improved Food view layout on smaller screens by widening/reflowing weekly meal-plan rows and consolidating per-day actions into a responsive action group.
 - Added a dedicated `Favourites` tab in Food with a top toggle for:
   - favourite meals (average rating >= 3 stars),
@@ -19,7 +35,7 @@
 - Updated Food `Favourites -> Favourite shopping` to use the same combined shopping quick-add list (`favourites + common`) that was previously visible in the Shopping tab side panel.
 - Restyled Food `Favourites -> Favourite shopping` rows to match the previous shopping-favourites look (pill rows, inline plus marker, and star icon state) instead of plain text-action rows.
 - Added `deploy/rsync-restart-logcheck.sh` to run staged rsync, HA restart, 5-minute wait, and remote log fetch/scan from a single terminal command.
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-120816`.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-151700`.
 
 ## 2026-02-25
 

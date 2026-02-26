@@ -5,7 +5,14 @@ import { debugLog } from './nx-displaygrid.util.js';
 
 export function applyNavigation(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _markManualNavigationInteraction() {
+            const now = Date.now();
+            this._lastManualNavTs = now;
+            this._manualNavAdaptiveLockUntilTs = now + 5_000;
+        },
+
         _setMonthOffset(delta) {
+            this._markManualNavigationInteraction();
             this._monthOffset = (this._monthOffset || 0) + delta;
             debugLog(this._debug, 'setMonthOffset', { delta, monthOffset: this._monthOffset });
             this._saveDateContextPrefs?.();
@@ -54,6 +61,7 @@ export function applyNavigation(FamilyBoardCard) {
         _onDateNav(ev) {
             const delta = Number(ev?.detail?.delta || 0);
             if (!delta) return;
+            this._markManualNavigationInteraction();
 
             if (this._mainMode === 'month') {
                 this._setMonthOffset(delta);
@@ -68,6 +76,7 @@ export function applyNavigation(FamilyBoardCard) {
         },
 
         _onToday() {
+            this._markManualNavigationInteraction();
             this._dayOffset = 0;
             this._monthOffset = 0;
             debugLog(this._debug, 'today');
@@ -128,6 +137,7 @@ export function applyNavigation(FamilyBoardCard) {
         _onDateSet(ev) {
             const value = ev?.detail?.value;
             if (!value) return;
+            this._markManualNavigationInteraction();
             const target = new Date(`${value}T00:00:00`);
             this._setScheduleStart(target);
         },

@@ -8,9 +8,25 @@ export function applyToggles(FamilyBoardCard) {
         _onPersonToggle(ev) {
             const personId = this._normalisePersonId(ev?.detail?.id);
             if (!personId) return;
-            if (this._personFilterSet.has(personId)) this._personFilterSet.delete(personId);
-            else this._personFilterSet.add(personId);
-            this._personFilterSet = new Set(this._personFilterSet);
+            const allPersonIds = Array.from(
+                new Set(
+                    (Array.isArray(this._summaryCounts?.()) ? this._summaryCounts() : [])
+                        .map((person) => this._normalisePersonId(person?.id))
+                        .filter(Boolean)
+                )
+            );
+            const active = new Set(this._personFilterSet || []);
+
+            if (active.size === 0 && allPersonIds.length) {
+                const next = new Set(allPersonIds);
+                next.delete(personId);
+                this._personFilterSet = next;
+            } else {
+                if (active.has(personId)) active.delete(personId);
+                else active.add(personId);
+                if (allPersonIds.length && active.size >= allPersonIds.length) active.clear();
+                this._personFilterSet = new Set(active);
+            }
             debugLog(this._debug, 'personToggle', {
                 personId,
                 active: Array.from(this._personFilterSet || []),

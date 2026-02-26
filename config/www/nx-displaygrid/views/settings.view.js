@@ -1598,6 +1598,51 @@ export class FbSettingsView extends LitElement {
                                     Control which admin-only settings panels are visible to admins.
                                 </div>
                                 <div class="row">
+                                    <div>Family dashboard title</div>
+                                    <input
+                                        class="input"
+                                        placeholder="Family Dashboard"
+                                        .value=${familyDashboardV3.title || ''}
+                                        @change=${(e) =>
+                                            card._updateConfigPartial({
+                                                family_dashboard_v3: {
+                                                    ...familyDashboardV3,
+                                                    title: String(e.target.value || '').trim() ||
+                                                        'Family Dashboard',
+                                                },
+                                            })}
+                                    />
+                                </div>
+                                <div class="row">
+                                    <div>People chips per row</div>
+                                    <div class="unitRow">
+                                        <input
+                                            class="input"
+                                            type="number"
+                                            min="1"
+                                            max="8"
+                                            .value=${String(
+                                                Number(familyDashboardV3.people_chips_per_row || 5) ||
+                                                    5
+                                            )}
+                                            @change=${(e) =>
+                                                card._updateConfigPartial({
+                                                    family_dashboard_v3: {
+                                                        ...familyDashboardV3,
+                                                        people_chips_per_row: Math.max(
+                                                            1,
+                                                            Math.min(
+                                                                8,
+                                                                Number(e.target.value || 5) || 5
+                                                            )
+                                                        ),
+                                                    },
+                                                })}
+                                        />
+                                        <span class="unit">Default 5</span>
+                                    </div>
+                                </div>
+                                <div class="row">
                                     <div>Show Settings entry</div>
                                     <label>
                                         <input

@@ -16,6 +16,7 @@ export class FbTopbar extends LitElement {
         dateLabel: { type: String },
         dateValue: { type: String },
         activeFilters: { type: Array },
+        peopleChipColumns: { type: Number },
         isAdmin: { type: Boolean },
         syncing: { type: Boolean },
         calendarStale: { type: Boolean },
@@ -31,8 +32,12 @@ export class FbTopbar extends LitElement {
         familyMode: { type: Boolean },
         idbFailed: { type: Boolean },
         idbError: { type: String },
+        kioskMode: { type: Boolean },
+        fullKioskMode: { type: Boolean },
+        screensaverMode: { type: Boolean },
         _timeLabel: { state: true },
         _menuOpen: { state: true },
+        _isCompact: { state: true },
     };
 
     static styles = [
@@ -235,23 +240,50 @@ export class FbTopbar extends LitElement {
             justify-content: center;
         }
         .menuWrap {
-            position: relative;
             display: inline-flex;
             align-items: center;
+        }
+        .menuBackdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 10, 16, 0.35);
+            z-index: 60;
         }
         .menu {
             position: absolute;
             top: calc(100% + 6px);
             right: 0;
-            min-width: 160px;
+            min-width: 220px;
             background: var(--fb-surface);
             border: 1px solid var(--fb-border);
             border-radius: 10px;
             box-shadow: var(--fb-shadow);
-            padding: 6px;
-            z-index: 10;
+            padding: 8px;
+            z-index: 61;
             display: grid;
             gap: 4px;
+            max-height: min(72vh, 520px);
+            overflow-y: auto;
+        }
+        .menu.mobile {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(360px, 94vw);
+            height: 100vh;
+            border-radius: 0;
+            border-right: 0;
+            border-bottom-left-radius: 12px;
+            padding: max(12px, env(safe-area-inset-top, 0px)) 12px
+                max(12px, env(safe-area-inset-bottom, 0px));
+            max-height: 100vh;
+            overflow-y: auto;
+            animation: menuSlideIn 160ms ease-out;
+        }
+        .menuList {
+            display: grid;
+            gap: 2px;
         }
         .menuSection {
             border-top: 1px solid var(--fb-grid);
@@ -262,9 +294,13 @@ export class FbTopbar extends LitElement {
             --fb-btn-bg: transparent;
             --fb-btn-border-width: 0;
             --fb-btn-radius: 8px;
-            --fb-btn-padding: 8px 10px;
-            --fb-btn-font-size: 13px;
+            --fb-btn-padding: 10px 12px;
+            --fb-btn-font-size: 14px;
+            --fb-btn-min-height: 44px;
             text-align: left;
+            display: inline-flex;
+            justify-content: flex-start;
+            width: 100%;
         }
         .menuItem.active {
             --fb-btn-bg: var(--fb-surface-2);
@@ -325,7 +361,10 @@ export class FbTopbar extends LitElement {
 
         .summaryRow {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            --summary-cols: 4;
+            --summary-item-width: 25%;
+            grid-template-columns: repeat(var(--summary-cols), minmax(0, var(--summary-item-width)));
+            justify-content: start;
             gap: 8px;
             padding: 12px 0 0;
         }
@@ -343,7 +382,7 @@ export class FbTopbar extends LitElement {
             font-size: 13px;
             width: 100%;
             cursor: pointer;
-            min-height: 44px;
+            min-height: 52px;
             color: var(--fb-text);
             line-height: 1;
             text-align: left;
@@ -379,7 +418,8 @@ export class FbTopbar extends LitElement {
             display: inline-block;
         }
         .summaryName {
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 18px;
             display: inline-block;
             min-width: 0;
             overflow: hidden;
@@ -401,12 +441,15 @@ export class FbTopbar extends LitElement {
             letter-spacing: 0.04em;
         }
 
-        .roleIcon {
-            width: 16px;
-            height: 16px;
-            color: var(--fb-muted);
-            display: grid;
-            place-items: center;
+        @keyframes menuSlideIn {
+            from {
+                transform: translateX(18px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         @media (max-width: 720px) {
@@ -452,8 +495,13 @@ export class FbTopbar extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         this._updateTime();
+        this._updateCompactMode();
         if (!this._timeTimer) {
             this._timeTimer = setInterval(() => this._updateTime(), 60_000);
+        }
+        if (!this._resizeHandler) {
+            this._resizeHandler = () => this._updateCompactMode();
+            window.addEventListener('resize', this._resizeHandler);
         }
         if (!this._docClickHandler) {
             this._docClickHandler = (e) => {
@@ -471,6 +519,10 @@ export class FbTopbar extends LitElement {
             clearInterval(this._timeTimer);
             this._timeTimer = null;
         }
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+            this._resizeHandler = null;
+        }
         if (this._docClickHandler) {
             document.removeEventListener('click', this._docClickHandler);
             this._docClickHandler = null;
@@ -483,6 +535,11 @@ export class FbTopbar extends LitElement {
             hour: '2-digit',
             minute: '2-digit',
         });
+    }
+
+    _updateCompactMode() {
+        this._isCompact = window.matchMedia('(max-width: 900px)').matches;
+        if (!this._isCompact && this._menuOpen) this._menuOpen = false;
     }
 
     _setMainMode(mode) {
@@ -598,6 +655,36 @@ export class FbTopbar extends LitElement {
         e.preventDefault();
     }
 
+    _toggleKiosk(enabled) {
+        this.dispatchEvent(
+            new CustomEvent('fb-toggle-kiosk', {
+                detail: { enabled },
+                bubbles: true,
+                composed: true,
+            })
+        );
+    }
+
+    _toggleFullKiosk(enabled) {
+        this.dispatchEvent(
+            new CustomEvent('fb-toggle-full-kiosk', {
+                detail: { enabled },
+                bubbles: true,
+                composed: true,
+            })
+        );
+    }
+
+    _toggleScreensaver(enabled) {
+        this.dispatchEvent(
+            new CustomEvent('fb-toggle-screensaver', {
+                detail: { enabled },
+                bubbles: true,
+                composed: true,
+            })
+        );
+    }
+
     render() {
         const screen = this.screen || 'schedule';
         const mainMode = this.mainMode || 'schedule';
@@ -706,75 +793,104 @@ export class FbTopbar extends LitElement {
                   </div>
               `
             : html``;
-        const menu = html`
-            <div class="menuWrap" @click=${(e) => e.stopPropagation()}>
-                ${(() => {
-                    const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
-                    const menuScreens = familyMode
-                        ? [
-                              { key: 'schedule', label: 'Calendar' },
-                              { key: 'chores', label: 'Chores' },
-                              { key: 'food', label: 'Food' },
-                              { key: 'family', label: 'Family Dashboard' },
-                              { key: 'ambient', label: 'Ambient' },
-                              ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
-                          ]
-                        : [
-                              { key: 'schedule', label: 'Schedule' },
-                              { key: 'important', label: 'Important' },
-                              { key: 'chores', label: 'Chores' },
-                              { key: 'shopping', label: 'Shopping' },
-                              ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
-                              { key: 'home', label: 'Home' },
-                              ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
-                          ];
-                    return html`
-                <button
-                    class="btn settingsBtn menuBtn"
-                    title="Menu"
-                    @click=${this._toggleMenu}
-                >
-                    <ha-icon icon="mdi:dots-vertical"></ha-icon>
-                </button>
-                ${this._menuOpen
-                    ? html`
-                          <div class="menu" @click=${(e) => e.stopPropagation()}>
-                              <div>
-                                  ${menuScreens.map(
-                                      (item) => html`
-                                          <button
-                                              class="btn menuItem ${screen === item.key
-                                                  ? 'active'
-                                                  : ''}"
-                                              @click=${() => {
-                                                  this._closeMenu();
-                                                  this._navTo(item.key);
-                                              }}
-                                          >
-                                              ${item.label}
-                                          </button>
-                                      `
-                                  )}
-                              </div>
-                              <div class="menuSection">
-                              <button
-                                  class="btn menuItem"
-                                  ?disabled=${this.syncing}
-                                  @click=${() => {
-                                      this._closeMenu();
-                                      this._syncCalendars();
-                                  }}
-                              >
-                                  ${this.syncing ? 'Syncing…' : 'Sync'}
-                              </button>
-                              </div>
-                          </div>
-                      `
+        const isCompact = this._isCompact === true;
+        const showOverflowMenu = isCompact;
+        const menu = (() => {
+            if (!showOverflowMenu) return html``;
+            const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
+            const menuScreens = familyMode
+                ? [
+                      { key: 'schedule', label: 'Calendar' },
+                      { key: 'chores', label: 'Chores' },
+                      { key: 'food', label: 'Food' },
+                      { key: 'family', label: 'Family Dashboard' },
+                      { key: 'ambient', label: 'Ambient' },
+                      ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
+                  ]
+                : [
+                      { key: 'schedule', label: 'Schedule' },
+                      { key: 'important', label: 'Important' },
+                      { key: 'chores', label: 'Chores' },
+                      { key: 'shopping', label: 'Shopping' },
+                      ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
+                      { key: 'home', label: 'Home' },
+                      ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
+                  ];
+            return html`
+                ${this._menuOpen && isCompact
+                    ? html`<div class="menuBackdrop" @click=${this._closeMenu}></div>`
                     : html``}
-                    `;
-                })()}
-            </div>
-        `;
+                <div class="menuWrap" @click=${(e) => e.stopPropagation()}>
+                    <button class="btn settingsBtn menuBtn" title="Menu" @click=${this._toggleMenu}>
+                        <ha-icon icon="mdi:dots-vertical"></ha-icon>
+                    </button>
+                    ${this._menuOpen
+                        ? html`
+                              <div class="menu ${isCompact ? 'mobile' : ''}" @click=${(e) => e.stopPropagation()}>
+                                  <div class="menuList">
+                                      ${menuScreens.map(
+                                          (item) => html`
+                                              <button
+                                                  class="btn menuItem ${screen === item.key
+                                                      ? 'active'
+                                                      : ''}"
+                                                  @click=${() => {
+                                                      this._closeMenu();
+                                                      this._navTo(item.key);
+                                                  }}
+                                              >
+                                                  ${item.label}
+                                              </button>
+                                          `
+                                      )}
+                                  </div>
+                                  <div class="menuSection menuList">
+                                      <button
+                                          class="btn menuItem"
+                                          ?disabled=${this.syncing}
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              this._syncCalendars();
+                                          }}
+                                      >
+                                          ${this.syncing ? 'Syncing…' : 'Sync'}
+                                      </button>
+                                      <button
+                                          class="btn menuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              this._toggleKiosk(!this.kioskMode);
+                                          }}
+                                      >
+                                          ${this.kioskMode ? 'Disable Kiosk Mode' : 'Kiosk Mode'}
+                                      </button>
+                                      <button
+                                          class="btn menuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              this._toggleFullKiosk(!this.fullKioskMode);
+                                          }}
+                                      >
+                                          ${this.fullKioskMode
+                                              ? 'Disable Full Kiosk Mode'
+                                              : 'Full Kiosk Mode'}
+                                      </button>
+                                      <button
+                                          class="btn menuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              this._toggleScreensaver(true);
+                                          }}
+                                      >
+                                          Screen saver
+                                      </button>
+                                  </div>
+                              </div>
+                          `
+                        : html``}
+                </div>
+            `;
+        })();
         // Retry is only shown for hard failures without usable cached data.
         return html`
             <div class="toprow">
@@ -878,47 +994,63 @@ export class FbTopbar extends LitElement {
 
             ${['schedule', 'important', 'chores'].includes(screen) && summary.length
                 ? (() => {
-                      const row1 = summary.filter((p) => (p.header_row || 1) === 1).slice(0, 4);
-                      const row2 = summary.filter((p) => (p.header_row || 1) === 2).slice(0, 4);
-                      const rows = [row1, row2].filter((r) => r.length);
+                      const chipColumns = Math.max(
+                          1,
+                          Math.min(8, Number(this.peopleChipColumns || 5) || 5)
+                      );
+                      const chunk = (items) => {
+                          const rows = [];
+                          for (let idx = 0; idx < items.length; idx += chipColumns) {
+                              rows.push(items.slice(idx, idx + chipColumns));
+                          }
+                          return rows;
+                      };
+                      const row1Items = summary.filter((p) => (p.header_row || 1) === 1);
+                      const row2Items = summary.filter((p) => (p.header_row || 1) === 2);
+                      const rows = [...chunk(row1Items), ...chunk(row2Items)].filter((r) => r.length);
+                      const allActive = activeFilters.length === 0;
                       return html`
                           ${rows.map(
-                              (row) => html`
-                                  <div class="summaryRow ${screen === 'important' ? 'compact' : ''}">
-                                      ${row.map(
-                                          (p) => html`
-                                          <button
-                                              class="btn summaryBadge ${activeFilters.includes(p.id)
-                                                  ? 'active'
-                                                  : ''}"
-                                              style="--person-colour:${p.color}"
-                                          title="${p.name}"
-                                          @click=${() => this._togglePerson(p.id)}
+                              (row) => {
+                                  const rowCols = Math.max(
+                                      1,
+                                      Math.min(chipColumns, row.length || chipColumns)
+                                  );
+                                  const itemWidth = Math.min(35, 100 / rowCols);
+                                  return html`
+                                      <div
+                                          class="summaryRow ${screen === 'important'
+                                              ? 'compact'
+                                              : ''}"
+                                          style="--summary-cols:${rowCols}; --summary-item-width:${itemWidth}%"
                                       >
-                                          <span class="summaryInitial">
-                                              ${mobileSummaryLabel(p)}
-                                          </span>
-                                          <span class="summaryTop">
-                                              <span class="dot" style="background:${p.color}"></span>
-                                              ${(() => {
-                                                  const role = String(p.role || '').toLowerCase();
-                                                  const icon =
-                                                      role === 'kid'
-                                                          ? 'mdi:human-child'
-                                                          : role
-                                                          ? 'mdi:human-male-female-child'
-                                                          : '';
-                                                  return icon
-                                                      ? html`<ha-icon class="roleIcon" icon=${icon}></ha-icon>`
-                                                      : html``;
-                                              })()}
-                                              <span class="summaryName">${p.name}</span>
-                                          </span>
-                                      </button>
-                                          `
-                                      )}
-                                  </div>
-                              `
+                                          ${row.map(
+                                              (p) => html`
+                                                  <button
+                                                      class="btn summaryBadge ${allActive ||
+                                                      activeFilters.includes(p.id)
+                                                          ? 'active'
+                                                          : ''}"
+                                                      style="--person-colour:${p.color}"
+                                                      title="${p.name}"
+                                                      @click=${() => this._togglePerson(p.id)}
+                                                  >
+                                                      <span class="summaryInitial">
+                                                          ${mobileSummaryLabel(p)}
+                                                      </span>
+                                                      <span class="summaryTop">
+                                                          <span
+                                                              class="dot"
+                                                              style="background:${p.color}"
+                                                          ></span>
+                                                          <span class="summaryName">${p.name}</span>
+                                                      </span>
+                                                  </button>
+                                              `
+                                          )}
+                                      </div>
+                                  `;
+                              }
                           )}
                       `;
                   })()

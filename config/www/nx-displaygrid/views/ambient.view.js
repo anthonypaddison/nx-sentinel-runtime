@@ -19,17 +19,14 @@ export class FbAmbientView extends LitElement {
     static properties = {
         card: { type: Object },
         renderKey: { type: String },
-        focusMode: { type: Boolean },
         _nowTick: { state: true },
         _collectionModal: { state: true },
-        _tapTs: { state: true },
     };
 
     constructor() {
         super();
         this._nowTick = Date.now();
         this._collectionModal = null;
-        this._tapTs = 0;
         this._timer = null;
     }
 
@@ -59,9 +56,6 @@ export class FbAmbientView extends LitElement {
             display: grid;
             gap: 14px;
             align-content: start;
-        }
-        .canvas.focus {
-            padding: 0;
         }
         .hero {
             border-radius: 16px;
@@ -184,7 +178,7 @@ export class FbAmbientView extends LitElement {
         }
         .actionDock {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
         }
         .dockBtn {
@@ -315,28 +309,6 @@ export class FbAmbientView extends LitElement {
         this._collectionModal = null;
     }
 
-    _toggleFocus(enabled) {
-        this.dispatchEvent(
-            new CustomEvent('fb-focus-toggle', {
-                detail: { enabled },
-                bubbles: true,
-                composed: true,
-            })
-        );
-    }
-
-    _handlePointerUp(ev) {
-        if (!this.focusMode) return;
-        if (ev?.pointerType !== 'touch') return;
-        const now = Date.now();
-        if (now - (this._tapTs || 0) < 350) {
-            this._toggleFocus(false);
-            this._tapTs = 0;
-            return;
-        }
-        this._tapTs = now;
-    }
-
     render() {
         const card = this.card;
         if (!card) return html``;
@@ -360,11 +332,7 @@ export class FbAmbientView extends LitElement {
         };
 
         return html`
-            <div
-                class="canvas ${this.focusMode ? 'focus' : ''}"
-                @dblclick=${() => this.focusMode && this._toggleFocus(false)}
-                @pointerup=${this._handlePointerUp}
-            >
+            <div class="canvas">
                 <div class="hero">
                     <div>
                         <div class="time">
@@ -451,9 +419,6 @@ export class FbAmbientView extends LitElement {
                                       `
                                   )
                                 : html`<div class="muted">No important chores with due dates.</div>`}
-                            <div class="todoMeta">
-                                Double tap or double click exits focus mode.
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -474,14 +439,6 @@ export class FbAmbientView extends LitElement {
                     >
                         <ha-icon icon=${lightingCollection?.icon || 'mdi:lightbulb-group'}></ha-icon>
                         <span>${lightingCollection?.label || 'Lighting'}</span>
-                    </button>
-                    <button
-                        class="btn dockBtn"
-                        title="Ambient screensaver mode"
-                        @click=${() => this._toggleFocus(true)}
-                    >
-                        <ha-icon icon="mdi:monitor-screenshot"></ha-icon>
-                        <span>Screensaver</span>
                     </button>
                 </div>
 

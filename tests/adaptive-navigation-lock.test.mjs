@@ -58,3 +58,40 @@ test('manual nav blocks forced adaptive auto-screen until adaptive idle timeout'
     });
     assert.equal(card._screen, 'schedule');
 });
+
+test('date navigation also applies adaptive lock to avoid screen jumps', () => {
+    class TestCard {}
+    applyNavigation(TestCard);
+    applyAdaptive(TestCard);
+
+    const card = new TestCard();
+    card._config = {
+        adaptive_v2: {
+            auto_screen: true,
+            auto_screen_idle_seconds: 180,
+        },
+    };
+    card._screen = 'schedule';
+    card._mainMode = 'schedule';
+    card._dayOffset = 0;
+    card._debug = false;
+    card._savePrefs = () => {};
+    card._queueRefresh = () => {};
+    card.requestUpdate = () => {};
+    card._v2AuditRecord = () => {};
+    card._v2FeatureEnabled = (flag) => flag === 'adaptive_layout';
+    card._v2RecommendedScreen = () => 'family';
+
+    withFakeNow(2_000_000, () => {
+        card._onDateNav({ detail: { delta: 1 } });
+    });
+
+    assert.equal(card._dayOffset, 1);
+    assert.equal(card._lastManualNavTs, 2_000_000);
+    assert.equal(card._manualNavAdaptiveLockUntilTs, 2_005_000);
+
+    withFakeNow(2_001_000, () => {
+        card._maybeApplyV2AdaptiveScreen({ force: true });
+    });
+    assert.equal(card._screen, 'schedule');
+});

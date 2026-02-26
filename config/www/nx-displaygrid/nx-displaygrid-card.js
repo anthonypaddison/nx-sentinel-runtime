@@ -104,6 +104,9 @@ class FamilyBoardCard extends LitElement {
         _calendarFetchInFlight: { state: true },
         _forceSetupWizard: { state: true },
         _focusLandscape: { state: true },
+        _kioskMode: { state: true },
+        _fullKioskMode: { state: true },
+        _screensaverMode: { state: true },
     };
 
     static async getConfigElement() {
@@ -137,6 +140,17 @@ class FamilyBoardCard extends LitElement {
             :host,
             :host * {
                 box-sizing: border-box;
+            }
+            :host(.nx-full-kiosk) {
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                z-index: 9999 !important;
+                background: var(--fb-bg);
             }
             .app {
                 height: 100%;
@@ -176,17 +190,31 @@ class FamilyBoardCard extends LitElement {
                 overflow: hidden;
                 background: var(--fb-bg);
             }
-            .app.focusLandscape {
+            .app.kioskMode {
                 grid-template-columns: 1fr;
             }
-            .app.focusLandscape .sidebar {
+            .app.kioskMode .sidebar {
                 display: none;
             }
-            .app.focusLandscape .main {
+            .app.kioskMode .main {
                 padding-right: 0;
             }
-            .app.focusLandscape .topbar {
-                display: none;
+            .screensaverOverlay {
+                position: absolute;
+                inset: 0;
+                z-index: 50;
+                background-image:
+                    linear-gradient(
+                        to bottom,
+                        rgba(4, 14, 10, 0.14) 0%,
+                        rgba(4, 14, 10, 0.36) 100%
+                    ),
+                    url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                touch-action: manipulation;
+                user-select: none;
             }
             .toast {
                 position: absolute;
@@ -378,6 +406,14 @@ class FamilyBoardCard extends LitElement {
         this._v2AuditLoaded = false;
         this._v2AuditHydrated = false;
         this._focusLandscape = false;
+        this._kioskMode = false;
+        this._fullKioskMode = false;
+        this._screensaverMode = false;
+        this._screenBeforeScreensaver = '';
+        this._kioskBeforeScreensaver = false;
+        this._fullKioskBeforeScreensaver = false;
+        this._kioskBeforeFullKiosk = false;
+        this._screensaverTapTs = 0;
     }
 
     setConfig(config) {
@@ -420,6 +456,7 @@ class FamilyBoardCard extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        this.classList.remove('nx-full-kiosk');
         if (this._refreshTimer) {
             clearInterval(this._refreshTimer);
             this._refreshTimer = null;
@@ -519,6 +556,7 @@ class FamilyBoardCard extends LitElement {
     }
 
     updated() {
+        this._syncFullKioskHostClass();
         this._updateTopbarHeight();
         this._tickV2AdaptivePresentation?.();
     }
@@ -529,8 +567,7 @@ class FamilyBoardCard extends LitElement {
             allowInitialView,
             keys: Object.keys(nextPrefs || {}),
         });
-        const filters = Array.isArray(nextPrefs.personFilters) ? nextPrefs.personFilters : [];
-        this._personFilterSet = new Set(filters.map((id) => this._normalisePersonId(id)));
+        this._personFilterSet = new Set();
         this._useMobileView =
             nextPrefs.useMobileView !== undefined
                 ? nextPrefs.useMobileView
@@ -686,6 +723,14 @@ class FamilyBoardCard extends LitElement {
         const screen = this._screen || 'schedule';
         const mainMode = this._mainMode || 'schedule';
         const familyMode = this._isFamilyDashboardMode?.() === true;
+        const familyDashboardV3 = this._familyDashboardConfig?.() || {};
+        const familyDashboardTitle = String(
+            familyDashboardV3.title || 'Family Dashboard'
+        ).trim() || 'Family Dashboard';
+        const peopleChipColumns = Math.max(
+            1,
+            Math.min(8, Number(familyDashboardV3.people_chips_per_row || 5) || 5)
+        );
         const adminMenu = this._familyAdminMenuConfig?.() || {};
         const isAdmin = this._hasAdminAccess();
         const hasPin = Boolean(this._config?.admin_pin);
@@ -732,11 +777,12 @@ class FamilyBoardCard extends LitElement {
         const reminderBanner = this._activeReminderBanner || this._v2CurrentReminderBanner?.() || null;
         const reminderSuppressed =
             reminderBanner && this._v2ShouldSuppressReminderBanner?.(reminderBanner);
-        const hideTopbar = this._focusLandscape || (familyMode && ['ambient', 'food'].includes(screen));
+        const hideTopbar =
+            this._screensaverMode || (familyMode && ['ambient', 'food'].includes(screen));
 
         return html`
             <div
-                class="app ${this._focusLandscape ? 'focusLandscape' : ''}"
+                class="app ${this._kioskMode || this._fullKioskMode ? 'kioskMode' : ''}"
                 style="--fb-sidebar-width:${sidebarWidth}"
             >
                 <div class="sidebar">
@@ -807,10 +853,13 @@ class FamilyBoardCard extends LitElement {
                         ? html``
                         : html`<div class="topbar">
                               <fb-topbar
-                                  .title=${this._config.title || 'nx-displaygrid'}
+                                  .title=${screen === 'family'
+                                      ? familyDashboardTitle
+                                      : this._config.title || 'nx-displaygrid'}
                                   .screen=${screen}
                                   .mainMode=${mainMode}
                                   .summary=${this._summaryCounts()}
+                                  .peopleChipColumns=${peopleChipColumns}
                                   .shoppingCount=${shoppingCount}
                                   .binIndicators=${binIndicators}
                                   .dateLabel=${this._dateLabel()}
@@ -831,6 +880,9 @@ class FamilyBoardCard extends LitElement {
                                   .idbFailed=${this._idbFailed}
                                   .idbError=${this._idbError}
                                   .familyMode=${familyMode}
+                                  .kioskMode=${this._kioskMode}
+                                  .fullKioskMode=${this._fullKioskMode}
+                                  .screensaverMode=${this._screensaverMode}
                                   @fb-main-mode=${this._onMainMode}
                                   @fb-date-nav=${this._onDateNav}
                                   @fb-date-today=${this._onToday}
@@ -841,6 +893,9 @@ class FamilyBoardCard extends LitElement {
                                   @fb-open-sources=${() => this._openManageSources()}
                                   @fb-add=${this._onFab}
                                   @fb-nav=${this._onNav}
+                                  @fb-toggle-kiosk=${this._onKioskToggle}
+                                  @fb-toggle-full-kiosk=${this._onFullKioskToggle}
+                                  @fb-toggle-screensaver=${this._onScreensaverToggle}
                               ></fb-topbar>
                           </div>`}
 
@@ -883,8 +938,6 @@ class FamilyBoardCard extends LitElement {
                             ? html`<fb-ambient-view
                                   .card=${this}
                                   .renderKey=${`${ambientSig}|${presenceSig}`}
-                                  .focusMode=${this._focusLandscape}
-                                  @fb-focus-toggle=${this._onFocusToggle}
                               ></fb-ambient-view>`
                             : screen === 'admin'
                             ? html`<fb-admin-view
@@ -979,6 +1032,13 @@ class FamilyBoardCard extends LitElement {
                             @fb-editor-guide-open=${this._onOpenEditor}
                         ></fb-editor-guide-dialog>
                     </div>
+                    ${this._screensaverMode
+                        ? html`<div
+                              class="screensaverOverlay"
+                              @dblclick=${this._onScreensaverUnlock}
+                              @pointerup=${this._onScreensaverPointerUp}
+                          ></div>`
+                        : html``}
                 </div>
             </div>
         `;
@@ -1001,23 +1061,110 @@ class FamilyBoardCard extends LitElement {
         this._openAddDialogForScreen(screen === 'settings' ? 'schedule' : screen);
     };
 
+    _syncFullKioskHostClass() {
+        const enabled = this._fullKioskMode || this._screensaverMode;
+        this.classList.toggle('nx-full-kiosk', Boolean(enabled));
+    }
+
+    _setKioskMode(enabled) {
+        const next = Boolean(enabled);
+        this._kioskMode = next;
+        if (!next) {
+            this._fullKioskMode = false;
+            this._kioskBeforeFullKiosk = false;
+        }
+        this._syncFullKioskHostClass();
+        this.requestUpdate();
+    }
+
+    _setFullKioskMode(enabled) {
+        const next = Boolean(enabled);
+        if (next) {
+            this._kioskBeforeFullKiosk = Boolean(this._kioskMode);
+            this._fullKioskMode = true;
+            this._kioskMode = true;
+        } else {
+            this._fullKioskMode = false;
+            this._kioskMode = Boolean(this._kioskBeforeFullKiosk);
+            this._kioskBeforeFullKiosk = false;
+        }
+        this._syncFullKioskHostClass();
+        this.requestUpdate();
+    }
+
+    _setScreensaverMode(enabled) {
+        const next = Boolean(enabled);
+        if (next === this._screensaverMode) return;
+        if (next) {
+            this._screenBeforeScreensaver = this._screen || 'schedule';
+            this._kioskBeforeScreensaver = Boolean(this._kioskMode);
+            this._fullKioskBeforeScreensaver = Boolean(this._fullKioskMode);
+            this._screensaverMode = true;
+            this._kioskMode = true;
+            this._fullKioskMode = true;
+            this._screensaverTapTs = 0;
+            this._syncFullKioskHostClass();
+            this.requestUpdate();
+            return;
+        }
+        this._screensaverMode = false;
+        this._kioskMode = Boolean(this._kioskBeforeScreensaver);
+        this._fullKioskMode = Boolean(this._fullKioskBeforeScreensaver);
+        if (this._screenBeforeScreensaver) this._screen = this._screenBeforeScreensaver;
+        this._screenBeforeScreensaver = '';
+        this._screensaverTapTs = 0;
+        this._syncFullKioskHostClass();
+        this.requestUpdate();
+    }
+
+    _onKioskToggle = (ev) => {
+        if (this._screensaverMode) this._setScreensaverMode(false);
+        const enabled = ev?.detail?.enabled;
+        if (typeof enabled === 'boolean') this._setKioskMode(enabled);
+        else this._setKioskMode(!this._kioskMode);
+    };
+
+    _onFullKioskToggle = (ev) => {
+        if (this._screensaverMode) this._setScreensaverMode(false);
+        const enabled = ev?.detail?.enabled;
+        if (typeof enabled === 'boolean') this._setFullKioskMode(enabled);
+        else this._setFullKioskMode(!this._fullKioskMode);
+    };
+
+    _onScreensaverToggle = (ev) => {
+        const enabled = ev?.detail?.enabled;
+        if (typeof enabled === 'boolean') this._setScreensaverMode(enabled);
+        else this._setScreensaverMode(!this._screensaverMode);
+    };
+
+    _onScreensaverUnlock = () => {
+        if (!this._screensaverMode) return;
+        this._setScreensaverMode(false);
+    };
+
+    _onScreensaverPointerUp = (ev) => {
+        if (!this._screensaverMode) return;
+        if (ev?.pointerType !== 'touch') return;
+        const now = Date.now();
+        if (now - Number(this._screensaverTapTs || 0) < 350) {
+            this._setScreensaverMode(false);
+            this._screensaverTapTs = 0;
+            return;
+        }
+        this._screensaverTapTs = now;
+    };
+
     _onFocusToggle = (ev) => {
         const enabled = ev?.detail?.enabled;
         if (enabled === false) {
-            this._focusLandscape = false;
-            this._screen = 'ambient';
-            this.requestUpdate();
+            this._setKioskMode(false);
             return;
         }
         if (enabled === true) {
-            if (this._screen !== 'ambient') this._screen = 'ambient';
-            this._focusLandscape = true;
-            this.requestUpdate();
+            this._setKioskMode(true);
             return;
         }
-        this._focusLandscape = !this._focusLandscape;
-        if (this._focusLandscape && this._screen !== 'ambient') this._screen = 'ambient';
-        this.requestUpdate();
+        this._setKioskMode(!this._kioskMode);
     };
 
     _setHomeEntityState(entityId, on) {
