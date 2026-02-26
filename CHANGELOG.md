@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Improved Add-to-shopping modal UX in Food:
+  - modal now closes immediately on `Add selected`,
+  - shows immediate `Adding to shopping` toast feedback,
+  - shopping additions are queued in the background so repeated adds process in order.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260227-000700`.
+
 - Added recipe-to-recipe embedding in Food -> Recipes:
   - saved recipe cards now include `Embed in draft`,
   - embedding appends the selected recipe’s ingredients and steps into the current draft,
