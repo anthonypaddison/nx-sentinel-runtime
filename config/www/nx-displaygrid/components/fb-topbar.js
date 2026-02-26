@@ -325,7 +325,7 @@ export class FbTopbar extends LitElement {
 
         .summaryRow {
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 8px;
             padding: 12px 0 0;
         }
@@ -334,9 +334,8 @@ export class FbTopbar extends LitElement {
         }
 
         .summaryBadge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: grid;
+            gap: 6px;
             border: 2px solid var(--person-colour);
             border-radius: 12px;
             padding: 6px 10px;
@@ -347,6 +346,12 @@ export class FbTopbar extends LitElement {
             min-height: 44px;
             color: var(--fb-text);
             line-height: 1;
+        }
+        .summaryTop {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
         }
 
         .summaryBadge:not(.active) {
@@ -363,9 +368,13 @@ export class FbTopbar extends LitElement {
         }
         .summaryName {
             font-weight: 600;
-            display: inline-flex;
-            align-items: center;
+            display: inline-block;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
             line-height: 1;
+            flex: 1;
         }
 
         .roleIcon {
@@ -374,15 +383,15 @@ export class FbTopbar extends LitElement {
             color: var(--fb-muted);
             display: grid;
             place-items: center;
-            transform: translateY(-2px);
         }
 
         .summaryCounts {
-            margin-left: auto;
+            margin-left: 0;
             display: inline-flex;
             align-items: center;
             gap: 10px;
             font-variant-numeric: tabular-nums;
+            padding-left: 20px;
         }
         .roleBadge {
             border: 1px solid var(--fb-border);
@@ -411,7 +420,6 @@ export class FbTopbar extends LitElement {
             color: var(--fb-muted);
             display: grid;
             place-items: center;
-            transform: translateY(-2px);
         }
 
         .summaryMetric span {
@@ -419,20 +427,6 @@ export class FbTopbar extends LitElement {
             align-items: center;
             line-height: 1;
             padding-left: 2px;
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 900px) {
-            .summaryRow {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-                gap: 8px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .summaryRow {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
         }
     `,
     ];
@@ -867,20 +861,22 @@ export class FbTopbar extends LitElement {
                                           title="${p.name} - ${p.eventsLeft ?? 0} events today - ${p.todosLeft ?? 0} chores due"
                                           @click=${() => this._togglePerson(p.id)}
                                       >
-                                          <span class="dot" style="background:${p.color}"></span>
-                                          ${(() => {
-                                              const role = String(p.role || '').toLowerCase();
-                                              const icon =
-                                                  role === 'kid'
-                                                      ? 'mdi:human-child'
-                                                      : role
-                                                      ? 'mdi:human-male-female-child'
-                                                      : '';
-                                              return icon
-                                                  ? html`<ha-icon class="roleIcon" icon=${icon}></ha-icon>`
-                                                  : html``;
-                                          })()}
-                                          <span class="summaryName" style="flex:1">${p.name}</span>
+                                          <span class="summaryTop">
+                                              <span class="dot" style="background:${p.color}"></span>
+                                              ${(() => {
+                                                  const role = String(p.role || '').toLowerCase();
+                                                  const icon =
+                                                      role === 'kid'
+                                                          ? 'mdi:human-child'
+                                                          : role
+                                                          ? 'mdi:human-male-female-child'
+                                                          : '';
+                                                  return icon
+                                                      ? html`<ha-icon class="roleIcon" icon=${icon}></ha-icon>`
+                                                      : html``;
+                                              })()}
+                                              <span class="summaryName">${p.name}</span>
+                                          </span>
                                           <span class="summaryCounts">
                                               <span class="summaryMetric">
                                                   <ha-icon icon="mdi:calendar-month-outline"></ha-icon>

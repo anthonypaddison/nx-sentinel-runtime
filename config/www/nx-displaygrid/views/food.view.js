@@ -46,6 +46,7 @@ export class FbFoodView extends LitElement {
         _recipeIngredientQty: { state: true },
         _recipeIngredientUnit: { state: true },
         _recipeStepText: { state: true },
+        _favouritesMode: { state: true },
         _menuSearch: { state: true },
         _shoppingModal: { state: true },
         _reviewComments: { state: true },
@@ -64,6 +65,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientQty = '1';
         this._recipeIngredientUnit = 'quantity';
         this._recipeStepText = '';
+        this._favouritesMode = 'meals';
         this._menuSearch = {};
         this._shoppingModal = null;
         this._reviewComments = {};
@@ -134,8 +136,23 @@ export class FbFoodView extends LitElement {
             grid-template-columns: minmax(0, 1fr) auto auto;
         }
         .row.menuRow {
-            grid-template-columns: minmax(120px, 150px) minmax(190px, 1fr) minmax(0, 1fr) auto auto;
+            grid-template-columns:
+                minmax(120px, 150px)
+                minmax(190px, 1fr)
+                minmax(140px, 0.9fr)
+                minmax(220px, auto);
             align-items: start;
+        }
+        .menuActions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(104px, 1fr));
+            gap: 8px;
+        }
+        .menuActions .btn {
+            width: 100%;
+            white-space: normal;
+            line-height: 1.15;
+            min-height: 44px;
         }
         .dayLabel {
             font-weight: 700;
@@ -212,6 +229,25 @@ export class FbFoodView extends LitElement {
             display: inline-flex;
             align-items: center;
             gap: 4px;
+        }
+        .favouriteToggle {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            background: var(--fb-surface);
+            border: 1px solid var(--fb-grid);
+            border-radius: 999px;
+        }
+        .favouriteToggle .btn {
+            --fb-btn-border-width: 0;
+            --fb-btn-bg: transparent;
+            --fb-btn-radius: 999px;
+            --fb-btn-padding: 5px 10px;
+            --fb-btn-min-height: 30px;
+        }
+        .favouriteToggle .btn.active {
+            --fb-btn-bg: var(--fb-surface-2);
+            font-weight: 700;
         }
         .starBtn {
             --fb-btn-padding: 0;
@@ -303,6 +339,30 @@ export class FbFoodView extends LitElement {
                 grid-template-columns: 1fr;
             }
             .row.menuRow {
+                grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+            }
+            .row.menuRow > .input {
+                grid-column: 2;
+            }
+            .row.menuRow > .menuActions {
+                grid-column: 2;
+            }
+            .menuActions {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
+            }
+            .ingredientDraft {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 720px) {
+            .row.menuRow {
+                grid-template-columns: 1fr;
+            }
+            .row.menuRow > .input,
+            .row.menuRow > .menuActions {
+                grid-column: auto;
+            }
+            .menuActions {
                 grid-template-columns: 1fr;
             }
             .ingredientDraft {
@@ -546,62 +606,62 @@ export class FbFoodView extends LitElement {
         const menu = Array.isArray(food?.menu) ? food.menu : [];
         const mealListId = 'food-meal-options';
         return html`
-            <div class="grid2">
-                <div class="panel fb-card">
-                    <div class="fb-card-header">Meal Plan (This Week)</div>
-                    <div class="panelBody">
-                        <div class="sectionHint">
-                            Search meals, assign them to weekdays, and choose exactly which ingredients
-                            are added to shopping.
-                        </div>
-                        <datalist id=${mealListId}>
-                            ${meals.map((meal) => html`<option value=${meal.name}></option>`)}
-                        </datalist>
-                        <div class="stack">
-                            ${menu.map((entry) => {
-                                const selectedMeal = meals.find((meal) => meal.id === entry.mealId) || null;
-                                const selectedName = selectedMeal?.name || '';
-                                const inputValue = this._menuSearch?.[entry.day] ?? selectedName;
-                                const ingredients = selectedMeal?.ingredients || [];
-                                return html`
-                                    <div class="row menuRow">
-                                        <div>
-                                            <div class="dayLabel">${entry.label}</div>
-                                            <div class="mutedSmall">
-                                                ${selectedMeal
-                                                    ? `${ingredients.length} ingredient${ingredients.length === 1 ? '' : 's'}`
-                                                    : 'No meal selected'}
-                                            </div>
+            <div class="panel fb-card">
+                <div class="fb-card-header">Meal Plan (This Week)</div>
+                <div class="panelBody">
+                    <div class="sectionHint">
+                        Search meals, assign them to weekdays, and choose exactly which ingredients
+                        are added to shopping.
+                    </div>
+                    <datalist id=${mealListId}>
+                        ${meals.map((meal) => html`<option value=${meal.name}></option>`)}
+                    </datalist>
+                    <div class="stack">
+                        ${menu.map((entry) => {
+                            const selectedMeal = meals.find((meal) => meal.id === entry.mealId) || null;
+                            const selectedName = selectedMeal?.name || '';
+                            const inputValue = this._menuSearch?.[entry.day] ?? selectedName;
+                            const ingredients = selectedMeal?.ingredients || [];
+                            return html`
+                                <div class="row menuRow">
+                                    <div>
+                                        <div class="dayLabel">${entry.label}</div>
+                                        <div class="mutedSmall">
+                                            ${selectedMeal
+                                                ? `${ingredients.length} ingredient${ingredients.length === 1 ? '' : 's'}`
+                                                : 'No meal selected'}
                                         </div>
-                                        <div class="searchInputWrap">
-                                            <input
-                                                class="input"
-                                                list=${mealListId}
-                                                placeholder="Search meal"
-                                                .value=${inputValue}
-                                                @input=${(e) =>
-                                                    (this._menuSearch = {
-                                                        ...(this._menuSearch || {}),
-                                                        [entry.day]: e.target.value,
-                                                    })}
-                                                @change=${(e) =>
-                                                    this._applyMenuSearch(
-                                                        card,
-                                                        entry.day,
-                                                        e.target.value,
-                                                        meals
-                                                    )}
-                                            />
-                                        </div>
+                                    </div>
+                                    <div class="searchInputWrap">
                                         <input
                                             class="input"
-                                            placeholder="Notes (optional)"
-                                            .value=${entry.note || ''}
-                                            @change=${(e) =>
-                                                card._foodSetMenuDay?.(entry.day, {
-                                                    note: e.target.value || '',
+                                            list=${mealListId}
+                                            placeholder="Search meal"
+                                            .value=${inputValue}
+                                            @input=${(e) =>
+                                                (this._menuSearch = {
+                                                    ...(this._menuSearch || {}),
+                                                    [entry.day]: e.target.value,
                                                 })}
+                                            @change=${(e) =>
+                                                this._applyMenuSearch(
+                                                    card,
+                                                    entry.day,
+                                                    e.target.value,
+                                                    meals
+                                                )}
                                         />
+                                    </div>
+                                    <input
+                                        class="input"
+                                        placeholder="Notes (optional)"
+                                        .value=${entry.note || ''}
+                                        @change=${(e) =>
+                                            card._foodSetMenuDay?.(entry.day, {
+                                                note: e.target.value || '',
+                                            })}
+                                    />
+                                    <div class="menuActions">
                                         <button
                                             class="btn"
                                             ?disabled=${!selectedMeal}
@@ -621,64 +681,9 @@ export class FbFoodView extends LitElement {
                                             Begin cooking
                                         </button>
                                     </div>
-                                `;
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="panel fb-card">
-                    <div class="fb-card-header">Saved Shopping Lists</div>
-                    <div class="panelBody">
-                        <div class="sectionHint">
-                            Save reusable shopping bundles and add them to the list in one tap.
-                        </div>
-                        <div class="stack">
-                            <input
-                                class="input"
-                                placeholder="List name"
-                                .value=${this._savedListName}
-                                @input=${(e) => (this._savedListName = e.target.value)}
-                            />
-                            <textarea
-                                placeholder="Items (comma or new line separated)"
-                                .value=${this._savedListItems}
-                                @input=${(e) => (this._savedListItems = e.target.value)}
-                            ></textarea>
-                            <div>
-                                <button
-                                    class="btn"
-                                    ?disabled=${!String(this._savedListName || '').trim()}
-                                    @click=${() => this._submitSavedList(card)}
-                                >
-                                    Save list
-                                </button>
-                            </div>
-                            ${(food.savedLists || []).length
-                                ? (food.savedLists || []).map(
-                                      (list) => html`
-                                          <div class="bundleCard">
-                                              <div class="bundleHead">
-                                                  <div class="bundleName">${list.name}</div>
-                                                  <button
-                                                      class="btn sm"
-                                                      @click=${() => card._foodAddSavedListToShopping?.(list.id)}
-                                                  >
-                                                      Add to shopping
-                                                  </button>
-                                                  <button
-                                                      class="btn sm ghost"
-                                                      @click=${() => card._foodRemoveSavedList?.(list.id)}
-                                                  >
-                                                      Delete
-                                                  </button>
-                                              </div>
-                                              <div class="mutedSmall">${(list.items || []).join(', ')}</div>
-                                          </div>
-                                      `
-                                  )
-                                : html`<div class="muted">No saved shopping lists yet.</div>`}
-                        </div>
+                                </div>
+                            `;
+                        })}
                     </div>
                 </div>
             </div>
@@ -873,6 +878,178 @@ export class FbFoodView extends LitElement {
         `;
     }
 
+    _renderSavedListsPanel(card, food) {
+        return html`
+            <div class="panel fb-card">
+                <div class="fb-card-header">Saved Shopping Lists</div>
+                <div class="panelBody">
+                    <div class="sectionHint">
+                        Save reusable shopping bundles and add them to the list in one tap.
+                    </div>
+                    <div class="stack">
+                        <input
+                            class="input"
+                            placeholder="List name"
+                            .value=${this._savedListName}
+                            @input=${(e) => (this._savedListName = e.target.value)}
+                        />
+                        <textarea
+                            placeholder="Items (comma or new line separated)"
+                            .value=${this._savedListItems}
+                            @input=${(e) => (this._savedListItems = e.target.value)}
+                        ></textarea>
+                        <div>
+                            <button
+                                class="btn"
+                                ?disabled=${!String(this._savedListName || '').trim()}
+                                @click=${() => this._submitSavedList(card)}
+                            >
+                                Save list
+                            </button>
+                        </div>
+                        ${(food.savedLists || []).length
+                            ? (food.savedLists || []).map(
+                                  (list) => html`
+                                      <div class="bundleCard">
+                                          <div class="bundleHead">
+                                              <div class="bundleName">${list.name}</div>
+                                              <button
+                                                  class="btn sm"
+                                                  @click=${() => card._foodAddSavedListToShopping?.(list.id)}
+                                              >
+                                                  Add to shopping
+                                              </button>
+                                              <button
+                                                  class="btn sm ghost"
+                                                  @click=${() => card._foodRemoveSavedList?.(list.id)}
+                                              >
+                                                  Delete
+                                              </button>
+                                          </div>
+                                          <div class="mutedSmall">${(list.items || []).join(', ')}</div>
+                                      </div>
+                                  `
+                              )
+                            : html`<div class="muted">No saved shopping lists yet.</div>`}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderFavouritesTab(card, food) {
+        const recipes = Array.isArray(food?.recipes) ? food.recipes : [];
+        const favouriteMeals = recipes
+            .map((recipe) => ({
+                recipe,
+                rating: Number(card._foodRecipeAverageRating?.(recipe) || 0),
+            }))
+            .filter((entry) => entry.rating >= 3)
+            .sort((a, b) => b.rating - a.rating || String(a.recipe?.name || '').localeCompare(String(b.recipe?.name || '')));
+        const shoppingFavourites = Array.isArray(card?._shoppingFavourites)
+            ? Array.from(new Set(card._shoppingFavourites.map((item) => String(item || '').trim()).filter(Boolean)))
+            : [];
+        const mode = this._favouritesMode === 'shopping' ? 'shopping' : 'meals';
+        return html`
+            <div class="panel fb-card">
+                <div class="fb-card-header">Favourites</div>
+                <div class="panelBody">
+                    <div class="bundleHead">
+                        <div class="favouriteToggle" role="tablist" aria-label="Favourite types">
+                            <button
+                                class="btn ${mode === 'meals' ? 'active' : ''}"
+                                @click=${() => (this._favouritesMode = 'meals')}
+                            >
+                                Favourite meals
+                            </button>
+                            <button
+                                class="btn ${mode === 'shopping' ? 'active' : ''}"
+                                @click=${() => (this._favouritesMode = 'shopping')}
+                            >
+                                Favourite shopping
+                            </button>
+                        </div>
+                    </div>
+
+                    ${mode === 'meals'
+                        ? html`
+                              <div class="sectionHint">
+                                  Meals with average rating 3 stars or higher.
+                              </div>
+                              ${favouriteMeals.length
+                                  ? html`<div class="stack">
+                                        ${favouriteMeals.map(
+                                            ({ recipe, rating }) => html`
+                                                <div class="bundleCard">
+                                                    <div class="bundleHead">
+                                                        <div class="bundleName">
+                                                            ${recipe.name}
+                                                        </div>
+                                                        <div class="mutedSmall">${rating}/5</div>
+                                                    </div>
+                                                    <div class="bundleHead">
+                                                        <button
+                                                            class="btn sm"
+                                                            @click=${() =>
+                                                                this._openShoppingModal(
+                                                                    recipe.name || 'Recipe',
+                                                                    recipe.ingredients || []
+                                                                )}
+                                                        >
+                                                            Add meal to shopping
+                                                        </button>
+                                                        <button
+                                                            class="btn sm ghost"
+                                                            @click=${() => {
+                                                                this._openRecipeEditor(recipe);
+                                                                this._tab = 'recipes';
+                                                            }}
+                                                        >
+                                                            Open recipe
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `
+                                        )}
+                                    </div>`
+                                  : html`<div class="muted">No favourite meals yet.</div>`}
+                          `
+                        : html`
+                              <div class="sectionHint">
+                                  Starred shopping items from the shopping list.
+                              </div>
+                              ${shoppingFavourites.length
+                                  ? html`<div class="stack">
+                                        ${shoppingFavourites.map(
+                                            (item) => html`
+                                                <div class="ingredientRow">
+                                                    <div>${item}</div>
+                                                    <div class="bundleHead">
+                                                        <button
+                                                            class="btn sm"
+                                                            @click=${() => card._addShoppingItem?.(item)}
+                                                        >
+                                                            Add to shopping
+                                                        </button>
+                                                        <button
+                                                            class="btn sm ghost"
+                                                            @click=${() =>
+                                                                card._toggleShoppingFavourite?.(item)}
+                                                        >
+                                                            Unstar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `
+                                        )}
+                                    </div>`
+                                  : html`<div class="muted">No favourite shopping items yet.</div>`}
+                          `}
+                </div>
+            </div>
+        `;
+    }
+
     _renderCookingTab(card, food) {
         const cooking = food?.cooking && typeof food.cooking === 'object' ? food.cooking : {};
         if (cooking.active !== true || !cooking.mealId) {
@@ -938,8 +1115,13 @@ export class FbFoodView extends LitElement {
         `;
     }
 
-    _renderShoppingTab(card) {
-        return html`<fb-shopping-view .card=${card} .renderKey=${this.renderKey}></fb-shopping-view>`;
+    _renderShoppingTab(card, food) {
+        return html`
+            <div class="stack">
+                ${this._renderSavedListsPanel(card, food)}
+                <fb-shopping-view .card=${card} .renderKey=${this.renderKey}></fb-shopping-view>
+            </div>
+        `;
     }
 
     render() {
@@ -974,6 +1156,12 @@ export class FbFoodView extends LitElement {
                         >
                             Shopping List
                         </button>
+                        <button
+                            class="btn ${this._tab === 'favourites' ? 'active' : ''}"
+                            @click=${() => (this._tab = 'favourites')}
+                        >
+                            Favourites
+                        </button>
                         ${cookingActive
                             ? html`<button
                                   class="btn ${this._tab === 'cooking' ? 'active' : ''}"
@@ -988,8 +1176,10 @@ export class FbFoodView extends LitElement {
                             ? this._renderRecipesTab(card, food)
                             : this._tab === 'cooking'
                             ? this._renderCookingTab(card, food)
+                            : this._tab === 'favourites'
+                            ? this._renderFavouritesTab(card, food)
                             : this._tab === 'shopping'
-                            ? this._renderShoppingTab(card)
+                            ? this._renderShoppingTab(card, food)
                             : this._renderMenuTab(card, food)}
                     </div>
                 </div>

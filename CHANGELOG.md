@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-26
+
+- Improved Food view layout on smaller screens by widening/reflowing weekly meal-plan rows and consolidating per-day actions into a responsive action group.
+- Added a dedicated `Favourites` tab in Food with a top toggle for:
+  - favourite meals (average rating >= 3 stars),
+  - favourite shopping items (starred shopping entries).
+- Split Food concerns so shopping list management and favourites are separated, and moved saved shopping-list bundles into the Shopping tab context.
+- Updated topbar person chips (schedule/chores/important contexts) to:
+  - fixed 4-up equal-width layout,
+  - stacked counts under names,
+  - ellipsis clipping for long names to prevent chip distortion.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-131500`.
+
 ## 2026-02-25
 
 - Follow-up `NX - Family Dashboard` polish:
