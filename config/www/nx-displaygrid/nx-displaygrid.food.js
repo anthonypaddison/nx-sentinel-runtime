@@ -1,6 +1,7 @@
 /* nx-displaygrid - food/menu helpers (V2)
  * SPDX-License-Identifier: MIT
  */
+import { makeScopedKey, readJsonLocal, writeJsonLocal, removeLocalKey } from './util/scoped-storage.util.js';
 
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DEFAULT_FOOD_UNITS = ['quantity', 'grams', 'oz', 'kg', 'breasts', 'legs', 'ml', 'l'];
@@ -228,11 +229,13 @@ function normaliseCookingState(value, recipes = []) {
             mealId: '',
             startedAt: 0,
             stepChecks: [],
+            updatedAt: 0,
         };
     }
     const dayValue = Number(source.day);
     const day = Number.isInteger(dayValue) && dayValue >= 0 && dayValue <= 6 ? dayValue : null;
     const startedAt = Number(source.startedAt);
+    const updatedAt = Number(source.updatedAt || source.startedAt || 0);
     const steps = Array.isArray(recipe.steps) ? recipe.steps : [];
     const checks = Array.isArray(source.stepChecks) ? source.stepChecks : [];
     const stepChecks = steps.map((_, idx) => checks[idx] === true);
@@ -242,6 +245,7 @@ function normaliseCookingState(value, recipes = []) {
         mealId,
         startedAt: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : Date.now(),
         stepChecks,
+        updatedAt: Number.isFinite(updatedAt) && updatedAt > 0 ? updatedAt : Date.now(),
     };
 }
 
@@ -257,6 +261,33 @@ function ingredientToShoppingText(ingredient) {
 
 export function applyFood(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _foodCookingSnapshotKey() {
+            const userId = this._hass?.user?.id || 'unknown';
+            return makeScopedKey('nx-displaygrid:food-cooking', userId);
+        },
+
+        _foodLoadCookingSnapshot() {
+            return readJsonLocal(this._foodCookingSnapshotKey(), null);
+        },
+
+        _foodSaveCookingSnapshot(cooking) {
+            const key = this._foodCookingSnapshotKey();
+            if (!cooking || cooking.active !== true || !String(cooking.mealId || '').trim()) {
+                removeLocalKey(key);
+                return;
+            }
+            writeJsonLocal(key, {
+                active: true,
+                day: Number.isInteger(Number(cooking.day)) ? Number(cooking.day) : null,
+                mealId: String(cooking.mealId || '').trim(),
+                startedAt: Number(cooking.startedAt || 0),
+                stepChecks: Array.isArray(cooking.stepChecks)
+                    ? cooking.stepChecks.map((value) => value === true)
+                    : [],
+                updatedAt: Number(cooking.updatedAt || Date.now()) || Date.now(),
+            });
+        },
+
         _foodWeekdayLabels() {
             return WEEKDAY_LABELS.slice();
         },
@@ -358,7 +389,18 @@ export function applyFood(FamilyBoardCard) {
                 acc.push(recipe);
                 return acc;
             }, []);
-            const cooking = normaliseCookingState(data.cooking, recipes);
+            const configCooking = normaliseCookingState(data.cooking, recipes);
+            const localCooking = normaliseCookingState(this._foodLoadCookingSnapshot?.(), recipes);
+            let cooking = configCooking;
+            if (localCooking.active && !configCooking.active) {
+                cooking = localCooking;
+            } else if (
+                localCooking.active &&
+                configCooking.active &&
+                Number(localCooking.updatedAt || 0) > Number(configCooking.updatedAt || 0)
+            ) {
+                cooking = localCooking;
+            }
 
             return {
                 menu,
@@ -568,6 +610,7 @@ export function applyFood(FamilyBoardCard) {
                 currentCooking?.mealId === mealId
                     ? { active: false, day: null, mealId: '', startedAt: 0, stepChecks: [] }
                     : currentCooking;
+            this._foodSaveCookingSnapshot(nextCooking);
             await this._updateFoodData({
                 recipes: nextMeals,
                 meals: nextMeals,
@@ -587,14 +630,17 @@ export function applyFood(FamilyBoardCard) {
             const meal = this._foodRecipeById(mealId);
             if (!meal) return false;
             const steps = Array.isArray(meal.steps) ? meal.steps : [];
+            const nextCooking = {
+                active: true,
+                day: idx,
+                mealId,
+                startedAt: Date.now(),
+                stepChecks: steps.map(() => false),
+                updatedAt: Date.now(),
+            };
+            this._foodSaveCookingSnapshot(nextCooking);
             await this._updateFoodData({
-                cooking: {
-                    active: true,
-                    day: idx,
-                    mealId,
-                    startedAt: Date.now(),
-                    stepChecks: steps.map(() => false),
-                },
+                cooking: nextCooking,
             });
             return true;
         },
@@ -613,17 +659,21 @@ export function applyFood(FamilyBoardCard) {
                 : steps.map(() => false);
             while (checks.length < steps.length) checks.push(false);
             checks[idx] = checked === true;
+            const nextCooking = {
+                ...cooking,
+                active: true,
+                mealId: cooking.mealId,
+                stepChecks: checks,
+                updatedAt: Date.now(),
+            };
+            this._foodSaveCookingSnapshot(nextCooking);
             await this._updateFoodData({
-                cooking: {
-                    ...cooking,
-                    active: true,
-                    mealId: cooking.mealId,
-                    stepChecks: checks,
-                },
+                cooking: nextCooking,
             });
         },
 
         async _foodFinishCooking() {
+            this._foodSaveCookingSnapshot(null);
             await this._updateFoodData({
                 cooking: {
                     active: false,
@@ -631,6 +681,7 @@ export function applyFood(FamilyBoardCard) {
                     mealId: '',
                     startedAt: 0,
                     stepChecks: [],
+                    updatedAt: Date.now(),
                 },
             });
         },

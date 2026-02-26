@@ -2,6 +2,14 @@
 
 ## 2026-02-26
 
+- Fixed Food cooking progress durability:
+  - added per-user/device local cooking snapshot backup with timestamp,
+  - cooking step ticks now update this snapshot immediately on each step toggle,
+  - begin/finish/remove-meal cooking flows now sync/clear the snapshot accordingly.
+- Added cooking recovery preference:
+  - when config cooking state is stale/missing after refresh, Food view now recovers the newer active local snapshot state.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-191800`.
+
 - Updated Settings IA and controls:
   - main tabs now `Settings`, `Preferences`, `Admin` with new sub-tab pill rows,
   - `Audit` moved under `Admin` as a sub-tab,
