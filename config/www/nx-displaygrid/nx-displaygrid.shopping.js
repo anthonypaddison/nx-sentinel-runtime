@@ -342,15 +342,10 @@ export function applyShopping(FamilyBoardCard) {
             if (!name) return '';
             const count = Number.isFinite(qty) ? Math.max(1, Number(qty)) : 1;
             const safeUnit = this._canonicalShoppingUnit(unit);
-            if (safeUnit) {
-                const rounded = Math.round(count * 100) / 100;
-                const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded);
-                return `${name} ${qtyLabel} ${safeUnit}`.trim();
-            }
-            if (count <= 1) return name;
             const rounded = Math.round(count * 100) / 100;
             const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded);
-            return `${name} x${qtyLabel}`;
+            const unitLabel = safeUnit || 'x';
+            return `${qtyLabel}${unitLabel} ${name}`.trim();
         },
 
         _normaliseShoppingBase(baseName) {
@@ -380,6 +375,10 @@ export function applyShopping(FamilyBoardCard) {
                 lbs: 'lb',
                 pound: 'lb',
                 pounds: 'lb',
+                x: '',
+                quantity: '',
+                quantities: '',
+                qty: '',
                 item: '',
                 items: '',
                 each: '',

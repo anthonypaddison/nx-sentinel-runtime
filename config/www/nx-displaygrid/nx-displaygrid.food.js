@@ -4,7 +4,6 @@
 import { makeScopedKey, readJsonLocal, writeJsonLocal, removeLocalKey } from './util/scoped-storage.util.js';
 
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DEFAULT_FOOD_UNITS = ['quantity', 'grams', 'oz', 'kg', 'breasts', 'legs', 'ml', 'l'];
 
 function makeId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -253,10 +252,8 @@ function ingredientToShoppingText(ingredient) {
     const parsed = normaliseIngredient(ingredient);
     if (!parsed) return '';
     const qty = trimNumber(parsed.qty || 1);
-    const unit = String(parsed.unit || '').trim();
-    if (unit) return `${parsed.name} ${qty} ${unit}`.trim();
-    if (Number(parsed.qty || 1) <= 1) return parsed.name;
-    return `${parsed.name} x${qty}`.trim();
+    const unit = String(parsed.unit || '').trim() || 'x';
+    return `${qty}${unit} ${parsed.name}`.trim();
 }
 
 export function applyFood(FamilyBoardCard) {
@@ -409,7 +406,7 @@ export function applyFood(FamilyBoardCard) {
         _foodUnitOptions() {
             const food = this._foodData?.() || {};
             const configured = Array.isArray(food.units) ? food.units : [];
-            return normaliseUnits([...DEFAULT_FOOD_UNITS, ...configured]);
+            return normaliseUnits(configured);
         },
 
         _foodData() {

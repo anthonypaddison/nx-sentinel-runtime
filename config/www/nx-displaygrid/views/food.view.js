@@ -12,12 +12,11 @@ function ingredientSummary(items, max = 4) {
             if (!item) return '';
             const name = String(item.name || '').trim();
             if (!name) return '';
-            const qty = Number(item.qty || 1);
-            const unit = String(item.unit || '').trim();
-            if (qty > 1 && unit) return `${name} ${qty} ${unit}`;
-            if (qty > 1) return `${name} x${qty}`;
-            if (unit) return `${name} ${unit}`;
-            return name;
+            const qtyRaw = Number(item.qty || 1);
+            const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? Math.round(qtyRaw * 100) / 100 : 1;
+            const qtyLabel = Number.isInteger(qty) ? String(qty) : String(qty);
+            const unit = String(item.unit || '').trim() || 'x';
+            return `${qtyLabel}${unit} ${name}`.trim();
         })
         .filter(Boolean);
     if (!list.length) return 'No ingredients';
@@ -1039,14 +1038,16 @@ export class FbFoodView extends LitElement {
                                     this._persistRecipeDraft(card);
                                 }}
                             >
-                                <option value="">No quantity type</option>
-                                ${(units.length ? units : ['quantity']).map(
+                                <option value="">x (default)</option>
+                                ${units.map(
                                     (unit) => html`<option value=${unit}>${unit}</option>`
                                 )}
                             </select>
                             <button class="btn" @click=${this._addRecipeIngredient}>+</button>
                         </div>
-                        <div class="mutedSmall">Units available: ${units.join(', ') || 'quantity'}</div>
+                        <div class="mutedSmall">
+                            Units available: ${units.length ? units.join(', ') : 'None configured'}
+                        </div>
                         <div class="recipeList">
                             ${ingredientDraft.length
                                 ? ingredientDraft.map(

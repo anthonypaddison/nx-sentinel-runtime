@@ -501,12 +501,7 @@ export class FbShoppingView extends LitElement {
                                       const itemName = parsed.base || rawName;
                                       const qty = parsed.qty || 1;
                                       const unit = String(parsed.unit || '').trim();
-                                      const itemUnitOptions = Array.from(
-                                          new Set([
-                                              ...configuredQuantityUnits,
-                                              ...(unit ? [unit] : []),
-                                          ])
-                                      );
+                                      const itemUnitOptions = configuredQuantityUnits;
                                       const fav = favKeys.has(
                                           String(itemName).toLowerCase()
                                       );
@@ -556,7 +551,7 @@ export class FbShoppingView extends LitElement {
                                                               e.target.value
                                                           )}
                                                   >
-                                                      <option value="">quantity</option>
+                                                      <option value="">x (default)</option>
                                                       ${itemUnitOptions.map(
                                                           (option) =>
                                                               html`<option value=${option}>

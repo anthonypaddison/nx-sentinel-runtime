@@ -2,6 +2,15 @@
 
 ## 2026-02-26
 
+- Updated quantity-type and ingredient formatting behavior:
+  - recipe and shopping quantity-type lists now use only `food_v2.units` configured in Settings,
+  - removed hardcoded default unit options from food helpers,
+  - blank quantity type now defaults to `x` (shown as `x (default)` in dropdowns),
+  - ingredient/shopping text now uses `${amount}${quantityType} ${item}` format (for example: `1g chicken`, `1x banana`).
+- Fixed Settings tab action visibility:
+  - `Save changes` controls now remain visible when sub-tab pills are long (including `Value Config`).
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-210300`.
+
 - Improved recipe step editing workflow:
   - steps in the recipe composer are now inline-editable after adding,
   - added step reordering controls (`Up`/`Down`) while composing,

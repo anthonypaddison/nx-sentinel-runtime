@@ -151,6 +151,10 @@ export class FbSettingsView extends LitElement {
             border-radius: 999px;
             width: fit-content;
             flex-wrap: wrap;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
         }
         .subTabs .btn {
             --fb-btn-border-width: 0;
@@ -187,7 +191,15 @@ export class FbSettingsView extends LitElement {
         .saveState {
             font-size: 12px;
             color: var(--fb-muted);
-            margin-left: 4px;
+            margin-left: 0;
+        }
+        .saveControls {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-left: auto;
+            flex-wrap: wrap;
         }
         .column {
             display: flex;
@@ -460,6 +472,11 @@ export class FbSettingsView extends LitElement {
         @media (max-width: 900px) {
             .layout {
                 grid-template-columns: 1fr;
+            }
+            .saveControls {
+                margin-left: 0;
+                width: 100%;
+                justify-content: flex-start;
             }
             .row.binRow {
                 grid-template-columns: 1fr;
@@ -1373,17 +1390,19 @@ export class FbSettingsView extends LitElement {
                           `
                         : html``}
                 </div>
-                <button
-                    class="btn"
-                    ?disabled=${!pending}
-                    @click=${async () => {
-                        await card?._savePendingSettingsChanges?.();
-                        this.requestUpdate();
-                    }}
-                >
-                    Save changes
-                </button>
-                <span class="saveState">${pending ? 'Unsaved changes' : 'All changes saved'}</span>
+                <div class="saveControls">
+                    <button
+                        class="btn"
+                        ?disabled=${!pending}
+                        @click=${async () => {
+                            await card?._savePendingSettingsChanges?.();
+                            this.requestUpdate();
+                        }}
+                    >
+                        Save changes
+                    </button>
+                    <span class="saveState">${pending ? 'Unsaved changes' : 'All changes saved'}</span>
+                </div>
             </div>
         `;
     }
