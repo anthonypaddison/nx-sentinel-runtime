@@ -14,7 +14,8 @@
 - Added mobile-specific person-chip mode: circular chips showing first-letter initials while preserving active-toggle colour highlighting.
 - Updated mobile person-chip initials to disambiguate duplicates (e.g. use two-letter badges when first initials collide).
 - Aligned shopping star state so only explicitly starred items render as starred (common/history items no longer appear starred unless starred).
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-141200`.
+- Removed the embedded `Favourites` side panel from Food `Shopping List` (it now shows only the shopping list there); favourites remain in the dedicated `Favourites` tab and standalone `Shopping` screen.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-105122`.
 
 ## 2026-02-25
 

@@ -1119,7 +1119,11 @@ export class FbFoodView extends LitElement {
         return html`
             <div class="stack">
                 ${this._renderSavedListsPanel(card, food)}
-                <fb-shopping-view .card=${card} .renderKey=${this.renderKey}></fb-shopping-view>
+                <fb-shopping-view
+                    .card=${card}
+                    .renderKey=${this.renderKey}
+                    .hideFavourites=${true}
+                ></fb-shopping-view>
             </div>
         `;
     }

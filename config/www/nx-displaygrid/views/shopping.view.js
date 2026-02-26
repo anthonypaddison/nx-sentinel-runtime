@@ -12,6 +12,7 @@ export class FbShoppingView extends LitElement {
     static properties = {
         card: { type: Object },
         renderKey: { type: String },
+        hideFavourites: { type: Boolean },
     };
 
     _addCommonItem(item) {
@@ -30,6 +31,9 @@ export class FbShoppingView extends LitElement {
             height: 100%;
             min-height: 0;
             align-items: stretch;
+        }
+        .layout.single {
+            grid-template-columns: minmax(0, 1fr);
         }
         .card {
             overflow: hidden;
@@ -359,6 +363,7 @@ export class FbShoppingView extends LitElement {
         const name = card._config?.shopping?.name || 'Shopping list';
         const shoppingEntity = card._config?.shopping?.entity || '';
         const hasTodoService = Boolean(card._supportsService?.('todo', 'get_items'));
+        const hideFavourites = this.hideFavourites === true;
         const favourites = Array.isArray(card._shoppingFavourites)
             ? card._shoppingFavourites
             : [];
@@ -396,7 +401,7 @@ export class FbShoppingView extends LitElement {
 
         return html`
             <div class="wrap hidden">
-                <div class="layout">
+                <div class="layout ${hideFavourites ? 'single' : ''}">
                     <div class="card fb-card">
                         <div class="h fb-card-header">
                             <span>${name}</span>
@@ -561,77 +566,86 @@ export class FbShoppingView extends LitElement {
                         </div>
                     </div>
 
-                    <div class="card fb-card">
-                        <div class="h commonHeader fb-card-header">
-                            <span>Favourites</span>
-                            <span class="headerMeta">
-                                <span class="muted">${commonList.length}</span>
-                                ${commonList.length
-                                    ? html`<button
-                                              class="btn icon ghost headerIconBtn addAll"
-                                              title="Add all favourites"
-                                              @click=${() => {
-                                                  const ok = window.confirm(
-                                                      'Are you sure you want to add all favourites to the current shopping list?'
-                                                  );
-                                                  if (ok) card._addShoppingFavourites?.();
-                                              }}
-                                          >
-                                              <ha-icon icon="mdi:plus-box-multiple"></ha-icon>
-                                          </button>
-                                          <button
-                                              class="btn icon ghost headerIconBtn clearAll"
-                                              title="Clear all favourites"
-                                              @click=${() => {
-                                                  const ok = window.confirm(
-                                                      'Are you sure you want to clear all favourites?'
-                                                  );
-                                                  if (ok) card._clearShoppingFavourites?.();
-                                              }}
-                                          >
-                                              <ha-icon icon="mdi:close-box-multiple"></ha-icon>
-                                          </button>`
-                                    : html``}
-                            </span>
-                        </div>
-                        <div class="commonList">
-                            ${commonList.length
-                                ? commonList.map((item) => {
-                                      const key = String(item).toLowerCase();
-                                      const fav = favKeys.has(key);
-                                          return html`
-                                          <div class="commonRow">
-                                              <div
-                                                  class="btn commonItem"
-                                                  role="button"
-                                                  tabindex="0"
-                                                  @click=${() => this._addCommonItem(item)}
-                                                  @keydown=${(e) => {
-                                                      if (e.key === 'Enter' || e.key === ' ') {
-                                                          e.preventDefault();
-                                                          this._addCommonItem(item);
-                                                      }
-                                                  }}
-                                              >
-                                                  <span class="commonText">${item}</span>
-                                                  <span class="commonPlus" aria-hidden="true">+</span>
-                                                  <button
-                                                      class="btn icon ghost starBtn active"
-                                                      title="Unfavourite"
-                                                      @click=${(e) => {
-                                                          e.stopPropagation();
-                                                          card._toggleShoppingFavourite(item);
-                                                      }}
-                                                  >
-                                                      <ha-icon icon="mdi:star"></ha-icon>
-                                                  </button>
-                                              </div>
-                                          </div>
-                                      `;
-                                  })
-                                : html`<div class="muted">No common items yet.</div>`}
-                        </div>
-                    </div>
+                    ${hideFavourites
+                        ? html``
+                        : html`<div class="card fb-card">
+                              <div class="h commonHeader fb-card-header">
+                                  <span>Favourites</span>
+                                  <span class="headerMeta">
+                                      <span class="muted">${commonList.length}</span>
+                                      ${commonList.length
+                                          ? html`<button
+                                                    class="btn icon ghost headerIconBtn addAll"
+                                                    title="Add all favourites"
+                                                    @click=${() => {
+                                                        const ok = window.confirm(
+                                                            'Are you sure you want to add all favourites to the current shopping list?'
+                                                        );
+                                                        if (ok) card._addShoppingFavourites?.();
+                                                    }}
+                                                >
+                                                    <ha-icon icon="mdi:plus-box-multiple"></ha-icon>
+                                                </button>
+                                                <button
+                                                    class="btn icon ghost headerIconBtn clearAll"
+                                                    title="Clear all favourites"
+                                                    @click=${() => {
+                                                        const ok = window.confirm(
+                                                            'Are you sure you want to clear all favourites?'
+                                                        );
+                                                        if (ok) card._clearShoppingFavourites?.();
+                                                    }}
+                                                >
+                                                    <ha-icon icon="mdi:close-box-multiple"></ha-icon>
+                                                </button>`
+                                          : html``}
+                                  </span>
+                              </div>
+                              <div class="commonList">
+                                  ${commonList.length
+                                      ? commonList.map((item) => {
+                                            const key = String(item).toLowerCase();
+                                            const fav = favKeys.has(key);
+                                            return html`
+                                                <div class="commonRow">
+                                                    <div
+                                                        class="btn commonItem"
+                                                        role="button"
+                                                        tabindex="0"
+                                                        @click=${() => this._addCommonItem(item)}
+                                                        @keydown=${(e) => {
+                                                            if (
+                                                                e.key === 'Enter' ||
+                                                                e.key === ' '
+                                                            ) {
+                                                                e.preventDefault();
+                                                                this._addCommonItem(item);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span class="commonText">${item}</span>
+                                                        <span class="commonPlus" aria-hidden="true">+</span>
+                                                        <button
+                                                            class="btn icon ghost starBtn ${fav ? 'active' : ''}"
+                                                            title=${fav ? 'Unfavourite' : 'Favourite'}
+                                                            @click=${(e) => {
+                                                                e.stopPropagation();
+                                                                card._toggleShoppingFavourite(item);
+                                                            }}
+                                                        >
+                                                            <ha-icon
+                                                                icon=${fav
+                                                                    ? 'mdi:star'
+                                                                    : 'mdi:star-outline'}
+                                                            ></ha-icon>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        })
+                                      : html`<div class="muted">No common items yet.</div>`}
+                              </div>
+                          </div>`}
                 </div>
             </div>
         `;
