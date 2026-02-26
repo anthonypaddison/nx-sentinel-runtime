@@ -631,6 +631,22 @@ export class FbTopbar extends LitElement {
         const mainMode = this.mainMode || 'schedule';
         const summary = Array.isArray(this.summary) ? this.summary : [];
         const activeFilters = Array.isArray(this.activeFilters) ? this.activeFilters : [];
+        const initialCounts = new Map();
+        summary.forEach((person) => {
+            const name = String(person?.name || '').trim();
+            const first = (name.charAt(0) || '?').toUpperCase();
+            initialCounts.set(first, (initialCounts.get(first) || 0) + 1);
+        });
+        const mobileSummaryLabel = (person) => {
+            const name = String(person?.name || '').trim();
+            if (!name) return '?';
+            const tokens = name.split(/\s+/).filter(Boolean);
+            const first = (tokens[0]?.charAt(0) || name.charAt(0) || '?').toUpperCase();
+            if ((initialCounts.get(first) || 0) <= 1) return first;
+            const next =
+                (tokens[1]?.charAt(0) || tokens[0]?.slice(1).charAt(0) || '').toUpperCase();
+            return next ? `${first}${next}` : first;
+        };
         const statusChips = [];
         const statusNotes = [];
         const showTodoStatus = ['schedule', 'important', 'chores'].includes(screen);
@@ -908,7 +924,7 @@ export class FbTopbar extends LitElement {
                                           @click=${() => this._togglePerson(p.id)}
                                       >
                                           <span class="summaryInitial">
-                                              ${String(p.name || '?').trim().charAt(0) || '?'}
+                                              ${mobileSummaryLabel(p)}
                                           </span>
                                           <span class="summaryTop">
                                               <span class="dot" style="background:${p.color}"></span>

@@ -364,9 +364,7 @@ export class FbShoppingView extends LitElement {
             : [];
         const common = Array.isArray(card._shoppingCommon) ? card._shoppingCommon : [];
         const favList = favourites.map((item) => String(item));
-        const favKeys = new Set(
-            [...favourites, ...common].map((item) => String(item).toLowerCase())
-        );
+        const favKeys = new Set(favourites.map((item) => String(item).toLowerCase()));
         const commonList = [];
         const seen = new Set();
         for (const item of [...favList, ...common]) {
