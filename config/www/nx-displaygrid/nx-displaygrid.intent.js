@@ -198,7 +198,7 @@ export function applyIntent(FamilyBoardCard) {
                     subtitle: `${houseMode.label || houseMode.entityId}: ${houseMode.state || 'unknown'}`,
                     icon: 'mdi:home-switch',
                     tone: 'neutral',
-                    run: () => this._openMoreInfo?.(houseMode.entityId),
+                    run: () => this._onNav?.({ detail: { target: 'home' } }),
                 });
             }
 

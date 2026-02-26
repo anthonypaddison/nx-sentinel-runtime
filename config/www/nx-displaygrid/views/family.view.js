@@ -5,7 +5,13 @@ import { getHaLit } from '../ha-lit.js';
 const { LitElement, html, css } = getHaLit();
 
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
-import { addDays, formatTimeRange, startOfDay } from '../nx-displaygrid.util.js';
+import {
+    addDays,
+    formatTimeRange,
+    parseTodoDueInfo,
+    startOfDay,
+    todoItemText,
+} from '../nx-displaygrid.util.js';
 
 export class FbFamilyView extends LitElement {
     static properties = {
@@ -182,6 +188,36 @@ export class FbFamilyView extends LitElement {
             .sort((a, b) => (a._start?.getTime?.() || 0) - (b._start?.getTime?.() || 0));
     }
 
+    _todosDueBetween(card, start, end) {
+        const todos = Array.isArray(card?._config?.todos) ? card._config.todos : [];
+        const rows = [];
+        for (const todoCfg of todos) {
+            if (!card?._isPersonAllowed?.(card?._personIdForConfig?.(todoCfg, todoCfg.entity)))
+                continue;
+            const person = card?._personForEntity?.(todoCfg.entity);
+            const personName = person?.name || todoCfg?.name || '';
+            const items = Array.isArray(card?._todoItems?.[todoCfg.entity])
+                ? card._todoItems[todoCfg.entity]
+                : [];
+            for (const item of items) {
+                const status = String(item?.status || '').toLowerCase();
+                if (status === 'completed' || status === 'done' || item?.completed) continue;
+                const dueInfo = parseTodoDueInfo(item?.due || item?.due_date || item?.due_datetime);
+                if (!dueInfo?.date) continue;
+                const due = dueInfo.date;
+                if (!(due >= start && due < end)) continue;
+                rows.push({
+                    entityId: todoCfg.entity || '',
+                    item,
+                    title: todoItemText(item, '(Todo)'),
+                    personName,
+                    due,
+                });
+            }
+        }
+        return rows.sort((a, b) => (a.due?.getTime?.() || 0) - (b.due?.getTime?.() || 0));
+    }
+
     _nav(card, target) {
         if (!target) return;
         card?._onNav?.({ detail: { target } });
@@ -191,7 +227,9 @@ export class FbFamilyView extends LitElement {
         const card = this.card;
         if (!card) return html``;
         const ambient = card._v2AmbientSummary?.() || {};
-        const actions = card._v2IntentActions?.() || [];
+        const actions = (card._v2IntentActions?.() || []).filter(
+            (action) => action?.id !== 'chores'
+        );
         const summary = Array.isArray(card._summaryCounts?.()) ? card._summaryCounts() : [];
         const topPeople = summary.slice(0, 4);
         const health = card._v2HealthSummary?.() || { total: 0, issues: [] };
@@ -200,6 +238,8 @@ export class FbFamilyView extends LitElement {
         const dayAfterTomorrow = addDays(tomorrow, 1);
         const todayEvents = this._eventsBetween(card, today, tomorrow);
         const tomorrowEvents = this._eventsBetween(card, tomorrow, dayAfterTomorrow);
+        const todayTodos = this._todosDueBetween(card, today, tomorrow);
+        const tomorrowTodos = this._todosDueBetween(card, tomorrow, dayAfterTomorrow);
 
         return html`
             <div class="canvas">
@@ -238,7 +278,7 @@ export class FbFamilyView extends LitElement {
                                     </div>
                                 </button>
                                 <div class="stat">
-                                    <div class="statLabel">House issues</div>
+                                    <div class="statLabel">Home alerts</div>
                                     <div class="statValue">${health.total || 0}</div>
                                 </div>
                             </div>
@@ -337,6 +377,21 @@ export class FbFamilyView extends LitElement {
                                                     `
                                                 )
                                               : html`<div class="itemMeta">No events today.</div>`}
+                                          <div class="modalColTitle">Due chores</div>
+                                          ${todayTodos.length
+                                              ? todayTodos.map(
+                                                    (todo) => html`
+                                                        <div class="eventItem">
+                                                            <div class="eventTitle">
+                                                                ${todo.title}
+                                                            </div>
+                                                            <div class="eventMeta">
+                                                                ${todo.personName || 'Todo'}
+                                                            </div>
+                                                        </div>
+                                                    `
+                                                )
+                                              : html`<div class="itemMeta">No chores due today.</div>`}
                                       </div>
                                       <div class="modalCol">
                                           <div class="modalColTitle">Tomorrow</div>
@@ -366,6 +421,21 @@ export class FbFamilyView extends LitElement {
                                                     `
                                                 )
                                               : html`<div class="itemMeta">No events tomorrow.</div>`}
+                                          <div class="modalColTitle">Due chores</div>
+                                          ${tomorrowTodos.length
+                                              ? tomorrowTodos.map(
+                                                    (todo) => html`
+                                                        <div class="eventItem">
+                                                            <div class="eventTitle">
+                                                                ${todo.title}
+                                                            </div>
+                                                            <div class="eventMeta">
+                                                                ${todo.personName || 'Todo'}
+                                                            </div>
+                                                        </div>
+                                                    `
+                                                )
+                                              : html`<div class="itemMeta">No chores due tomorrow.</div>`}
                                       </div>
                                   </div>
                               </div>

@@ -6,6 +6,105 @@ import { todoItemText } from './nx-displaygrid.util.js';
 
 export function applyShopping(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _normaliseShoppingFavouriteEntry(value) {
+            if (!value) return null;
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                const parsed = this._parseShoppingText(
+                    value.name || value.item || value.summary || ''
+                );
+                const name = String(parsed.base || '').trim();
+                if (!name) return null;
+                const qtyRaw = Number(value.qty ?? value.quantity ?? parsed.qty ?? 1);
+                const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : parsed.qty || 1;
+                return {
+                    name,
+                    qty: Math.round(qty * 100) / 100,
+                };
+            }
+            const parsed = this._parseShoppingText(value);
+            const name = String(parsed.base || '').trim();
+            if (!name) return null;
+            const qtyRaw = Number(parsed.qty || 1);
+            const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+            return {
+                name,
+                qty: Math.round(qty * 100) / 100,
+            };
+        },
+
+        _shoppingFavouriteEntries() {
+            const raw = Array.isArray(this._shoppingFavourites) ? this._shoppingFavourites : [];
+            const entries = [];
+            const seen = new Set();
+            for (const item of raw) {
+                const entry = this._normaliseShoppingFavouriteEntry(item);
+                if (!entry) continue;
+                const key = String(entry.name || '').trim().toLowerCase();
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                entries.push(entry);
+            }
+            return entries;
+        },
+
+        _shoppingFavouriteQty(name) {
+            const key = this._normaliseShoppingBase(name).toLowerCase();
+            if (!key) return 1;
+            const match = this._shoppingFavouriteEntries().find(
+                (entry) => String(entry?.name || '').trim().toLowerCase() === key
+            );
+            return match?.qty || 1;
+        },
+
+        _setShoppingFavouriteQty(name, qty = 1) {
+            const parsed = this._parseShoppingText(name);
+            const base = this._normaliseShoppingBase(parsed.base);
+            if (!base) return;
+            const safeQtyRaw = Number(qty);
+            const safeQty = Number.isFinite(safeQtyRaw) && safeQtyRaw > 0 ? safeQtyRaw : 1;
+            const entries = this._shoppingFavouriteEntries();
+            const key = base.toLowerCase();
+            const idx = entries.findIndex(
+                (entry) => String(entry.name || '').trim().toLowerCase() === key
+            );
+            const nextEntry = { name: base, qty: Math.round(safeQty * 100) / 100 };
+            if (idx >= 0) entries.splice(idx, 1, nextEntry);
+            else entries.unshift(nextEntry);
+            this._shoppingFavourites = entries;
+            this._trackShoppingCommon(base);
+            this._savePrefs();
+            this.requestUpdate();
+        },
+
+        _editShoppingFavourite(name, { nextName = '', qty = 1 } = {}) {
+            const currentKey = this._normaliseShoppingBase(name).toLowerCase();
+            const parsed = this._parseShoppingText(nextName || name);
+            const replacementName = this._normaliseShoppingBase(parsed.base);
+            if (!currentKey || !replacementName) return;
+            const safeQtyRaw = Number(qty);
+            const safeQty = Number.isFinite(safeQtyRaw) && safeQtyRaw > 0 ? safeQtyRaw : 1;
+            const replacementKey = replacementName.toLowerCase();
+            const entries = this._shoppingFavouriteEntries();
+            const filtered = entries.filter((entry) => {
+                const key = String(entry.name || '').trim().toLowerCase();
+                return key !== currentKey && key !== replacementKey;
+            });
+            filtered.unshift({
+                name: replacementName,
+                qty: Math.round(safeQty * 100) / 100,
+            });
+            this._shoppingFavourites = filtered;
+            const common = Array.isArray(this._shoppingCommon) ? this._shoppingCommon : [];
+            this._shoppingCommon = common.map((item) => {
+                const key = String(item || '').trim().toLowerCase();
+                if (key === currentKey) return replacementName;
+                return item;
+            });
+            this._trackShoppingCommon(replacementName);
+            this._savePrefs();
+            this.requestUpdate();
+        },
+
         async _addShoppingItem(text) {
             const parsed = this._parseShoppingText(text);
             const base = parsed.base;
@@ -34,17 +133,26 @@ export function applyShopping(FamilyBoardCard) {
         },
 
         async _addShoppingFavourites() {
-            const favs = Array.isArray(this._shoppingFavourites) ? this._shoppingFavourites : [];
+            const favs = this._shoppingFavouriteEntries();
             const common = Array.isArray(this._shoppingCommon) ? this._shoppingCommon : [];
             const items = [];
             const seen = new Set();
-            for (const item of [...favs, ...common]) {
-                const text = String(item || '').trim();
-                if (!text) continue;
-                const key = text.toLowerCase();
+            for (const item of favs) {
+                const name = String(item?.name || '').trim();
+                if (!name) continue;
+                const key = name.toLowerCase();
                 if (seen.has(key)) continue;
                 seen.add(key);
-                items.push(text);
+                items.push(this._formatShoppingText(name, item?.qty || 1, ''));
+            }
+            for (const item of common) {
+                const text = String(item || '').trim();
+                if (!text) continue;
+                const parsed = this._parseShoppingText(text);
+                const key = String(parsed.base || '').trim().toLowerCase();
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                items.push(this._formatShoppingText(parsed.base, parsed.qty || 1, parsed.unit));
             }
             for (const item of items) {
                 await this._addShoppingItem(item);
@@ -136,23 +244,25 @@ export function applyShopping(FamilyBoardCard) {
             }
         },
 
-        _toggleShoppingFavourite(name) {
+        _toggleShoppingFavourite(name, options = {}) {
             const parsed = this._parseShoppingText(name);
             const text = String(parsed.base || '').trim();
             if (!text) return;
             const key = text.toLowerCase();
-            const favs = Array.isArray(this._shoppingFavourites) ? this._shoppingFavourites : [];
+            const qtyRaw = Number(options?.qty ?? parsed.qty ?? 1);
+            const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+            const favs = this._shoppingFavouriteEntries();
             const common = Array.isArray(this._shoppingCommon) ? this._shoppingCommon : [];
             const exists =
-                favs.some((item) => String(item).toLowerCase() === key) ||
+                favs.some((item) => String(item?.name || '').trim().toLowerCase() === key) ||
                 common.some((item) => String(item).toLowerCase() === key);
             if (exists) {
                 this._shoppingFavourites = favs.filter(
-                    (item) => String(item).toLowerCase() !== key
+                    (item) => String(item?.name || '').trim().toLowerCase() !== key
                 );
                 this._shoppingCommon = common.filter((item) => String(item).toLowerCase() !== key);
             } else {
-                this._shoppingFavourites = [text, ...favs];
+                this._shoppingFavourites = [{ name: text, qty }, ...favs];
                 this._trackShoppingCommon(text);
             }
             this._savePrefs();

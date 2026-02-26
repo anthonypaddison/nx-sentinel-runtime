@@ -739,7 +739,16 @@ class FamilyBoardCard extends LitElement {
             this._forceSetupWizard || (this._onboardingRequired?.(this._config) ?? true);
         const personFilterSig = Array.from(this._personFilterSet || []).sort().join(',');
         const shoppingFavSig = Array.isArray(this._shoppingFavourites)
-            ? this._shoppingFavourites.join('|')
+            ? this._shoppingFavourites
+                  .map((item) => {
+                      if (item && typeof item === 'object') {
+                          const name = String(item.name || '').trim();
+                          const qty = Number(item.qty || item.quantity || 1);
+                          return `${name}:${Number.isFinite(qty) ? qty : 1}`;
+                      }
+                      return String(item || '').trim();
+                  })
+                  .join('|')
             : '';
         const shoppingCommonSig = Array.isArray(this._shoppingCommon)
             ? this._shoppingCommon.join('|')

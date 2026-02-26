@@ -76,7 +76,7 @@ export class FbChoresView extends LitElement {
     static properties = {
         card: { type: Object },
         renderKey: { type: String },
-        _activePersonId: { state: true },
+        _activePersonIds: { state: true },
     };
 
     static styles = [
@@ -215,6 +215,11 @@ export class FbChoresView extends LitElement {
         return item?.uid || item?.id || item?.summary || item?.name || String(idx);
     }
 
+    constructor() {
+        super();
+        this._activePersonIds = [];
+    }
+
     render() {
         const card = this.card;
         if (!card) return html``;
@@ -262,13 +267,14 @@ export class FbChoresView extends LitElement {
             });
         }
         const options = [...optionMap.values()];
-        const activeId = options.some((o) => o.id === this._activePersonId)
-            ? this._activePersonId
-            : options[0]?.id || '';
-        const visibleTodos = activeId
-            ? todoConfigs.filter(
-                  (t) => card._personIdForConfig?.(t, t.entity) === activeId
-              )
+        const persisted = Array.isArray(this._activePersonIds) ? this._activePersonIds : [];
+        const selected = persisted.filter((id) => options.some((o) => o.id === id));
+        const activeIds = selected.length
+            ? selected.slice(0, 2)
+            : options.slice(0, 2).map((opt) => opt.id);
+        const activeSet = new Set(activeIds);
+        const visibleTodos = activeSet.size
+            ? todoConfigs.filter((t) => activeSet.has(card._personIdForConfig?.(t, t.entity)))
             : todoConfigs;
 
         return html`
@@ -278,9 +284,17 @@ export class FbChoresView extends LitElement {
                           ${options.map(
                               (opt) => html`
                                   <button
-                                      class="personToggle ${activeId === opt.id ? 'active' : ''}"
+                                      class="personToggle ${activeSet.has(opt.id) ? 'active' : ''}"
                                       @click=${() => {
-                                          this._activePersonId = opt.id;
+                                          const next = [...activeIds];
+                                          const idx = next.indexOf(opt.id);
+                                          if (idx >= 0) {
+                                              next.splice(idx, 1);
+                                          } else {
+                                              next.push(opt.id);
+                                              if (next.length > 2) next.shift();
+                                          }
+                                          this._activePersonIds = next;
                                       }}
                                   >
                                       ${opt.name}

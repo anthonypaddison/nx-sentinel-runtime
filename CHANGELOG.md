@@ -2,6 +2,33 @@
 
 ## 2026-02-26
 
+- Updated topbar overflow menu availability and layout:
+  - restored visible 3-dot menu on desktop and mobile headers,
+  - kept mobile as a full-height, scrollable slide-out list with one item per row,
+  - retained kiosk/full-kiosk/screensaver controls in the menu.
+- Added ambient quick-access circular 3-dot menu button in the bottom-right action dock (next to Heating/Lighting) with the same navigation/system actions.
+- Updated Family dashboard `Open Important` modal to show:
+  - today events,
+  - tomorrow events,
+  - due chores for today/tomorrow.
+- Updated Family dashboard summary actions:
+  - removed duplicate `Chores` action card from the lower quick-action area,
+  - renamed `House issues` stat label to `Home alerts`,
+  - `House mode` quick action now opens Home Controls (`home` view).
+- Expanded family-mode allowed views to include `home` so House mode navigation is always valid.
+- Updated chores person toggles to allow up to 2 selected people at once; selecting a 3rd auto-deselects the oldest selected person.
+- Upgraded shopping favourites to support stored default quantities (not just names) and added edit flows for favourite name/quantity in shopping/favourites UIs.
+- Food view updates:
+  - `Favourites` now defaults to `Favourite shopping`,
+  - favourite shopping rows show quantity and support editing,
+  - recipe ingredient draft now defaults to qty `1` and no quantity type selected,
+  - recipe save now surfaces validation feedback when ingredient/step drafts are typed but not added via `+`.
+- Meal plan is now week/date-based:
+  - added previous/today/next week controls,
+  - stores meal assignments per week in `food_v2.menu_weeks`,
+  - supports planning meals into future weeks while preserving current-week compatibility.
+- Added per-device theme options using device-scoped `background_theme`:
+  - `Current`, `Pale`, `Dark mode`, `Crystal glass`.
 - Updated family dashboard topbar/person chips:
   - removed child/grownup role icons from chips,
   - increased name emphasis and left-aligned labels,
@@ -35,7 +62,7 @@
 - Updated Food `Favourites -> Favourite shopping` to use the same combined shopping quick-add list (`favourites + common`) that was previously visible in the Shopping tab side panel.
 - Restyled Food `Favourites -> Favourite shopping` rows to match the previous shopping-favourites look (pill rows, inline plus marker, and star icon state) instead of plain text-action rows.
 - Added `deploy/rsync-restart-logcheck.sh` to run staged rsync, HA restart, 5-minute wait, and remote log fetch/scan from a single terminal command.
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-151700`.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-171900`.
 
 ## 2026-02-25
 

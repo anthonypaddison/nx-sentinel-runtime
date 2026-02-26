@@ -314,6 +314,11 @@ export class FbShoppingView extends LitElement {
             gap: 4px;
             align-items: center;
         }
+        .commonQty {
+            color: var(--fb-muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
         .starBtn {
             border: none;
             background: transparent;
@@ -364,12 +369,22 @@ export class FbShoppingView extends LitElement {
         const shoppingEntity = card._config?.shopping?.entity || '';
         const hasTodoService = Boolean(card._supportsService?.('todo', 'get_items'));
         const hideFavourites = this.hideFavourites === true;
-        const favourites = Array.isArray(card._shoppingFavourites)
-            ? card._shoppingFavourites
+        const favouriteEntries = Array.isArray(card._shoppingFavouriteEntries?.())
+            ? card._shoppingFavouriteEntries()
             : [];
         const common = Array.isArray(card._shoppingCommon) ? card._shoppingCommon : [];
-        const favList = favourites.map((item) => String(item));
-        const favKeys = new Set(favourites.map((item) => String(item).toLowerCase()));
+        const favList = favouriteEntries.map((entry) => String(entry?.name || '').trim()).filter(Boolean);
+        const favKeys = new Set(
+            favouriteEntries
+                .map((entry) => String(entry?.name || '').trim().toLowerCase())
+                .filter(Boolean)
+        );
+        const favQtyMap = new Map(
+            favouriteEntries.map((entry) => [
+                String(entry?.name || '').trim().toLowerCase(),
+                Number(entry?.qty || 1) || 1,
+            ])
+        );
         const commonList = [];
         const seen = new Set();
         for (const item of [...favList, ...common]) {
@@ -471,6 +486,7 @@ export class FbShoppingView extends LitElement {
                                       const fav = favKeys.has(
                                           String(itemName).toLowerCase()
                                       );
+                                      const favQty = fav ? favQtyMap.get(String(itemName).toLowerCase()) || 1 : 1;
                                       const isDone = ['completed', 'done'].includes(
                                           String(it.status || '').toLowerCase()
                                       );
@@ -519,7 +535,8 @@ export class FbShoppingView extends LitElement {
                                                           onClick: (e) => {
                                                               e.stopPropagation();
                                                               card._toggleShoppingFavourite(
-                                                                  itemName
+                                                                  itemName,
+                                                                  { qty: fav ? favQty : qty || 1 }
                                                               );
                                                           },
                                                       },
@@ -606,31 +623,87 @@ export class FbShoppingView extends LitElement {
                                       ? commonList.map((item) => {
                                             const key = String(item).toLowerCase();
                                             const fav = favKeys.has(key);
+                                            const favQty = favQtyMap.get(key) || 1;
                                             return html`
                                                 <div class="commonRow">
                                                     <div
                                                         class="btn commonItem"
                                                         role="button"
                                                         tabindex="0"
-                                                        @click=${() => this._addCommonItem(item)}
+                                                        @click=${() =>
+                                                            this._addCommonItem(
+                                                                card._formatShoppingText?.(
+                                                                    item,
+                                                                    favQty,
+                                                                    ''
+                                                                ) || item
+                                                            )}
                                                         @keydown=${(e) => {
                                                             if (
                                                                 e.key === 'Enter' ||
                                                                 e.key === ' '
                                                             ) {
                                                                 e.preventDefault();
-                                                                this._addCommonItem(item);
+                                                                this._addCommonItem(
+                                                                    card._formatShoppingText?.(
+                                                                        item,
+                                                                        favQty,
+                                                                        ''
+                                                                    ) || item
+                                                                );
                                                             }
                                                         }}
                                                     >
                                                         <span class="commonText">${item}</span>
+                                                        ${favQty > 1
+                                                            ? html`<span class="commonQty">x${favQty}</span>`
+                                                            : html``}
                                                         <span class="commonPlus" aria-hidden="true">+</span>
+                                                        ${fav
+                                                            ? html`<button
+                                                                  class="btn icon ghost starBtn"
+                                                                  title="Edit favourite"
+                                                                  @click=${(e) => {
+                                                                      e.stopPropagation();
+                                                                      const nameInput = window.prompt(
+                                                                          'Edit favourite item',
+                                                                          item
+                                                                      );
+                                                                      if (nameInput === null) return;
+                                                                      const nextName = String(
+                                                                          nameInput || ''
+                                                                      ).trim();
+                                                                      if (!nextName) return;
+                                                                      const qtyInput = window.prompt(
+                                                                          'Quantity to add by default',
+                                                                          String(favQty)
+                                                                      );
+                                                                      if (qtyInput === null) return;
+                                                                      const qtyRaw = Number(qtyInput);
+                                                                      const qty =
+                                                                          Number.isFinite(qtyRaw) &&
+                                                                          qtyRaw > 0
+                                                                              ? qtyRaw
+                                                                              : 1;
+                                                                      card._editShoppingFavourite?.(item, {
+                                                                          nextName,
+                                                                          qty,
+                                                                      });
+                                                                  }}
+                                                              >
+                                                                  <ha-icon
+                                                                      icon="mdi:pencil-outline"
+                                                                  ></ha-icon>
+                                                              </button>`
+                                                            : html``}
                                                         <button
                                                             class="btn icon ghost starBtn ${fav ? 'active' : ''}"
                                                             title=${fav ? 'Unfavourite' : 'Favourite'}
                                                             @click=${(e) => {
                                                                 e.stopPropagation();
-                                                                card._toggleShoppingFavourite(item);
+                                                                card._toggleShoppingFavourite(item, {
+                                                                    qty: favQty,
+                                                                });
                                                             }}
                                                         >
                                                             <ha-icon

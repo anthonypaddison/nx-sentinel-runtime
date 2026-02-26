@@ -35,7 +35,7 @@ export function applyAdaptive(FamilyBoardCard) {
             const extras = (this._v2NavScreens?.() || []).map((s) => s.key).filter(Boolean);
             const familyMode = this._isFamilyDashboardMode?.();
             if (familyMode) {
-                const familyBase = ['schedule', 'chores', 'food', 'family', 'ambient'];
+                const familyBase = ['schedule', 'chores', 'food', 'family', 'ambient', 'home'];
                 const isAdmin = this._hasAdminAccess?.();
                 const adminMenu = this._familyAdminMenuConfig?.() || {};
                 if (isAdmin && adminMenu.settings !== false) familyBase.push('settings');

@@ -1192,7 +1192,7 @@ export class FbSettingsView extends LitElement {
         const orderedPeople = peopleDisplayFull
             .map((id) => people.find((p) => p.id === id))
             .filter(Boolean);
-        const theme = cfg.theme || 'bright-light';
+        const deviceTheme = card._config?.background_theme || 'default';
         const adaptiveV2 =
             cfg.adaptive_v2 && typeof cfg.adaptive_v2 === 'object' ? cfg.adaptive_v2 : {};
         const intentV2 =
@@ -2553,18 +2553,26 @@ export class FbSettingsView extends LitElement {
                                     Saved per user/device unless stated otherwise.
                                 </div>
                                 <div class="row">
-                                    <div>Theme</div>
+                                    <div>Theme (this device)</div>
                                     <select
                                         class="input"
-                                        .value=${theme}
+                                        .value=${deviceTheme}
                                         @change=${(e) =>
-                                            card._updateConfigPartial({ theme: e.target.value })}
+                                            card._updateConfigPartial({
+                                                background_theme:
+                                                    e.target.value === 'default'
+                                                        ? ''
+                                                        : e.target.value,
+                                            })}
                                     >
-                                        <option value="bright-light">Bright light</option>
+                                        <option value="default">Current</option>
+                                        <option value="pale">Pale</option>
+                                        <option value="dark">Dark mode</option>
+                                        <option value="crystal">Crystal glass</option>
                                     </select>
                                 </div>
                                 <div class="muted">
-                                    Controls the overall look of the board.
+                                    Stored per user/device and does not affect other devices.
                                 </div>
                                 <div class="row">
                                     <div>Refresh interval</div>
@@ -2710,28 +2718,6 @@ export class FbSettingsView extends LitElement {
                                     </div>
                                 </div>
                                 <div class="muted">Used when creating new calendar events.</div>
-                                <div class="row">
-                                    <div>Background theme</div>
-                                    <select
-                                        class="input"
-                                        .value=${card._config?.background_theme || 'default'}
-                                        @change=${(e) =>
-                                            card._updateConfigPartial({
-                                                background_theme:
-                                                    e.target.value === 'default'
-                                                        ? ''
-                                                        : e.target.value,
-                                            })}
-                                    >
-                                        <option value="default">Default</option>
-                                        <option value="mint">Mint</option>
-                                        <option value="sand">Sand</option>
-                                        <option value="slate">Slate</option>
-                                    </select>
-                                </div>
-                                <div class="muted">
-                                    Changes the overall page background tint.
-                                </div>
                                 <div class="row">
                                     <div>Mobile layout (this device)</div>
                                     <label>

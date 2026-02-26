@@ -40,6 +40,54 @@ function trimNumber(value) {
     return String(Math.round(n * 100) / 100);
 }
 
+function dateKey(value) {
+    const d = value instanceof Date ? value : new Date(value || Date.now());
+    if (Number.isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function mondayStart(date = new Date()) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const weekday = d.getDay();
+    const delta = weekday === 0 ? -6 : 1 - weekday;
+    d.setDate(d.getDate() + delta);
+    return d;
+}
+
+function weekDates(weekStartDate) {
+    const start = mondayStart(weekStartDate);
+    return Array.from({ length: 7 }, (_, day) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + day);
+        return {
+            day,
+            date,
+            dateKey: dateKey(date),
+            label: WEEKDAY_LABELS[day] || `Day ${day + 1}`,
+        };
+    });
+}
+
+function normaliseMenuWeekRows(rows = [], weekStartDate = new Date()) {
+    const source = Array.isArray(rows) ? rows : [];
+    const dates = weekDates(weekStartDate);
+    return dates.map((meta) => {
+        const row = source.find((entry) => Number(entry?.day) === Number(meta.day)) || {};
+        return {
+            day: meta.day,
+            date: meta.date,
+            dateKey: meta.dateKey,
+            label: meta.label,
+            mealId: String(row.mealId || ''),
+            note: String(row.note || ''),
+        };
+    });
+}
+
 function parseIngredientText(text, defaultUnit = '') {
     const raw = String(text || '').trim();
     if (!raw) return null;
@@ -213,6 +261,33 @@ export function applyFood(FamilyBoardCard) {
             return WEEKDAY_LABELS.slice();
         },
 
+        _foodWeekInfo(offset = 0) {
+            const safeOffset = Number.isFinite(Number(offset)) ? Math.trunc(Number(offset)) : 0;
+            const start = mondayStart(new Date());
+            start.setDate(start.getDate() + safeOffset * 7);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            return {
+                offset: safeOffset,
+                start,
+                end,
+                weekKey: dateKey(start),
+                days: weekDates(start),
+            };
+        },
+
+        _foodWeekMenu(weekKey = '') {
+            const food = this._foodData?.() || {};
+            const key = String(weekKey || food.currentWeekKey || '').trim();
+            if (!key) return Array.isArray(food.menu) ? food.menu : [];
+            const week = food.menuWeeks?.[key];
+            if (Array.isArray(week) && week.length) return week;
+            if (key === food.currentWeekKey) return Array.isArray(food.menu) ? food.menu : [];
+            const parsed = new Date(`${key}T00:00:00`);
+            if (Number.isNaN(parsed.getTime())) return [];
+            return normaliseMenuWeekRows([], parsed);
+        },
+
         _foodUnitOptions() {
             const food = this._foodData?.() || {};
             const configured = Array.isArray(food.units) ? food.units : [];
@@ -223,15 +298,33 @@ export function applyFood(FamilyBoardCard) {
             const raw = this._config?.food_v2;
             const data = raw && typeof raw === 'object' ? raw : {};
             const rawMenu = Array.isArray(data.menu) ? data.menu : [];
-            const menu = Array.from({ length: 7 }, (_, idx) => {
-                const source = rawMenu.find((entry) => Number(entry?.day) === idx) || {};
-                return {
-                    day: idx,
-                    label: WEEKDAY_LABELS[idx] || `Day ${idx + 1}`,
-                    mealId: String(source.mealId || ''),
-                    note: String(source.note || ''),
-                };
+            const currentWeek = mondayStart(new Date());
+            const currentWeekKey = dateKey(currentWeek);
+            const menuWeeksRaw =
+                data.menu_weeks && typeof data.menu_weeks === 'object' ? data.menu_weeks : {};
+            const menuWeeks = {};
+            Object.entries(menuWeeksRaw).forEach(([week, rows]) => {
+                const parsedWeek = new Date(`${week}T00:00:00`);
+                if (Number.isNaN(parsedWeek.getTime())) return;
+                menuWeeks[week] = normaliseMenuWeekRows(rows, parsedWeek).map((row) => ({
+                    day: row.day,
+                    mealId: row.mealId,
+                    note: row.note,
+                }));
             });
+            if (!menuWeeks[currentWeekKey] && rawMenu.length) {
+                menuWeeks[currentWeekKey] = normaliseMenuWeekRows(rawMenu, currentWeek).map(
+                    (row) => ({
+                        day: row.day,
+                        mealId: row.mealId,
+                        note: row.note,
+                    })
+                );
+            }
+            const menu = normaliseMenuWeekRows(
+                menuWeeks[currentWeekKey] || rawMenu,
+                currentWeek
+            );
             const inventory = data.inventory && typeof data.inventory === 'object' ? data.inventory : {};
             const pantry = (Array.isArray(inventory.pantry) ? inventory.pantry : [])
                 .map((item) => normaliseInventoryItem(item, 'pantry'))
@@ -269,6 +362,8 @@ export function applyFood(FamilyBoardCard) {
 
             return {
                 menu,
+                menuWeeks,
+                currentWeekKey,
                 inventory: { pantry, fridge },
                 savedLists,
                 recipes,
@@ -291,14 +386,40 @@ export function applyFood(FamilyBoardCard) {
             await this._updateFoodData({ units: nextUnits });
         },
 
-        async _foodSetMenuDay(day, patch = {}) {
+        async _foodSetMenuDay(day, patch = {}, weekKey = '') {
             const idx = Number(day);
             if (!Number.isInteger(idx) || idx < 0 || idx > 6) return;
             const food = this._foodData();
-            const nextMenu = food.menu.map((entry) =>
+            const key =
+                String(weekKey || '').trim() ||
+                String(food.currentWeekKey || dateKey(mondayStart(new Date()))).trim();
+            const parsedWeek = new Date(`${key}T00:00:00`);
+            const baseWeek = normaliseMenuWeekRows(
+                Array.isArray(food.menuWeeks?.[key]) ? food.menuWeeks[key] : key === food.currentWeekKey ? food.menu : [],
+                Number.isNaN(parsedWeek.getTime()) ? new Date() : parsedWeek
+            );
+            const nextWeek = baseWeek.map((entry) =>
                 entry.day === idx ? { ...entry, ...patch, day: idx } : entry
             );
-            await this._updateFoodData({ menu: nextMenu });
+            const nextMenuWeeks = {
+                ...(food.menuWeeks || {}),
+                [key]: nextWeek.map((entry) => ({
+                    day: entry.day,
+                    mealId: String(entry.mealId || ''),
+                    note: String(entry.note || ''),
+                })),
+            };
+            const payload = {
+                menu_weeks: nextMenuWeeks,
+            };
+            if (key === food.currentWeekKey) {
+                payload.menu = nextWeek.map((entry) => ({
+                    day: entry.day,
+                    mealId: String(entry.mealId || ''),
+                    note: String(entry.note || ''),
+                }));
+            }
+            await this._updateFoodData(payload);
         },
 
         _foodRecipeById(recipeId) {
@@ -311,10 +432,11 @@ export function applyFood(FamilyBoardCard) {
             return Array.isArray(safe?.ingredients) ? safe.ingredients : [];
         },
 
-        _foodMenuMeal(day) {
+        _foodMenuMeal(day, weekKey = '') {
             const idx = Number(day);
             const food = this._foodData();
-            const menuEntry = food.menu.find((entry) => entry.day === idx);
+            const menu = this._foodWeekMenu?.(weekKey) || food.menu || [];
+            const menuEntry = menu.find((entry) => entry.day === idx);
             if (!menuEntry?.mealId) return null;
             return food.recipes.find((recipe) => recipe.id === menuEntry.mealId) || null;
         },
@@ -454,11 +576,12 @@ export function applyFood(FamilyBoardCard) {
             });
         },
 
-        async _foodBeginCooking(day) {
+        async _foodBeginCooking(day, weekKey = '') {
             const idx = Number(day);
             if (!Number.isInteger(idx) || idx < 0 || idx > 6) return false;
             const food = this._foodData();
-            const entry = food.menu.find((row) => row.day === idx);
+            const menu = this._foodWeekMenu?.(weekKey) || food.menu || [];
+            const entry = menu.find((row) => row.day === idx);
             const mealId = String(entry?.mealId || '').trim();
             if (!mealId) return false;
             const meal = this._foodRecipeById(mealId);
@@ -602,10 +725,10 @@ export function applyFood(FamilyBoardCard) {
             await this._foodAddItemsToShopping([ingredient], 'Ingredient');
         },
 
-        async _foodAddMenuDayMealToShopping(day) {
+        async _foodAddMenuDayMealToShopping(day, weekKey = '') {
             const idx = Number(day);
-            const food = this._foodData();
-            const entry = food.menu.find((row) => row.day === idx);
+            const menu = this._foodWeekMenu?.(weekKey) || this._foodData()?.menu || [];
+            const entry = menu.find((row) => row.day === idx);
             if (!entry?.mealId) return;
             await this._foodAddMealToShopping(entry.mealId);
         },

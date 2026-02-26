@@ -21,12 +21,14 @@ export class FbAmbientView extends LitElement {
         renderKey: { type: String },
         _nowTick: { state: true },
         _collectionModal: { state: true },
+        _menuOpen: { state: true },
     };
 
     constructor() {
         super();
         this._nowTick = Date.now();
         this._collectionModal = null;
+        this._menuOpen = false;
         this._timer = null;
     }
 
@@ -178,8 +180,9 @@ export class FbAmbientView extends LitElement {
         }
         .actionDock {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
             gap: 10px;
+            position: relative;
         }
         .dockBtn {
             display: inline-flex;
@@ -187,6 +190,56 @@ export class FbAmbientView extends LitElement {
             justify-content: center;
             gap: 8px;
             min-height: 46px;
+        }
+        .dockMenuBtn {
+            --fb-btn-bg: var(--fb-surface);
+            --fb-btn-border: var(--fb-grid);
+            --fb-btn-border-width: 1px;
+            --fb-btn-radius: 999px;
+            --fb-btn-padding: 0;
+            --fb-btn-min-height: 46px;
+            --fb-btn-min-width: 46px;
+            display: grid;
+            place-items: center;
+        }
+        .dockMenuBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 70;
+            background: rgba(4, 10, 16, 0.35);
+        }
+        .dockMenu {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 8px);
+            min-width: 240px;
+            max-height: min(70vh, 480px);
+            overflow-y: auto;
+            border-radius: 10px;
+            border: 1px solid var(--fb-border);
+            background: var(--fb-surface);
+            box-shadow: var(--fb-shadow);
+            padding: 8px;
+            display: grid;
+            gap: 4px;
+            z-index: 71;
+        }
+        .dockMenuItem {
+            --fb-btn-bg: transparent;
+            --fb-btn-border-width: 0;
+            --fb-btn-radius: 8px;
+            --fb-btn-padding: 10px 12px;
+            --fb-btn-font-size: 14px;
+            --fb-btn-min-height: 42px;
+            width: 100%;
+            text-align: left;
+            display: inline-flex;
+            justify-content: flex-start;
+        }
+        .dockMenuSection {
+            border-top: 1px solid var(--fb-grid);
+            margin-top: 4px;
+            padding-top: 4px;
         }
         .modalBackdrop {
             position: fixed;
@@ -307,6 +360,14 @@ export class FbAmbientView extends LitElement {
 
     _closeCollection() {
         this._collectionModal = null;
+    }
+
+    _toggleMenu() {
+        this._menuOpen = !this._menuOpen;
+    }
+
+    _closeMenu() {
+        this._menuOpen = false;
     }
 
     render() {
@@ -440,6 +501,113 @@ export class FbAmbientView extends LitElement {
                         <ha-icon icon=${lightingCollection?.icon || 'mdi:lightbulb-group'}></ha-icon>
                         <span>${lightingCollection?.label || 'Lighting'}</span>
                     </button>
+                    <button
+                        class="btn dockMenuBtn"
+                        title="Menu"
+                        @click=${this._toggleMenu}
+                    >
+                        <ha-icon icon="mdi:dots-vertical"></ha-icon>
+                    </button>
+                    ${this._menuOpen
+                        ? html`
+                              <div class="dockMenuBackdrop" @click=${this._closeMenu}></div>
+                              <div class="dockMenu">
+                                  <button
+                                      class="btn dockMenuItem"
+                                      @click=${() => {
+                                          this._closeMenu();
+                                          card._onNav?.({ detail: { target: 'schedule' } });
+                                      }}
+                                  >
+                                      Calendar
+                                  </button>
+                                  <button
+                                      class="btn dockMenuItem"
+                                      @click=${() => {
+                                          this._closeMenu();
+                                          card._onNav?.({ detail: { target: 'chores' } });
+                                      }}
+                                  >
+                                      Chores
+                                  </button>
+                                  <button
+                                      class="btn dockMenuItem"
+                                      @click=${() => {
+                                          this._closeMenu();
+                                          card._onNav?.({ detail: { target: 'food' } });
+                                      }}
+                                  >
+                                      Food
+                                  </button>
+                                  <button
+                                      class="btn dockMenuItem"
+                                      @click=${() => {
+                                          this._closeMenu();
+                                          card._onNav?.({ detail: { target: 'family' } });
+                                      }}
+                                  >
+                                      Family Dashboard
+                                  </button>
+                                  <button class="btn dockMenuItem" disabled>Ambient</button>
+                                  ${card._hasAdminAccess?.() === true
+                                      ? html`<button
+                                            class="btn dockMenuItem"
+                                            @click=${() => {
+                                                this._closeMenu();
+                                                card._onNav?.({ detail: { target: 'settings' } });
+                                            }}
+                                        >
+                                            Settings
+                                        </button>`
+                                      : html``}
+                                  <div class="dockMenuSection">
+                                      <button
+                                          class="btn dockMenuItem"
+                                          ?disabled=${card._syncingCalendars === true}
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              card._onSyncCalendars?.();
+                                          }}
+                                      >
+                                          ${card._syncingCalendars ? 'Syncing…' : 'Sync'}
+                                      </button>
+                                      <button
+                                          class="btn dockMenuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              card._onKioskToggle?.({
+                                                  detail: { enabled: !card._kioskMode },
+                                              });
+                                          }}
+                                      >
+                                          ${card._kioskMode ? 'Disable Kiosk Mode' : 'Kiosk Mode'}
+                                      </button>
+                                      <button
+                                          class="btn dockMenuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              card._onFullKioskToggle?.({
+                                                  detail: { enabled: !card._fullKioskMode },
+                                              });
+                                          }}
+                                      >
+                                          ${card._fullKioskMode
+                                              ? 'Disable Full Kiosk Mode'
+                                              : 'Full Kiosk Mode'}
+                                      </button>
+                                      <button
+                                          class="btn dockMenuItem"
+                                          @click=${() => {
+                                              this._closeMenu();
+                                              card._onScreensaverToggle?.({ detail: { enabled: true } });
+                                          }}
+                                      >
+                                          Screen saver
+                                      </button>
+                                  </div>
+                              </div>
+                          `
+                        : html``}
                 </div>
 
                 ${this._collectionModal

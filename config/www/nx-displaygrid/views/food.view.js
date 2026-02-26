@@ -36,6 +36,7 @@ export class FbFoodView extends LitElement {
         card: { type: Object },
         renderKey: { type: String },
         _tab: { state: true },
+        _menuWeekOffset: { state: true },
         _savedListName: { state: true },
         _savedListItems: { state: true },
         _recipeId: { state: true },
@@ -50,11 +51,15 @@ export class FbFoodView extends LitElement {
         _menuSearch: { state: true },
         _shoppingModal: { state: true },
         _reviewComments: { state: true },
+        _recipeSaveError: { state: true },
+        _recipePendingIngredient: { state: true },
+        _recipePendingStep: { state: true },
     };
 
     constructor() {
         super();
         this._tab = 'menu';
+        this._menuWeekOffset = 0;
         this._savedListName = '';
         this._savedListItems = '';
         this._recipeId = '';
@@ -63,12 +68,15 @@ export class FbFoodView extends LitElement {
         this._recipeSteps = [];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = 'quantity';
+        this._recipeIngredientUnit = '';
         this._recipeStepText = '';
-        this._favouritesMode = 'meals';
+        this._favouritesMode = 'shopping';
         this._menuSearch = {};
         this._shoppingModal = null;
         this._reviewComments = {};
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
+        this._recipePendingStep = false;
     }
 
     static styles = [
@@ -224,6 +232,20 @@ export class FbFoodView extends LitElement {
         .searchInputWrap {
             display: grid;
             gap: 6px;
+        }
+        .weekNav {
+            display: grid;
+            grid-template-columns: auto auto minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+        }
+        .weekLabel {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--fb-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .stars {
             display: inline-flex;
@@ -401,6 +423,15 @@ export class FbFoodView extends LitElement {
             gap: 8px;
             align-items: center;
         }
+        .input.invalid {
+            border-color: var(--urgent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--urgent) 16%, transparent);
+        }
+        .errorText {
+            color: var(--urgent);
+            font-size: 13px;
+            font-weight: 700;
+        }
         @media (max-width: 1100px) {
             .grid2 {
                 grid-template-columns: 1fr;
@@ -446,8 +477,11 @@ export class FbFoodView extends LitElement {
         this._recipeSteps = [];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = 'quantity';
+        this._recipeIngredientUnit = '';
         this._recipeStepText = '';
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
+        this._recipePendingStep = false;
     }
 
     _openRecipeEditor(recipe) {
@@ -462,7 +496,7 @@ export class FbFoodView extends LitElement {
                 id: String(ingredient?.id || `ingredient_${idx}`),
                 name: String(ingredient?.name || '').trim(),
                 qty: Number(ingredient?.qty || 1),
-                unit: String(ingredient?.unit || 'quantity').trim() || 'quantity',
+                unit: String(ingredient?.unit || '').trim(),
             }))
             .filter((ingredient) => ingredient.name);
         this._recipeSteps = (Array.isArray(recipe.steps) ? recipe.steps : [])
@@ -470,8 +504,11 @@ export class FbFoodView extends LitElement {
             .filter(Boolean);
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = 'quantity';
+        this._recipeIngredientUnit = '';
         this._recipeStepText = '';
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
+        this._recipePendingStep = false;
     }
 
     _addRecipeIngredient() {
@@ -482,7 +519,7 @@ export class FbFoodView extends LitElement {
         if (!names.length) return;
         const qty = Number(this._recipeIngredientQty || 1);
         const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
-        const unit = String(this._recipeIngredientUnit || 'quantity').trim() || 'quantity';
+        const unit = String(this._recipeIngredientUnit || '').trim();
         this._recipeIngredients = [
             ...(Array.isArray(this._recipeIngredients) ? this._recipeIngredients : []),
             ...names.map((name, idx) => ({
@@ -494,7 +531,9 @@ export class FbFoodView extends LitElement {
         ];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = unit;
+        this._recipeIngredientUnit = '';
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
     }
 
     _removeRecipeIngredient(index) {
@@ -512,6 +551,8 @@ export class FbFoodView extends LitElement {
         if (!lines.length) return;
         this._recipeSteps = [...(Array.isArray(this._recipeSteps) ? this._recipeSteps : []), ...lines];
         this._recipeStepText = '';
+        this._recipeSaveError = '';
+        this._recipePendingStep = false;
     }
 
     _removeRecipeStep(index) {
@@ -523,16 +564,31 @@ export class FbFoodView extends LitElement {
 
     async _submitRecipe(card) {
         const name = String(this._recipeName || '').trim();
-        if (!name) return;
+        const pendingIngredient = Boolean(String(this._recipeIngredientName || '').trim());
+        const pendingStep = Boolean(String(this._recipeStepText || '').trim());
+        this._recipePendingIngredient = pendingIngredient;
+        this._recipePendingStep = pendingStep;
+        if (!name) {
+            this._recipeSaveError = 'Recipe name is required.';
+            return;
+        }
+        if (pendingIngredient || pendingStep) {
+            this._recipeSaveError = 'Use + to add pending ingredient/step before saving.';
+            return;
+        }
         const ingredients = (Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [])
             .map((ingredient) => ({
                 id: String(ingredient?.id || ''),
                 name: String(ingredient?.name || '').trim(),
                 qty: Number(ingredient?.qty || 1),
-                unit: String(ingredient?.unit || 'quantity').trim() || 'quantity',
+                unit: String(ingredient?.unit || '').trim(),
             }))
             .filter((ingredient) => ingredient.name);
-        if (!ingredients.length) return;
+        if (!ingredients.length) {
+            this._recipeSaveError = 'Add at least one ingredient before saving.';
+            this._recipePendingIngredient = true;
+            return;
+        }
         const steps = (Array.isArray(this._recipeSteps) ? this._recipeSteps : [])
             .map((step) => String(step || '').trim())
             .filter(Boolean);
@@ -551,11 +607,37 @@ export class FbFoodView extends LitElement {
                 steps,
             });
         }
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
+        this._recipePendingStep = false;
         this._resetRecipeDraft();
     }
 
-    async _beginCooking(card, day) {
-        const started = await card._foodBeginCooking?.(day);
+    _formatWeekLabel(date) {
+        const d = date instanceof Date ? date : new Date(date || Date.now());
+        return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    _editFavouriteItem(card, entry) {
+        if (!entry) return;
+        const currentName = String(entry.name || '').trim();
+        if (!currentName) return;
+        const nameInput = window.prompt('Edit favourite item', currentName);
+        if (nameInput === null) return;
+        const nextName = String(nameInput || '').trim();
+        if (!nextName) return;
+        const qtyInput = window.prompt(
+            'Quantity to add by default',
+            String(Number(entry.qty || 1) || 1)
+        );
+        if (qtyInput === null) return;
+        const qtyRaw = Number(qtyInput);
+        const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+        card._editShoppingFavourite?.(currentName, { nextName, qty });
+    }
+
+    async _beginCooking(card, day, weekKey = '') {
+        const started = await card._foodBeginCooking?.(day, weekKey);
         if (started) this._tab = 'cooking';
     }
 
@@ -648,14 +730,15 @@ export class FbFoodView extends LitElement {
         `;
     }
 
-    _applyMenuSearch(card, day, value, meals) {
+    _applyMenuSearch(card, day, value, meals, weekKey = '', searchKey = '') {
         const text = String(value || '').trim();
+        const key = String(searchKey || day);
         this._menuSearch = {
             ...(this._menuSearch || {}),
-            [day]: text,
+            [key]: text,
         };
         if (!text) {
-            card._foodSetMenuDay?.(day, { mealId: '' });
+            card._foodSetMenuDay?.(day, { mealId: '' }, weekKey);
             return;
         }
         const exact = (Array.isArray(meals) ? meals : []).find((meal) => {
@@ -664,35 +747,80 @@ export class FbFoodView extends LitElement {
             return String(meal.name || '').trim().toLowerCase() === text.toLowerCase();
         });
         if (exact?.id) {
-            card._foodSetMenuDay?.(day, { mealId: exact.id });
+            card._foodSetMenuDay?.(day, { mealId: exact.id }, weekKey);
         }
     }
 
     _renderMenuTab(card, food) {
         const meals = Array.isArray(food?.recipes) ? food.recipes : [];
-        const menu = Array.isArray(food?.menu) ? food.menu : [];
+        const weekInfo = card._foodWeekInfo?.(this._menuWeekOffset) || {};
+        const weekKey = String(weekInfo.weekKey || '');
+        const weekDays = Array.isArray(weekInfo.days) ? weekInfo.days : [];
+        const menu = Array.isArray(card._foodWeekMenu?.(weekKey))
+            ? card._foodWeekMenu(weekKey)
+            : Array.isArray(food?.menu)
+            ? food.menu
+            : [];
+        const weekStart = weekInfo.start instanceof Date ? weekInfo.start : null;
+        const weekEnd = weekInfo.end instanceof Date ? weekInfo.end : null;
+        const weekLabel =
+            weekStart && weekEnd
+                ? `${this._formatWeekLabel(weekStart)} - ${this._formatWeekLabel(weekEnd)}`
+                : 'This week';
         const mealListId = 'food-meal-options';
         return html`
             <div class="panel fb-card">
-                <div class="fb-card-header">Meal Plan (This Week)</div>
+                <div class="fb-card-header">Meal Plan</div>
                 <div class="panelBody">
+                    <div class="weekNav">
+                        <button
+                            class="btn sm ghost"
+                            title="Previous week"
+                            @click=${() => (this._menuWeekOffset = Number(this._menuWeekOffset || 0) - 1)}
+                        >
+                            <
+                        </button>
+                        <button
+                            class="btn sm ghost"
+                            @click=${() => (this._menuWeekOffset = 0)}
+                        >
+                            Today
+                        </button>
+                        <div class="weekLabel">${weekLabel}</div>
+                        <button
+                            class="btn sm ghost"
+                            title="Next week"
+                            @click=${() => (this._menuWeekOffset = Number(this._menuWeekOffset || 0) + 1)}
+                        >
+                            >
+                        </button>
+                    </div>
                     <div class="sectionHint">
-                        Search meals, assign them to weekdays, and choose exactly which ingredients
-                        are added to shopping.
+                        Search meals, assign them by date, and choose exactly which ingredients are
+                        added to shopping.
                     </div>
                     <datalist id=${mealListId}>
                         ${meals.map((meal) => html`<option value=${meal.name}></option>`)}
                     </datalist>
                     <div class="stack">
                         ${menu.map((entry) => {
+                            const dayMeta = weekDays.find((day) => Number(day.day) === Number(entry.day));
                             const selectedMeal = meals.find((meal) => meal.id === entry.mealId) || null;
                             const selectedName = selectedMeal?.name || '';
-                            const inputValue = this._menuSearch?.[entry.day] ?? selectedName;
+                            const searchKey = `${weekKey || 'week'}:${entry.day}`;
+                            const inputValue = this._menuSearch?.[searchKey] ?? selectedName;
                             const ingredients = selectedMeal?.ingredients || [];
                             return html`
                                 <div class="row menuRow">
                                     <div>
-                                        <div class="dayLabel">${entry.label}</div>
+                                        <div class="dayLabel">
+                                            ${dayMeta?.label || entry.label}
+                                            ${dayMeta?.date
+                                                ? html`<span class="mutedSmall">
+                                                      (${this._formatWeekLabel(dayMeta.date)})
+                                                  </span>`
+                                                : html``}
+                                        </div>
                                         <div class="mutedSmall">
                                             ${selectedMeal
                                                 ? `${ingredients.length} ingredient${ingredients.length === 1 ? '' : 's'}`
@@ -708,14 +836,16 @@ export class FbFoodView extends LitElement {
                                             @input=${(e) =>
                                                 (this._menuSearch = {
                                                     ...(this._menuSearch || {}),
-                                                    [entry.day]: e.target.value,
+                                                    [searchKey]: e.target.value,
                                                 })}
                                             @change=${(e) =>
                                                 this._applyMenuSearch(
                                                     card,
                                                     entry.day,
                                                     e.target.value,
-                                                    meals
+                                                    meals,
+                                                    weekKey,
+                                                    searchKey
                                                 )}
                                         />
                                     </div>
@@ -726,7 +856,7 @@ export class FbFoodView extends LitElement {
                                         @change=${(e) =>
                                             card._foodSetMenuDay?.(entry.day, {
                                                 note: e.target.value || '',
-                                            })}
+                                            }, weekKey)}
                                     />
                                     <div class="menuActions">
                                         <button
@@ -743,7 +873,7 @@ export class FbFoodView extends LitElement {
                                         <button
                                             class="btn"
                                             ?disabled=${!selectedMeal}
-                                            @click=${() => this._beginCooking(card, entry.day)}
+                                            @click=${() => this._beginCooking(card, entry.day, weekKey)}
                                         >
                                             Begin cooking
                                         </button>
@@ -769,21 +899,30 @@ export class FbFoodView extends LitElement {
                     <div class="panelBody">
                         <div class="sectionHint">
                             Build recipes with itemized ingredients and steps. Ingredient quantity
-                            defaults to 1 and unit defaults to quantity.
+                            defaults to 1 and quantity type is optional.
                         </div>
                         <input
-                            class="input"
+                            class="input ${this._recipeSaveError && !String(this._recipeName || '').trim()
+                                ? 'invalid'
+                                : ''}"
                             placeholder="Recipe name"
                             .value=${this._recipeName}
-                            @input=${(e) => (this._recipeName = e.target.value)}
+                            @input=${(e) => {
+                                this._recipeName = e.target.value;
+                                this._recipeSaveError = '';
+                            }}
                         />
                         <div class="subTitle">Ingredients</div>
                         <div class="ingredientDraft">
                             <input
-                                class="input"
+                                class="input ${this._recipePendingIngredient ? 'invalid' : ''}"
                                 placeholder="Ingredient name"
                                 .value=${this._recipeIngredientName}
-                                @input=${(e) => (this._recipeIngredientName = e.target.value)}
+                                @input=${(e) => {
+                                    this._recipeIngredientName = e.target.value;
+                                    this._recipePendingIngredient = false;
+                                    this._recipeSaveError = '';
+                                }}
                             />
                             <input
                                 class="input"
@@ -792,13 +931,20 @@ export class FbFoodView extends LitElement {
                                 step="0.01"
                                 placeholder="Qty"
                                 .value=${this._recipeIngredientQty}
-                                @input=${(e) => (this._recipeIngredientQty = e.target.value)}
+                                @input=${(e) => {
+                                    this._recipeIngredientQty = e.target.value;
+                                    this._recipeSaveError = '';
+                                }}
                             />
                             <select
                                 class="input"
-                                .value=${this._recipeIngredientUnit || 'quantity'}
-                                @change=${(e) => (this._recipeIngredientUnit = e.target.value)}
+                                .value=${this._recipeIngredientUnit || ''}
+                                @change=${(e) => {
+                                    this._recipeIngredientUnit = e.target.value;
+                                    this._recipeSaveError = '';
+                                }}
                             >
+                                <option value="">No quantity type</option>
                                 ${(units.length ? units : ['quantity']).map(
                                     (unit) => html`<option value=${unit}>${unit}</option>`
                                 )}
@@ -828,10 +974,14 @@ export class FbFoodView extends LitElement {
                         <div class="subTitle">Steps</div>
                         <div class="stepDraft">
                             <input
-                                class="input"
+                                class="input ${this._recipePendingStep ? 'invalid' : ''}"
                                 placeholder="Add a cooking step"
                                 .value=${this._recipeStepText}
-                                @input=${(e) => (this._recipeStepText = e.target.value)}
+                                @input=${(e) => {
+                                    this._recipeStepText = e.target.value;
+                                    this._recipePendingStep = false;
+                                    this._recipeSaveError = '';
+                                }}
                             />
                             <button class="btn" @click=${this._addRecipeStep}>+</button>
                         </div>
@@ -853,6 +1003,9 @@ export class FbFoodView extends LitElement {
                                   )
                                 : html`<div class="mutedSmall">No steps added yet.</div>`}
                         </div>
+                        ${this._recipeSaveError
+                            ? html`<div class="errorText">${this._recipeSaveError}</div>`
+                            : html``}
                         <div class="bundleHead">
                             <button
                                 class="btn"
@@ -1013,8 +1166,8 @@ export class FbFoodView extends LitElement {
             }))
             .filter((entry) => entry.rating >= 3)
             .sort((a, b) => b.rating - a.rating || String(a.recipe?.name || '').localeCompare(String(b.recipe?.name || '')));
-        const shoppingFavourites = Array.isArray(card?._shoppingFavourites)
-            ? Array.from(new Set(card._shoppingFavourites.map((item) => String(item || '').trim()).filter(Boolean)))
+        const shoppingFavourites = Array.isArray(card?._shoppingFavouriteEntries?.())
+            ? card._shoppingFavouriteEntries()
             : [];
         const shoppingCommon = Array.isArray(card?._shoppingCommon)
             ? Array.from(
@@ -1022,11 +1175,20 @@ export class FbFoodView extends LitElement {
               )
             : [];
         const shoppingFavouriteKeys = new Set(
-            shoppingFavourites.map((item) => String(item || '').trim().toLowerCase())
+            shoppingFavourites.map((item) => String(item?.name || '').trim().toLowerCase())
+        );
+        const shoppingFavouriteQty = new Map(
+            shoppingFavourites.map((item) => [
+                String(item?.name || '').trim().toLowerCase(),
+                Number(item?.qty || 1) || 1,
+            ])
         );
         const shoppingItems = [];
         const seenShopping = new Set();
-        for (const item of [...shoppingFavourites, ...shoppingCommon]) {
+        for (const item of [
+            ...shoppingFavourites.map((entry) => entry?.name),
+            ...shoppingCommon,
+        ]) {
             const text = String(item || '').trim();
             if (!text) continue;
             const key = text.toLowerCase();
@@ -1109,22 +1271,62 @@ export class FbFoodView extends LitElement {
                                             const isFavourite = shoppingFavouriteKeys.has(
                                                 String(item || '').trim().toLowerCase()
                                             );
+                                            const qty = shoppingFavouriteQty.get(
+                                                String(item || '').trim().toLowerCase()
+                                            ) || 1;
                                             return html`
                                                 <div class="shoppingFavRow">
                                                     <div
                                                         class="btn shoppingFavItem"
                                                         role="button"
                                                         tabindex="0"
-                                                        @click=${() => card._addShoppingItem?.(item)}
+                                                        @click=${() =>
+                                                            card._addShoppingItem?.(
+                                                                card._formatShoppingText?.(
+                                                                    item,
+                                                                    qty,
+                                                                    ''
+                                                                ) || item
+                                                            )}
                                                         @keydown=${(e) => {
                                                             if (e.key === 'Enter' || e.key === ' ') {
                                                                 e.preventDefault();
-                                                                card._addShoppingItem?.(item);
+                                                                card._addShoppingItem?.(
+                                                                    card._formatShoppingText?.(
+                                                                        item,
+                                                                        qty,
+                                                                        ''
+                                                                    ) || item
+                                                                );
                                                             }
                                                         }}
                                                     >
-                                                        <span class="shoppingFavText">${item}</span>
+                                                        <span class="shoppingFavText">
+                                                            ${item}
+                                                            ${qty > 1
+                                                                ? html`<span class="mutedSmall">
+                                                                      x${qty}
+                                                                  </span>`
+                                                                : html``}
+                                                        </span>
                                                         <span class="shoppingFavPlus" aria-hidden="true">+</span>
+                                                        ${isFavourite
+                                                            ? html`<button
+                                                                  class="btn icon ghost shoppingFavStar"
+                                                                  title="Edit favourite"
+                                                                  @click=${(e) => {
+                                                                      e.stopPropagation();
+                                                                      this._editFavouriteItem(card, {
+                                                                          name: item,
+                                                                          qty,
+                                                                      });
+                                                                  }}
+                                                              >
+                                                                  <ha-icon
+                                                                      icon="mdi:pencil-outline"
+                                                                  ></ha-icon>
+                                                              </button>`
+                                                            : html``}
                                                         <button
                                                             class="btn icon ghost shoppingFavStar ${isFavourite
                                                                 ? 'active'
@@ -1132,7 +1334,9 @@ export class FbFoodView extends LitElement {
                                                             title=${isFavourite ? 'Unstar' : 'Star'}
                                                             @click=${(e) => {
                                                                 e.stopPropagation();
-                                                                card._toggleShoppingFavourite?.(item);
+                                                                card._toggleShoppingFavourite?.(item, {
+                                                                    qty,
+                                                                });
                                                             }}
                                                         >
                                                             <ha-icon

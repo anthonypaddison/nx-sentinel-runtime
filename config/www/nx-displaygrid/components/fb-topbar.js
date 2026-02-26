@@ -240,6 +240,7 @@ export class FbTopbar extends LitElement {
             justify-content: center;
         }
         .menuWrap {
+            position: relative;
             display: inline-flex;
             align-items: center;
         }
@@ -794,7 +795,7 @@ export class FbTopbar extends LitElement {
               `
             : html``;
         const isCompact = this._isCompact === true;
-        const showOverflowMenu = isCompact;
+        const showOverflowMenu = true;
         const menu = (() => {
             if (!showOverflowMenu) return html``;
             const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
@@ -803,6 +804,7 @@ export class FbTopbar extends LitElement {
                       { key: 'schedule', label: 'Calendar' },
                       { key: 'chores', label: 'Chores' },
                       { key: 'food', label: 'Food' },
+                      { key: 'home', label: 'House mode' },
                       { key: 'family', label: 'Family Dashboard' },
                       { key: 'ambient', label: 'Ambient' },
                       ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),

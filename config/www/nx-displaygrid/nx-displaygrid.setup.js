@@ -107,16 +107,68 @@ export function applySetup(FamilyBoardCard) {
 
             const backgroundTheme =
                 typeof merged.background_theme === 'string' ? merged.background_theme.trim() : '';
-            const themeMap = {
-                mint: '#f2fbf7',
-                sand: '#fff5e8',
-                slate: '#f3f6fb',
+            const themeVars = [
+                '--fb-bg',
+                '--fb-surface',
+                '--fb-surface-2',
+                '--fb-surface-3',
+                '--fb-border',
+                '--fb-text',
+                '--fb-muted',
+                '--fb-accent',
+                '--fb-accent-teal',
+                '--overlay',
+            ];
+            const applyTheme = (vars = null) => {
+                themeVars.forEach((name) => this.style.removeProperty(name));
+                if (!vars || typeof vars !== 'object') return;
+                Object.entries(vars).forEach(([name, value]) => {
+                    if (!value) return;
+                    this.style.setProperty(name, value);
+                });
             };
-            if (backgroundTheme && themeMap[backgroundTheme]) {
-                this.style.setProperty('--fb-bg', themeMap[backgroundTheme]);
-            } else {
-                this.style.removeProperty('--fb-bg');
-            }
+            const themeMap = {
+                pale: {
+                    '--fb-bg': '#f6fbfa',
+                    '--fb-surface': '#ffffff',
+                    '--fb-surface-2': '#f3f8f7',
+                    '--fb-surface-3': '#edf3f2',
+                    '--fb-border': '#dce8e5',
+                    '--fb-text': '#22303a',
+                    '--fb-muted': '#6f7f8a',
+                    '--fb-accent': '#d9bca3',
+                    '--fb-accent-teal': '#c4efea',
+                    '--overlay': 'rgba(10, 18, 24, 0.28)',
+                },
+                dark: {
+                    '--fb-bg': '#13161c',
+                    '--fb-surface': '#1b1f27',
+                    '--fb-surface-2': '#222834',
+                    '--fb-surface-3': '#2a3140',
+                    '--fb-border': '#334056',
+                    '--fb-text': '#e8eef8',
+                    '--fb-muted': '#a4b0c4',
+                    '--fb-accent': '#6ea4d4',
+                    '--fb-accent-teal': '#4f8c92',
+                    '--overlay': 'rgba(2, 6, 12, 0.62)',
+                },
+                crystal: {
+                    '--fb-bg': '#dbe8f2',
+                    '--fb-surface': 'rgba(255, 255, 255, 0.70)',
+                    '--fb-surface-2': 'rgba(255, 255, 255, 0.56)',
+                    '--fb-surface-3': 'rgba(240, 248, 255, 0.62)',
+                    '--fb-border': 'rgba(186, 205, 225, 0.86)',
+                    '--fb-text': '#1f2c36',
+                    '--fb-muted': '#607280',
+                    '--fb-accent': '#b8d9f2',
+                    '--fb-accent-teal': '#a7dde5',
+                    '--overlay': 'rgba(13, 24, 34, 0.24)',
+                },
+                mint: { '--fb-bg': '#f2fbf7' },
+                sand: { '--fb-bg': '#fff5e8' },
+                slate: { '--fb-bg': '#f3f6fb' },
+            };
+            applyTheme(themeMap[backgroundTheme] || null);
             this._applyV2DynamicTheme?.();
 
             this._ensureVisibilitySets();
