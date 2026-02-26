@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Improved recipe step editing workflow:
+  - steps in the recipe composer are now inline-editable after adding,
+  - added step reordering controls (`Up`/`Down`) while composing,
+  - saved recipe card action label clarified to `Edit recipe` for post-save edits.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-194900`.
+
 - Fixed recipe-composer draft durability in Food -> Recipes:
   - recipe name, ingredient draft rows, step draft rows, and pending ingredient/step inputs now persist per user/device.
   - draft state now survives view switches and refresh/re-render cycles.

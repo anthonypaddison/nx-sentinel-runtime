@@ -390,6 +390,12 @@ export class FbFoodView extends LitElement {
             grid-template-columns: auto minmax(0, 1fr) auto;
             align-items: start;
         }
+        .stepActions {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
         .stepIndex {
             color: var(--fb-muted);
             font-size: 12px;
@@ -617,6 +623,33 @@ export class FbFoodView extends LitElement {
         if (!Number.isInteger(idx) || idx < 0) return;
         const list = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
         this._recipeSteps = list.filter((_, i) => i !== idx);
+        this._persistRecipeDraft();
+    }
+
+    _updateRecipeStep(index, value) {
+        const idx = Number(index);
+        if (!Number.isInteger(idx) || idx < 0) return;
+        const list = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
+        if (idx >= list.length) return;
+        const next = [...list];
+        next[idx] = String(value || '');
+        this._recipeSteps = next;
+        this._recipeSaveError = '';
+        this._persistRecipeDraft();
+    }
+
+    _moveRecipeStep(index, delta) {
+        const idx = Number(index);
+        const shift = Number(delta);
+        if (!Number.isInteger(idx) || !Number.isInteger(shift) || shift === 0) return;
+        const list = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
+        const target = idx + shift;
+        if (idx < 0 || idx >= list.length || target < 0 || target >= list.length) return;
+        const next = [...list];
+        const [step] = next.splice(idx, 1);
+        next.splice(target, 0, step);
+        this._recipeSteps = next;
+        this._recipeSaveError = '';
         this._persistRecipeDraft();
     }
 
@@ -1054,13 +1087,40 @@ export class FbFoodView extends LitElement {
                                       (step, idx) => html`
                                           <div class="stepLine">
                                               <div class="stepIndex">${idx + 1}.</div>
-                                              <div class="mutedSmall">${step}</div>
-                                              <button
-                                                  class="btn sm ghost"
-                                                  @click=${() => this._removeRecipeStep(idx)}
-                                              >
-                                                  Remove
-                                              </button>
+                                              <input
+                                                  class="input"
+                                                  .value=${String(step || '')}
+                                                  @input=${(e) =>
+                                                      this._updateRecipeStep(
+                                                          idx,
+                                                          e.target.value
+                                                      )}
+                                              />
+                                              <div class="stepActions">
+                                                  <button
+                                                      class="btn sm ghost"
+                                                      ?disabled=${idx === 0}
+                                                      @click=${() =>
+                                                          this._moveRecipeStep(idx, -1)}
+                                                  >
+                                                      Up
+                                                  </button>
+                                                  <button
+                                                      class="btn sm ghost"
+                                                      ?disabled=${idx >= stepDraft.length - 1}
+                                                      @click=${() =>
+                                                          this._moveRecipeStep(idx, 1)}
+                                                  >
+                                                      Down
+                                                  </button>
+                                                  <button
+                                                      class="btn sm ghost"
+                                                      @click=${() =>
+                                                          this._removeRecipeStep(idx)}
+                                                  >
+                                                      Remove
+                                                  </button>
+                                              </div>
                                           </div>
                                       `
                                   )
@@ -1107,7 +1167,7 @@ export class FbFoodView extends LitElement {
                                                   class="btn sm ghost"
                                                   @click=${() => this._openRecipeEditor(recipe)}
                                               >
-                                                  Edit
+                                                  Edit recipe
                                               </button>
                                               <button
                                                   class="btn sm ghost"
