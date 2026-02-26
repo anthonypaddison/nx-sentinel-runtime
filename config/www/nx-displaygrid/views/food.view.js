@@ -249,6 +249,73 @@ export class FbFoodView extends LitElement {
             --fb-btn-bg: var(--fb-surface-2);
             font-weight: 700;
         }
+        .shoppingFavList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .shoppingFavRow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .shoppingFavItem {
+            border: 1px solid var(--fb-grid);
+            background: var(--fb-surface-2);
+            border-radius: 10px;
+            padding: 4px 10px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--fb-text);
+            flex: 1;
+            min-width: 0;
+        }
+        .shoppingFavText {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .shoppingFavPlus {
+            border: none;
+            padding: 0;
+            font-size: 24px;
+            line-height: 1;
+            background: transparent;
+            color: var(--success);
+            font-weight: 700;
+            flex: 0 0 auto;
+        }
+        .shoppingFavStar {
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: var(--fb-muted);
+            flex: 0 0 auto;
+            padding: 0;
+            line-height: 1;
+            box-sizing: border-box;
+            font-size: 0;
+        }
+        .shoppingFavStar.active {
+            color: var(--warning);
+        }
+        .shoppingFavStar ha-icon {
+            width: 24px;
+            height: 24px;
+            display: block;
+            margin: 0 auto;
+        }
         .starBtn {
             --fb-btn-padding: 0;
             --fb-btn-min-height: 24px;
@@ -1037,27 +1104,42 @@ export class FbFoodView extends LitElement {
                                   Starred and common quick-add shopping items.
                               </div>
                               ${shoppingItems.length
-                                  ? html`<div class="stack">
+                                  ? html`<div class="shoppingFavList">
                                         ${shoppingItems.map((item) => {
                                             const isFavourite = shoppingFavouriteKeys.has(
                                                 String(item || '').trim().toLowerCase()
                                             );
                                             return html`
-                                                <div class="ingredientRow">
-                                                    <div>${item}</div>
-                                                    <div class="bundleHead">
+                                                <div class="shoppingFavRow">
+                                                    <div
+                                                        class="btn shoppingFavItem"
+                                                        role="button"
+                                                        tabindex="0"
+                                                        @click=${() => card._addShoppingItem?.(item)}
+                                                        @keydown=${(e) => {
+                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                                e.preventDefault();
+                                                                card._addShoppingItem?.(item);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <span class="shoppingFavText">${item}</span>
+                                                        <span class="shoppingFavPlus" aria-hidden="true">+</span>
                                                         <button
-                                                            class="btn sm"
-                                                            @click=${() => card._addShoppingItem?.(item)}
+                                                            class="btn icon ghost shoppingFavStar ${isFavourite
+                                                                ? 'active'
+                                                                : ''}"
+                                                            title=${isFavourite ? 'Unstar' : 'Star'}
+                                                            @click=${(e) => {
+                                                                e.stopPropagation();
+                                                                card._toggleShoppingFavourite?.(item);
+                                                            }}
                                                         >
-                                                            Add to shopping
-                                                        </button>
-                                                        <button
-                                                            class="btn sm ghost"
-                                                            @click=${() =>
-                                                                card._toggleShoppingFavourite?.(item)}
-                                                        >
-                                                            ${isFavourite ? 'Unstar' : 'Star'}
+                                                            <ha-icon
+                                                                icon=${isFavourite
+                                                                    ? 'mdi:star'
+                                                                    : 'mdi:star-outline'}
+                                                            ></ha-icon>
                                                         </button>
                                                     </div>
                                                 </div>

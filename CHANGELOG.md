@@ -17,7 +17,8 @@
 - Removed the embedded `Favourites` side panel from Food `Shopping List` (it now shows only the shopping list there); favourites remain in the dedicated `Favourites` tab and standalone `Shopping` screen.
 - Removed per-person event/chore counts from topbar people chips and left-aligned chip names for a cleaner layout.
 - Updated Food `Favourites -> Favourite shopping` to use the same combined shopping quick-add list (`favourites + common`) that was previously visible in the Shopping tab side panel.
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-113519`.
+- Restyled Food `Favourites -> Favourite shopping` rows to match the previous shopping-favourites look (pill rows, inline plus marker, and star icon state) instead of plain text-action rows.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-120816`.
 
 ## 2026-02-25
 
