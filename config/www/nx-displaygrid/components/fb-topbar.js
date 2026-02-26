@@ -346,12 +346,17 @@ export class FbTopbar extends LitElement {
             min-height: 44px;
             color: var(--fb-text);
             line-height: 1;
+            text-align: left;
+            justify-items: start;
+            align-content: center;
         }
         .summaryTop {
             display: flex;
             align-items: center;
+            justify-content: flex-start;
             gap: 8px;
             min-width: 0;
+            width: 100%;
         }
         .summaryInitial {
             display: none;
@@ -382,23 +387,7 @@ export class FbTopbar extends LitElement {
             white-space: nowrap;
             line-height: 1;
             flex: 1;
-        }
-
-        .roleIcon {
-            width: 16px;
-            height: 16px;
-            color: var(--fb-muted);
-            display: grid;
-            place-items: center;
-        }
-
-        .summaryCounts {
-            margin-left: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-variant-numeric: tabular-nums;
-            padding-left: 20px;
+            text-align: left;
         }
         .roleBadge {
             border: 1px solid var(--fb-border);
@@ -412,28 +401,12 @@ export class FbTopbar extends LitElement {
             letter-spacing: 0.04em;
         }
 
-        .summaryMetric {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            line-height: 1;
-            min-width: 26px;
-        }
-
-        .summaryMetric ha-icon {
+        .roleIcon {
             width: 16px;
             height: 16px;
             color: var(--fb-muted);
             display: grid;
             place-items: center;
-        }
-
-        .summaryMetric span {
-            display: inline-flex;
-            align-items: center;
-            line-height: 1;
-            padding-left: 2px;
         }
 
         @media (max-width: 720px) {
@@ -466,8 +439,7 @@ export class FbTopbar extends LitElement {
                 opacity: 0.62;
                 background: var(--fb-surface);
             }
-            .summaryTop,
-            .summaryCounts {
+            .summaryTop {
                 display: none;
             }
             .summaryInitial {
@@ -920,7 +892,7 @@ export class FbTopbar extends LitElement {
                                                   ? 'active'
                                                   : ''}"
                                               style="--person-colour:${p.color}"
-                                          title="${p.name} - ${p.eventsLeft ?? 0} events today - ${p.todosLeft ?? 0} chores due"
+                                          title="${p.name}"
                                           @click=${() => this._togglePerson(p.id)}
                                       >
                                           <span class="summaryInitial">
@@ -941,16 +913,6 @@ export class FbTopbar extends LitElement {
                                                       : html``;
                                               })()}
                                               <span class="summaryName">${p.name}</span>
-                                          </span>
-                                          <span class="summaryCounts">
-                                              <span class="summaryMetric">
-                                                  <ha-icon icon="mdi:calendar-month-outline"></ha-icon>
-                                                  <span>${p.eventsLeft ?? 0}</span>
-                                              </span>
-                                              <span class="summaryMetric">
-                                                  <ha-icon icon="mdi:check-circle-outline"></ha-icon>
-                                                  <span>${p.todosLeft ?? 0}</span>
-                                              </span>
                                           </span>
                                       </button>
                                           `
