@@ -4,6 +4,7 @@
 import { makeScopedKey, readJsonLocal, writeJsonLocal, removeLocalKey } from './util/scoped-storage.util.js';
 
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const BLANK_QUANTITY_UNIT = ' ';
 
 function makeId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -14,6 +15,14 @@ function parseLines(text) {
         .split(/\n|,/g)
         .map((item) => item.trim())
         .filter(Boolean);
+}
+
+function normaliseIngredientUnit(unit, fallback = BLANK_QUANTITY_UNIT) {
+    const raw = String(unit ?? '');
+    const trimmed = raw.trim();
+    if (!trimmed) return fallback;
+    if (trimmed.toLowerCase() === 'x') return fallback;
+    return trimmed;
 }
 
 function normaliseUnits(units) {
@@ -98,7 +107,7 @@ function parseIngredientText(text, defaultUnit = '') {
             id: makeId('food_ing'),
             name: String(leading[3] || '').trim(),
             qty: parseNumeric(leading[1], 1),
-            unit: String(leading[2] || defaultUnit || '').trim(),
+            unit: normaliseIngredientUnit(leading[2] || defaultUnit || ''),
         };
     }
 
@@ -108,7 +117,7 @@ function parseIngredientText(text, defaultUnit = '') {
             id: makeId('food_ing'),
             name: String(trailing[1] || '').trim(),
             qty: parseNumeric(trailing[2], 1),
-            unit: String(trailing[3] || defaultUnit || '').trim(),
+            unit: normaliseIngredientUnit(trailing[3] || defaultUnit || ''),
         };
     }
 
@@ -118,7 +127,7 @@ function parseIngredientText(text, defaultUnit = '') {
             id: makeId('food_ing'),
             name: String(countSuffix[1] || '').trim(),
             qty: parseNumeric(countSuffix[2], 1),
-            unit: String(defaultUnit || '').trim(),
+            unit: normaliseIngredientUnit(defaultUnit || ''),
         };
     }
 
@@ -126,7 +135,7 @@ function parseIngredientText(text, defaultUnit = '') {
         id: makeId('food_ing'),
         name: raw,
         qty: 1,
-        unit: String(defaultUnit || '').trim(),
+        unit: normaliseIngredientUnit(defaultUnit || ''),
     };
 }
 
@@ -140,7 +149,7 @@ function normaliseIngredient(item, defaultUnit = '') {
         id: String(item.id || makeId('food_ing')),
         name: textName,
         qty: parseNumeric(item.qty ?? item.quantity ?? 1, 1),
-        unit: String(item.unit || defaultUnit || '').trim(),
+        unit: normaliseIngredientUnit(item.unit || defaultUnit || ''),
     };
 }
 
@@ -251,8 +260,13 @@ function normaliseCookingState(value, recipes = []) {
 function ingredientToShoppingText(ingredient) {
     const parsed = normaliseIngredient(ingredient);
     if (!parsed) return '';
-    const qty = trimNumber(parsed.qty || 1);
-    const unit = String(parsed.unit || '').trim() || 'x';
+    const qtyNumber = parseNumeric(parsed.qty || 1, 1);
+    const qty = trimNumber(qtyNumber);
+    const unit = normaliseIngredientUnit(parsed.unit || '');
+    if (unit === BLANK_QUANTITY_UNIT) {
+        if (qtyNumber === 1) return parsed.name;
+        return `${qty} ${parsed.name}`.trim();
+    }
     return `${qty}${unit} ${parsed.name}`.trim();
 }
 
@@ -276,7 +290,7 @@ export function applyFood(FamilyBoardCard) {
             const qtyRaw = Number(raw.recipeIngredientQty || 1);
             const recipeIngredientQty =
                 Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
-            const recipeIngredientUnit = String(raw.recipeIngredientUnit || '').trim();
+            const recipeIngredientUnit = normaliseIngredientUnit(raw.recipeIngredientUnit);
             const recipeStepText = String(raw.recipeStepText || '').trim();
             const hasDraft = Boolean(
                 recipeId ||
@@ -313,7 +327,7 @@ export function applyFood(FamilyBoardCard) {
             const qtyRaw = Number(draft.recipeIngredientQty || 1);
             const recipeIngredientQty =
                 Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
-            const recipeIngredientUnit = String(draft.recipeIngredientUnit || '').trim();
+            const recipeIngredientUnit = normaliseIngredientUnit(draft.recipeIngredientUnit);
             const recipeStepText = String(draft.recipeStepText || '').trim();
             const hasDraft = Boolean(
                 recipeId ||

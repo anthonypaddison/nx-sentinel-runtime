@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Updated blank quantity-type behavior in Food/Shopping:
+  - quantity-type dropdown now includes `blank` (stored as a single space for recipe ingredient units),
+  - blank quantity type no longer renders in ingredient/shopping text output,
+  - when blank is selected with amount `1`, the rendered list now shows only the item name.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-231500`.
+
 - Added inline recipe ingredient editing in Food -> Recipes composer:
   - each ingredient row now includes a pencil action,
   - edit mode supports amount, quantity type, and item name with Save/Cancel.

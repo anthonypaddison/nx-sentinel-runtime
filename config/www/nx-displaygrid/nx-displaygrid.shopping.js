@@ -4,6 +4,8 @@
 import { DEFAULT_COMMON_ITEMS } from './nx-displaygrid.defaults.js';
 import { todoItemText } from './nx-displaygrid.util.js';
 
+const BLANK_QUANTITY_UNIT = ' ';
+
 export function applyShopping(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
         _normaliseShoppingFavouriteEntry(value) {
@@ -344,8 +346,11 @@ export function applyShopping(FamilyBoardCard) {
             const safeUnit = this._canonicalShoppingUnit(unit);
             const rounded = Math.round(count * 100) / 100;
             const qtyLabel = Number.isInteger(rounded) ? String(rounded) : String(rounded);
-            const unitLabel = safeUnit || 'x';
-            return `${qtyLabel}${unitLabel} ${name}`.trim();
+            if (!safeUnit || String(unit || '') === BLANK_QUANTITY_UNIT) {
+                if (rounded === 1) return name;
+                return `${qtyLabel} ${name}`.trim();
+            }
+            return `${qtyLabel}${safeUnit} ${name}`.trim();
         },
 
         _normaliseShoppingBase(baseName) {
