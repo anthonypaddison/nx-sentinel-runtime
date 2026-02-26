@@ -551,7 +551,7 @@ export class FbShoppingView extends LitElement {
                                                               e.target.value
                                                           )}
                                                   >
-                                                      <option value="">x (default)</option>
+                                                      <option value="">x</option>
                                                       ${itemUnitOptions.map(
                                                           (option) =>
                                                               html`<option value=${option}>

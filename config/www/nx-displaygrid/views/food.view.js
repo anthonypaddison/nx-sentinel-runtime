@@ -1068,7 +1068,7 @@ export class FbFoodView extends LitElement {
                                     this._persistRecipeDraft(card);
                                 }}
                             >
-                                <option value="">x (default)</option>
+                                <option value="">x</option>
                                 ${units.map(
                                     (unit) => html`<option value=${unit}>${unit}</option>`
                                 )}
@@ -1224,7 +1224,7 @@ export class FbFoodView extends LitElement {
                                                   Delete
                                               </button>
                                           </div>
-                                          <details class="recipeSection" open>
+                                          <details class="recipeSection">
                                               <summary>
                                                   Ingredients (${(recipe.ingredients || []).length})
                                               </summary>

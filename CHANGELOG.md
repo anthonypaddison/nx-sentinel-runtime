@@ -2,6 +2,11 @@
 
 ## 2026-02-26
 
+- Tweaked recipe panel defaults and quantity label text:
+  - saved recipe `Ingredients` and `Steps` sections now start collapsed by default,
+  - blank quantity type option label now shows `x` (removed `default` wording).
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-220800`.
+
 - Refined Food -> Recipes authoring/list layout:
   - ingredient draft input order is now `amount`, `quantity type`, `item name`, then `+`,
   - saved recipe cards now show recipe title on its own row,
@@ -14,7 +19,7 @@
 - Updated quantity-type and ingredient formatting behavior:
   - recipe and shopping quantity-type lists now use only `food_v2.units` configured in Settings,
   - removed hardcoded default unit options from food helpers,
-  - blank quantity type now defaults to `x` (shown as `x (default)` in dropdowns),
+  - blank quantity type now defaults to `x` (shown as `x` in dropdowns),
   - ingredient/shopping text now uses `${amount}${quantityType} ${item}` format (for example: `1g chicken`, `1x banana`).
 - Fixed Settings tab action visibility:
   - `Save changes` controls now remain visible when sub-tab pills are long (including `Value Config`).
