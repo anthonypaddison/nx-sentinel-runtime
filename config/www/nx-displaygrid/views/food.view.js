@@ -53,6 +53,10 @@ export class FbFoodView extends LitElement {
         _recipeSaveError: { state: true },
         _recipePendingIngredient: { state: true },
         _recipePendingStep: { state: true },
+        _recipeIngredientEditIndex: { state: true },
+        _recipeIngredientEditName: { state: true },
+        _recipeIngredientEditQty: { state: true },
+        _recipeIngredientEditUnit: { state: true },
     };
 
     constructor() {
@@ -76,6 +80,10 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._recipeIngredientEditIndex = -1;
+        this._recipeIngredientEditName = '';
+        this._recipeIngredientEditQty = '1';
+        this._recipeIngredientEditUnit = '';
         this._recipeDraftHydrated = false;
     }
 
@@ -367,6 +375,16 @@ export class FbFoodView extends LitElement {
             gap: 8px;
             align-items: center;
         }
+        .ingredientEditRow {
+            align-items: start;
+        }
+        .ingredientActions {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
         .ingredientDraft {
             display: grid;
             gap: 8px;
@@ -542,6 +560,10 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._recipeIngredientEditIndex = -1;
+        this._recipeIngredientEditName = '';
+        this._recipeIngredientEditQty = '1';
+        this._recipeIngredientEditUnit = '';
         this._persistRecipeDraft();
     }
 
@@ -580,6 +602,10 @@ export class FbFoodView extends LitElement {
             this._recipeIngredientUnit = String(draft.recipeIngredientUnit || '').trim();
             this._recipeStepText = String(draft.recipeStepText || '').trim();
         }
+        this._recipeIngredientEditIndex = -1;
+        this._recipeIngredientEditName = '';
+        this._recipeIngredientEditQty = '1';
+        this._recipeIngredientEditUnit = '';
         this._recipeDraftHydrated = true;
     }
 
@@ -608,6 +634,10 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._recipeIngredientEditIndex = -1;
+        this._recipeIngredientEditName = '';
+        this._recipeIngredientEditQty = '1';
+        this._recipeIngredientEditUnit = '';
         this._persistRecipeDraft();
     }
 
@@ -642,6 +672,66 @@ export class FbFoodView extends LitElement {
         if (!Number.isInteger(idx) || idx < 0) return;
         const list = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
         this._recipeIngredients = list.filter((_, i) => i !== idx);
+        if (this._recipeIngredientEditIndex === idx) {
+            this._recipeIngredientEditIndex = -1;
+            this._recipeIngredientEditName = '';
+            this._recipeIngredientEditQty = '1';
+            this._recipeIngredientEditUnit = '';
+        } else if (
+            Number.isInteger(this._recipeIngredientEditIndex) &&
+            this._recipeIngredientEditIndex > idx
+        ) {
+            this._recipeIngredientEditIndex -= 1;
+        }
+        this._persistRecipeDraft();
+    }
+
+    _startRecipeIngredientEdit(index) {
+        const idx = Number(index);
+        if (!Number.isInteger(idx) || idx < 0) return;
+        const list = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
+        const target = list[idx];
+        if (!target) return;
+        const qtyRaw = Number(target.qty || 1);
+        this._recipeIngredientEditIndex = idx;
+        this._recipeIngredientEditName = String(target.name || '').trim();
+        this._recipeIngredientEditQty =
+            Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
+        this._recipeIngredientEditUnit = String(target.unit || '').trim();
+        this._recipeSaveError = '';
+    }
+
+    _cancelRecipeIngredientEdit() {
+        this._recipeIngredientEditIndex = -1;
+        this._recipeIngredientEditName = '';
+        this._recipeIngredientEditQty = '1';
+        this._recipeIngredientEditUnit = '';
+        this._recipeSaveError = '';
+    }
+
+    _saveRecipeIngredientEdit() {
+        const idx = Number(this._recipeIngredientEditIndex);
+        if (!Number.isInteger(idx) || idx < 0) return;
+        const list = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
+        if (idx >= list.length) return;
+        const name = String(this._recipeIngredientEditName || '').trim();
+        if (!name) {
+            this._recipeSaveError = 'Ingredient name is required.';
+            return;
+        }
+        const qtyRaw = Number(this._recipeIngredientEditQty || 1);
+        const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+        const unit = String(this._recipeIngredientEditUnit || '').trim();
+        const next = [...list];
+        const existing = next[idx] || {};
+        next[idx] = {
+            ...existing,
+            name,
+            qty: Math.round(qty * 100) / 100,
+            unit,
+        };
+        this._recipeIngredients = next;
+        this._cancelRecipeIngredientEdit();
         this._persistRecipeDraft();
     }
 
@@ -1093,17 +1183,94 @@ export class FbFoodView extends LitElement {
                             ${ingredientDraft.length
                                 ? ingredientDraft.map(
                                       (ingredient, idx) => html`
-                                          <div class="ingredientRow">
-                                              <div class="mutedSmall">
-                                                  ${ingredientSummary([ingredient], 1)}
-                                              </div>
-                                              <button
-                                                  class="btn sm ghost"
-                                                  @click=${() => this._removeRecipeIngredient(idx)}
-                                              >
-                                                  Remove
-                                              </button>
-                                          </div>
+                                          ${this._recipeIngredientEditIndex === idx
+                                              ? html`
+                                                    <div class="ingredientRow ingredientEditRow">
+                                                        <div class="ingredientDraft">
+                                                            <input
+                                                                class="input"
+                                                                type="number"
+                                                                min="0.01"
+                                                                step="0.01"
+                                                                placeholder="Amount"
+                                                                .value=${this._recipeIngredientEditQty}
+                                                                @input=${(e) =>
+                                                                    (this._recipeIngredientEditQty =
+                                                                        e.target.value)}
+                                                            />
+                                                            <select
+                                                                class="input"
+                                                                .value=${this._recipeIngredientEditUnit}
+                                                                @change=${(e) =>
+                                                                    (this._recipeIngredientEditUnit =
+                                                                        e.target.value)}
+                                                            >
+                                                                <option value="">x</option>
+                                                                ${units.map(
+                                                                    (unit) =>
+                                                                        html`<option value=${unit}>
+                                                                            ${unit}
+                                                                        </option>`
+                                                                )}
+                                                            </select>
+                                                            <input
+                                                                class="input"
+                                                                placeholder="Item name"
+                                                                .value=${this._recipeIngredientEditName}
+                                                                @input=${(e) =>
+                                                                    (this._recipeIngredientEditName =
+                                                                        e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div class="ingredientActions">
+                                                            <button
+                                                                class="btn sm"
+                                                                @click=${this._saveRecipeIngredientEdit}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                class="btn sm ghost"
+                                                                @click=${this._cancelRecipeIngredientEdit}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                class="btn sm ghost"
+                                                                @click=${() =>
+                                                                    this._removeRecipeIngredient(idx)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                `
+                                              : html`
+                                                    <div class="ingredientRow">
+                                                        <div class="mutedSmall">
+                                                            ${ingredientSummary([ingredient], 1)}
+                                                        </div>
+                                                        <div class="ingredientActions">
+                                                            <button
+                                                                class="btn sm ghost icon"
+                                                                title="Edit ingredient"
+                                                                @click=${() =>
+                                                                    this._startRecipeIngredientEdit(
+                                                                        idx
+                                                                    )}
+                                                            >
+                                                                <ha-icon icon="mdi:pencil"></ha-icon>
+                                                            </button>
+                                                            <button
+                                                                class="btn sm ghost"
+                                                                @click=${() =>
+                                                                    this._removeRecipeIngredient(idx)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                `}
                                       `
                                   )
                                 : html`<div class="mutedSmall">No ingredients added yet.</div>`}

@@ -2,6 +2,11 @@
 
 ## 2026-02-26
 
+- Added inline recipe ingredient editing in Food -> Recipes composer:
+  - each ingredient row now includes a pencil action,
+  - edit mode supports amount, quantity type, and item name with Save/Cancel.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-223900`.
+
 - Tweaked recipe panel defaults and quantity label text:
   - saved recipe `Ingredients` and `Steps` sections now start collapsed by default,
   - blank quantity type option label now shows `x` (removed `default` wording).
