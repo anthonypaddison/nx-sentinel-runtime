@@ -16,7 +16,8 @@
 - Aligned shopping star state so only explicitly starred items render as starred (common/history items no longer appear starred unless starred).
 - Removed the embedded `Favourites` side panel from Food `Shopping List` (it now shows only the shopping list there); favourites remain in the dedicated `Favourites` tab and standalone `Shopping` screen.
 - Removed per-person event/chore counts from topbar people chips and left-aligned chip names for a cleaner layout.
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-105621`.
+- Updated Food `Favourites -> Favourite shopping` to use the same combined shopping quick-add list (`favourites + common`) that was previously visible in the Shopping tab side panel.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-113519`.
 
 ## 2026-02-25
 

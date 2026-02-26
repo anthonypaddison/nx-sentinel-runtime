@@ -949,6 +949,24 @@ export class FbFoodView extends LitElement {
         const shoppingFavourites = Array.isArray(card?._shoppingFavourites)
             ? Array.from(new Set(card._shoppingFavourites.map((item) => String(item || '').trim()).filter(Boolean)))
             : [];
+        const shoppingCommon = Array.isArray(card?._shoppingCommon)
+            ? Array.from(
+                  new Set(card._shoppingCommon.map((item) => String(item || '').trim()).filter(Boolean))
+              )
+            : [];
+        const shoppingFavouriteKeys = new Set(
+            shoppingFavourites.map((item) => String(item || '').trim().toLowerCase())
+        );
+        const shoppingItems = [];
+        const seenShopping = new Set();
+        for (const item of [...shoppingFavourites, ...shoppingCommon]) {
+            const text = String(item || '').trim();
+            if (!text) continue;
+            const key = text.toLowerCase();
+            if (seenShopping.has(key)) continue;
+            seenShopping.add(key);
+            shoppingItems.push(text);
+        }
         const mode = this._favouritesMode === 'shopping' ? 'shopping' : 'meals';
         return html`
             <div class="panel fb-card">
@@ -1016,12 +1034,15 @@ export class FbFoodView extends LitElement {
                           `
                         : html`
                               <div class="sectionHint">
-                                  Starred shopping items from the shopping list.
+                                  Starred and common quick-add shopping items.
                               </div>
-                              ${shoppingFavourites.length
+                              ${shoppingItems.length
                                   ? html`<div class="stack">
-                                        ${shoppingFavourites.map(
-                                            (item) => html`
+                                        ${shoppingItems.map((item) => {
+                                            const isFavourite = shoppingFavouriteKeys.has(
+                                                String(item || '').trim().toLowerCase()
+                                            );
+                                            return html`
                                                 <div class="ingredientRow">
                                                     <div>${item}</div>
                                                     <div class="bundleHead">
@@ -1036,12 +1057,12 @@ export class FbFoodView extends LitElement {
                                                             @click=${() =>
                                                                 card._toggleShoppingFavourite?.(item)}
                                                         >
-                                                            Unstar
+                                                            ${isFavourite ? 'Unstar' : 'Star'}
                                                         </button>
                                                     </div>
                                                 </div>
                                             `
-                                        )}
+                                        })}
                                     </div>`
                                   : html`<div class="muted">No favourite shopping items yet.</div>`}
                           `}
