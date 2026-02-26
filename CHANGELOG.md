@@ -11,7 +11,8 @@
   - fixed 4-up equal-width layout,
   - stacked counts under names,
   - ellipsis clipping for long names to prevent chip distortion.
-- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-131500`.
+- Added mobile-specific person-chip mode: circular chips showing first-letter initials while preserving active-toggle colour highlighting.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-134700`.
 
 ## 2026-02-25
 

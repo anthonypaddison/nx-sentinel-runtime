@@ -353,6 +353,13 @@ export class FbTopbar extends LitElement {
             gap: 8px;
             min-width: 0;
         }
+        .summaryInitial {
+            display: none;
+            font-weight: 800;
+            font-size: 16px;
+            line-height: 1;
+            text-transform: uppercase;
+        }
 
         .summaryBadge:not(.active) {
             background: var(--fb-surface-3);
@@ -427,6 +434,45 @@ export class FbTopbar extends LitElement {
             align-items: center;
             line-height: 1;
             padding-left: 2px;
+        }
+
+        @media (max-width: 720px) {
+            .summaryRow {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 8px;
+                justify-items: center;
+            }
+            .summaryBadge {
+                width: 46px;
+                min-width: 46px;
+                height: 46px;
+                min-height: 46px;
+                aspect-ratio: 1 / 1;
+                border-radius: 999px;
+                display: grid;
+                place-items: center;
+                padding: 0;
+                background: var(--fb-surface);
+                color: var(--person-colour);
+            }
+            .summaryBadge.active {
+                background: color-mix(in srgb, var(--person-colour) 22%, var(--fb-surface));
+                color: var(--fb-text);
+                filter: none;
+                opacity: 1;
+            }
+            .summaryBadge:not(.active) {
+                filter: none;
+                opacity: 0.62;
+                background: var(--fb-surface);
+            }
+            .summaryTop,
+            .summaryCounts {
+                display: none;
+            }
+            .summaryInitial {
+                display: inline-block;
+            }
         }
     `,
     ];
@@ -861,6 +907,9 @@ export class FbTopbar extends LitElement {
                                           title="${p.name} - ${p.eventsLeft ?? 0} events today - ${p.todosLeft ?? 0} chores due"
                                           @click=${() => this._togglePerson(p.id)}
                                       >
+                                          <span class="summaryInitial">
+                                              ${String(p.name || '?').trim().charAt(0) || '?'}
+                                          </span>
                                           <span class="summaryTop">
                                               <span class="dot" style="background:${p.color}"></span>
                                               ${(() => {
