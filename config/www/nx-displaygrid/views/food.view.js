@@ -370,7 +370,7 @@ export class FbFoodView extends LitElement {
         .ingredientDraft {
             display: grid;
             gap: 8px;
-            grid-template-columns: minmax(0, 1fr) 96px 140px auto;
+            grid-template-columns: 96px 140px minmax(0, 1fr) auto;
             align-items: center;
         }
         .stepDraft {
@@ -382,6 +382,47 @@ export class FbFoodView extends LitElement {
         .recipeList {
             display: grid;
             gap: 8px;
+        }
+        .recipeSection {
+            border: 1px solid var(--fb-grid);
+            border-radius: 10px;
+            background: var(--fb-surface);
+            overflow: hidden;
+        }
+        .recipeSection > summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 8px 10px;
+            font-weight: 700;
+            color: var(--fb-text);
+            background: var(--fb-surface-2);
+            border-bottom: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .recipeSection > summary::after {
+            content: '▾';
+            color: var(--fb-muted);
+            font-size: 12px;
+        }
+        .recipeSection:not([open]) > summary::after {
+            content: '▸';
+        }
+        .recipeSection[open] > summary {
+            border-bottom-color: var(--fb-grid);
+        }
+        .recipeSectionBody {
+            padding: 8px 10px;
+            display: grid;
+            gap: 8px;
+        }
+        .stepReadRow {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: start;
         }
         .stepLine {
             display: grid;
@@ -1006,22 +1047,11 @@ export class FbFoodView extends LitElement {
                         <div class="subTitle">Ingredients</div>
                         <div class="ingredientDraft">
                             <input
-                                class="input ${this._recipePendingIngredient ? 'invalid' : ''}"
-                                placeholder="Ingredient name"
-                                .value=${this._recipeIngredientName}
-                                @input=${(e) => {
-                                    this._recipeIngredientName = e.target.value;
-                                    this._recipePendingIngredient = false;
-                                    this._recipeSaveError = '';
-                                    this._persistRecipeDraft(card);
-                                }}
-                            />
-                            <input
                                 class="input"
                                 type="number"
                                 min="0.01"
                                 step="0.01"
-                                placeholder="Qty"
+                                placeholder="Amount"
                                 .value=${this._recipeIngredientQty}
                                 @input=${(e) => {
                                     this._recipeIngredientQty = e.target.value;
@@ -1043,6 +1073,17 @@ export class FbFoodView extends LitElement {
                                     (unit) => html`<option value=${unit}>${unit}</option>`
                                 )}
                             </select>
+                            <input
+                                class="input ${this._recipePendingIngredient ? 'invalid' : ''}"
+                                placeholder="Item name"
+                                .value=${this._recipeIngredientName}
+                                @input=${(e) => {
+                                    this._recipeIngredientName = e.target.value;
+                                    this._recipePendingIngredient = false;
+                                    this._recipeSaveError = '';
+                                    this._persistRecipeDraft(card);
+                                }}
+                            />
                             <button class="btn" @click=${this._addRecipeIngredient}>+</button>
                         </div>
                         <div class="mutedSmall">
@@ -1152,8 +1193,8 @@ export class FbFoodView extends LitElement {
                             ? recipes.map(
                                   (recipe) => html`
                                       <div class="bundleCard">
+                                          <div class="bundleName">${recipe.name}</div>
                                           <div class="bundleHead">
-                                              <div class="bundleName">${recipe.name}</div>
                                               <button
                                                   class="btn sm"
                                                   @click=${() =>
@@ -1183,34 +1224,59 @@ export class FbFoodView extends LitElement {
                                                   Delete
                                               </button>
                                           </div>
-                                          <div class="mutedSmall">
-                                              Ingredients: ${ingredientSummary(recipe.ingredients, 8)}
-                                          </div>
-                                          <div class="stack">
-                                              ${(recipe.ingredients || []).map(
-                                                  (ingredient) => html`
-                                                      <div class="ingredientRow">
-                                                          <div class="mutedSmall">
-                                                              ${ingredientSummary([ingredient], 1)}
-                                                          </div>
-                                                          <button
-                                                              class="btn sm ghost"
-                                                              @click=${() =>
-                                                                  card._foodAddIngredientToShopping?.(
-                                                                      ingredient
-                                                                  )}
-                                                          >
-                                                              + Shopping
-                                                          </button>
-                                                      </div>
-                                                  `
-                                              )}
-                                          </div>
-                                          <div class="mutedSmall">
-                                              Steps: ${(recipe.steps || []).length
-                                                  ? (recipe.steps || []).join(' | ')
-                                                  : 'No instructions yet'}
-                                          </div>
+                                          <details class="recipeSection" open>
+                                              <summary>
+                                                  Ingredients (${(recipe.ingredients || []).length})
+                                              </summary>
+                                              <div class="recipeSectionBody">
+                                                  ${(recipe.ingredients || []).length
+                                                      ? (recipe.ingredients || []).map(
+                                                            (ingredient) => html`
+                                                                <div class="ingredientRow">
+                                                                    <div class="mutedSmall">
+                                                                        ${ingredientSummary(
+                                                                            [ingredient],
+                                                                            1
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        class="btn sm ghost"
+                                                                        @click=${() =>
+                                                                            card._foodAddIngredientToShopping?.(
+                                                                                ingredient
+                                                                            )}
+                                                                    >
+                                                                        + Shopping
+                                                                    </button>
+                                                                </div>
+                                                            `
+                                                        )
+                                                      : html`<div class="mutedSmall">
+                                                            No ingredients added yet.
+                                                        </div>`}
+                                              </div>
+                                          </details>
+                                          <details class="recipeSection">
+                                              <summary>Steps (${(recipe.steps || []).length})</summary>
+                                              <div class="recipeSectionBody">
+                                                  ${(recipe.steps || []).length
+                                                      ? (recipe.steps || []).map(
+                                                            (step, idx) => html`
+                                                                <div class="stepReadRow">
+                                                                    <div class="stepIndex">
+                                                                        ${idx + 1}.
+                                                                    </div>
+                                                                    <div class="mutedSmall">
+                                                                        ${String(step || '')}
+                                                                    </div>
+                                                                </div>
+                                                            `
+                                                        )
+                                                      : html`<div class="mutedSmall">
+                                                            No instructions yet.
+                                                        </div>`}
+                                              </div>
+                                          </details>
                                           ${this._renderRatingStars(card, recipe)}
                                       </div>
                                   `

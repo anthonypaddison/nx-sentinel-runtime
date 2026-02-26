@@ -2,6 +2,15 @@
 
 ## 2026-02-26
 
+- Refined Food -> Recipes authoring/list layout:
+  - ingredient draft input order is now `amount`, `quantity type`, `item name`, then `+`,
+  - saved recipe cards now show recipe title on its own row,
+  - removed the compressed ingredients summary line from saved recipe cards,
+  - saved recipe `Ingredients` and `Steps` are now collapsible sections with one row per item/step.
+- Reduced unwanted screen resets during active use:
+  - user interactions (typing/clicking/tapping) now refresh adaptive manual-activity timing so periodic data refreshes do not bounce you back to the landing/calendar screen while actively using the UI.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-214600`.
+
 - Updated quantity-type and ingredient formatting behavior:
   - recipe and shopping quantity-type lists now use only `food_v2.units` configured in Settings,
   - removed hardcoded default unit options from food helpers,

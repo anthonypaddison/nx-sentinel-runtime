@@ -414,6 +414,8 @@ class FamilyBoardCard extends LitElement {
         this._fullKioskBeforeScreensaver = false;
         this._kioskBeforeFullKiosk = false;
         this._screensaverTapTs = 0;
+        this._interactionActivityHandler = null;
+        this._interactionCapture = true;
     }
 
     setConfig(config) {
@@ -452,6 +454,29 @@ class FamilyBoardCard extends LitElement {
             this._resizeHandler = () => this._updateViewportHeight();
             window.addEventListener('resize', this._resizeHandler);
         }
+        if (!this._interactionActivityHandler) {
+            this._interactionActivityHandler = () => this._onUserInteractionActivity();
+            this.addEventListener(
+                'pointerdown',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.addEventListener(
+                'touchstart',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.addEventListener(
+                'keydown',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.addEventListener(
+                'input',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+        }
     }
 
     disconnectedCallback() {
@@ -468,6 +493,29 @@ class FamilyBoardCard extends LitElement {
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
             this._resizeHandler = null;
+        }
+        if (this._interactionActivityHandler) {
+            this.removeEventListener(
+                'pointerdown',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.removeEventListener(
+                'touchstart',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.removeEventListener(
+                'keydown',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this.removeEventListener(
+                'input',
+                this._interactionActivityHandler,
+                this._interactionCapture
+            );
+            this._interactionActivityHandler = null;
         }
         if (this._clearCalendarRetry) {
             this._clearCalendarRetry();
@@ -504,6 +552,11 @@ class FamilyBoardCard extends LitElement {
             rectHeight > 0 ? rectHeight : Math.max(0, window.innerHeight - top);
         this.style.setProperty('--fb-viewport-height', `${height}px`);
         this._updateTopbarHeight();
+    }
+
+    _onUserInteractionActivity() {
+        if (this._screensaverMode) return;
+        this._markManualNavigationInteraction?.();
     }
 
     _updateTopbarHeight() {
