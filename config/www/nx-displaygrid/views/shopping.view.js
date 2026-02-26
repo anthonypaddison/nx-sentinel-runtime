@@ -399,7 +399,7 @@ export class FbShoppingView extends LitElement {
             new Set(
                 (Array.isArray(card._config?.food_v2?.units) ? card._config.food_v2.units : [])
                     .map((unit) => String(unit || '').trim())
-                    .filter(Boolean)
+                    .filter((unit) => unit && unit.toLowerCase() !== 'x')
             )
         );
         const commonList = [];
@@ -551,6 +551,7 @@ export class FbShoppingView extends LitElement {
                                                               e.target.value
                                                           )}
                                                   >
+                                                      <option value="x">x</option>
                                                       <option value=" ">blank</option>
                                                       ${itemUnitOptions.map(
                                                           (option) =>

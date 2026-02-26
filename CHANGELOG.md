@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Split `x` and `blank` quantity types in Food/Shopping:
+  - `x` now remains a visible quantity type in dropdowns and rendered text,
+  - `blank` remains invisible in rendered list text,
+  - only `blank` + quantity `1` hides the number entirely.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-234500`.
+
 - Updated blank quantity-type behavior in Food/Shopping:
   - quantity-type dropdown now includes `blank` (stored as a single space for recipe ingredient units),
   - blank quantity type no longer renders in ingredient/shopping text output,

@@ -5,6 +5,7 @@ import { makeScopedKey, readJsonLocal, writeJsonLocal, removeLocalKey } from './
 
 const WEEKDAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const BLANK_QUANTITY_UNIT = ' ';
+const DEFAULT_QUANTITY_UNIT = 'x';
 
 function makeId(prefix) {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -19,9 +20,9 @@ function parseLines(text) {
 
 function normaliseIngredientUnit(unit, fallback = BLANK_QUANTITY_UNIT) {
     const raw = String(unit ?? '');
+    if (raw === BLANK_QUANTITY_UNIT) return BLANK_QUANTITY_UNIT;
     const trimmed = raw.trim();
     if (!trimmed) return fallback;
-    if (trimmed.toLowerCase() === 'x') return fallback;
     return trimmed;
 }
 
@@ -290,7 +291,10 @@ export function applyFood(FamilyBoardCard) {
             const qtyRaw = Number(raw.recipeIngredientQty || 1);
             const recipeIngredientQty =
                 Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
-            const recipeIngredientUnit = normaliseIngredientUnit(raw.recipeIngredientUnit);
+            const recipeIngredientUnit = normaliseIngredientUnit(
+                raw.recipeIngredientUnit,
+                DEFAULT_QUANTITY_UNIT
+            );
             const recipeStepText = String(raw.recipeStepText || '').trim();
             const hasDraft = Boolean(
                 recipeId ||
@@ -327,7 +331,10 @@ export function applyFood(FamilyBoardCard) {
             const qtyRaw = Number(draft.recipeIngredientQty || 1);
             const recipeIngredientQty =
                 Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
-            const recipeIngredientUnit = normaliseIngredientUnit(draft.recipeIngredientUnit);
+            const recipeIngredientUnit = normaliseIngredientUnit(
+                draft.recipeIngredientUnit,
+                DEFAULT_QUANTITY_UNIT
+            );
             const recipeStepText = String(draft.recipeStepText || '').trim();
             const hasDraft = Boolean(
                 recipeId ||

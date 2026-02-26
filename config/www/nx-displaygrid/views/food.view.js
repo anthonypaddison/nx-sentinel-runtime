@@ -7,12 +7,13 @@ const { LitElement, html, css } = getHaLit();
 import { sharedViewStyles, sharedCardStyles } from './shared.styles.js';
 
 const BLANK_QUANTITY_UNIT = ' ';
+const DEFAULT_QUANTITY_UNIT = 'x';
 
 function normaliseRecipeUnitValue(value, fallback = BLANK_QUANTITY_UNIT) {
     const raw = String(value ?? '');
+    if (raw === BLANK_QUANTITY_UNIT) return BLANK_QUANTITY_UNIT;
     const trimmed = raw.trim();
     if (!trimmed) return fallback;
-    if (trimmed.toLowerCase() === 'x') return fallback;
     return trimmed;
 }
 
@@ -85,7 +86,7 @@ export class FbFoodView extends LitElement {
         this._recipeSteps = [];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeStepText = '';
         this._favouritesMode = 'shopping';
         this._menuSearch = {};
@@ -97,7 +98,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientEditIndex = -1;
         this._recipeIngredientEditName = '';
         this._recipeIngredientEditQty = '1';
-        this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeDraftHydrated = false;
     }
 
@@ -569,7 +570,7 @@ export class FbFoodView extends LitElement {
         this._recipeSteps = [];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeStepText = '';
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
@@ -577,7 +578,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientEditIndex = -1;
         this._recipeIngredientEditName = '';
         this._recipeIngredientEditQty = '1';
-        this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._persistRecipeDraft();
     }
 
@@ -591,7 +592,10 @@ export class FbFoodView extends LitElement {
             recipeSteps: Array.isArray(this._recipeSteps) ? this._recipeSteps : [],
             recipeIngredientName: String(this._recipeIngredientName || '').trim(),
             recipeIngredientQty: String(this._recipeIngredientQty || '1').trim() || '1',
-            recipeIngredientUnit: normaliseRecipeUnitValue(this._recipeIngredientUnit),
+            recipeIngredientUnit: normaliseRecipeUnitValue(
+                this._recipeIngredientUnit,
+                DEFAULT_QUANTITY_UNIT
+            ),
             recipeStepText: String(this._recipeStepText || '').trim(),
         };
     }
@@ -613,13 +617,16 @@ export class FbFoodView extends LitElement {
             this._recipeSteps = Array.isArray(draft.recipeSteps) ? draft.recipeSteps : [];
             this._recipeIngredientName = String(draft.recipeIngredientName || '').trim();
             this._recipeIngredientQty = String(draft.recipeIngredientQty || '1').trim() || '1';
-            this._recipeIngredientUnit = normaliseRecipeUnitValue(draft.recipeIngredientUnit);
+            this._recipeIngredientUnit = normaliseRecipeUnitValue(
+                draft.recipeIngredientUnit,
+                DEFAULT_QUANTITY_UNIT
+            );
             this._recipeStepText = String(draft.recipeStepText || '').trim();
         }
         this._recipeIngredientEditIndex = -1;
         this._recipeIngredientEditName = '';
         this._recipeIngredientEditQty = '1';
-        this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeDraftHydrated = true;
     }
 
@@ -643,7 +650,7 @@ export class FbFoodView extends LitElement {
             .filter(Boolean);
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeStepText = '';
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
@@ -651,7 +658,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientEditIndex = -1;
         this._recipeIngredientEditName = '';
         this._recipeIngredientEditQty = '1';
-        this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._persistRecipeDraft();
     }
 
@@ -663,7 +670,7 @@ export class FbFoodView extends LitElement {
         if (!names.length) return;
         const qty = Number(this._recipeIngredientQty || 1);
         const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
-        const unit = normaliseRecipeUnitValue(this._recipeIngredientUnit);
+        const unit = normaliseRecipeUnitValue(this._recipeIngredientUnit, DEFAULT_QUANTITY_UNIT);
         this._recipeIngredients = [
             ...(Array.isArray(this._recipeIngredients) ? this._recipeIngredients : []),
             ...names.map((name, idx) => ({
@@ -675,7 +682,7 @@ export class FbFoodView extends LitElement {
         ];
         this._recipeIngredientName = '';
         this._recipeIngredientQty = '1';
-        this._recipeIngredientUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._persistRecipeDraft();
@@ -690,7 +697,7 @@ export class FbFoodView extends LitElement {
             this._recipeIngredientEditIndex = -1;
             this._recipeIngredientEditName = '';
             this._recipeIngredientEditQty = '1';
-            this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+            this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         } else if (
             Number.isInteger(this._recipeIngredientEditIndex) &&
             this._recipeIngredientEditIndex > idx
@@ -719,7 +726,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientEditIndex = -1;
         this._recipeIngredientEditName = '';
         this._recipeIngredientEditQty = '1';
-        this._recipeIngredientEditUnit = BLANK_QUANTITY_UNIT;
+        this._recipeIngredientEditUnit = DEFAULT_QUANTITY_UNIT;
         this._recipeSaveError = '';
     }
 
@@ -735,7 +742,7 @@ export class FbFoodView extends LitElement {
         }
         const qtyRaw = Number(this._recipeIngredientEditQty || 1);
         const qty = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
-        const unit = normaliseRecipeUnitValue(this._recipeIngredientEditUnit);
+        const unit = normaliseRecipeUnitValue(this._recipeIngredientEditUnit, DEFAULT_QUANTITY_UNIT);
         const next = [...list];
         const existing = next[idx] || {};
         next[idx] = {
@@ -1125,6 +1132,10 @@ export class FbFoodView extends LitElement {
     _renderRecipesTab(card, food) {
         const recipes = Array.isArray(food?.recipes) ? food.recipes : [];
         const units = card._foodUnitOptions?.() || [];
+        const customUnits = units.filter((unit) => {
+            const value = String(unit || '').trim();
+            return value && value.toLowerCase() !== DEFAULT_QUANTITY_UNIT;
+        });
         const ingredientDraft = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
         const stepDraft = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
         return html`
@@ -1173,7 +1184,8 @@ export class FbFoodView extends LitElement {
                                 }}
                             >
                                 <option value=${BLANK_QUANTITY_UNIT}>blank</option>
-                                ${units.map(
+                                <option value=${DEFAULT_QUANTITY_UNIT}>x</option>
+                                ${customUnits.map(
                                     (unit) => html`<option value=${unit}>${unit}</option>`
                                 )}
                             </select>
@@ -1191,7 +1203,10 @@ export class FbFoodView extends LitElement {
                             <button class="btn" @click=${this._addRecipeIngredient}>+</button>
                         </div>
                         <div class="mutedSmall">
-                            Units available: ${units.length ? units.join(', ') : 'None configured'}
+                            Units available:
+                            ${customUnits.length
+                                ? `x, ${customUnits.join(', ')}`
+                                : 'x (no custom units configured)'}
                         </div>
                         <div class="recipeList">
                             ${ingredientDraft.length
@@ -1222,7 +1237,10 @@ export class FbFoodView extends LitElement {
                                                                 <option value=${BLANK_QUANTITY_UNIT}>
                                                                     blank
                                                                 </option>
-                                                                ${units.map(
+                                                                <option value=${DEFAULT_QUANTITY_UNIT}>
+                                                                    x
+                                                                </option>
+                                                                ${customUnits.map(
                                                                     (unit) =>
                                                                         html`<option value=${unit}>
                                                                             ${unit}
