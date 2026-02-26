@@ -212,6 +212,16 @@ export class FbShoppingView extends LitElement {
             text-align: center;
             font-variant-numeric: tabular-nums;
         }
+        .unitSelect {
+            border: 1px solid var(--fb-grid);
+            border-radius: 999px;
+            background: var(--fb-surface-2);
+            color: var(--fb-text);
+            min-height: 30px;
+            font-size: 12px;
+            padding: 0 8px;
+            max-width: 110px;
+        }
         .empty {
             padding: 12px;
             color: var(--fb-muted);
@@ -385,6 +395,13 @@ export class FbShoppingView extends LitElement {
                 Number(entry?.qty || 1) || 1,
             ])
         );
+        const configuredQuantityUnits = Array.from(
+            new Set(
+                (Array.isArray(card._config?.food_v2?.units) ? card._config.food_v2.units : [])
+                    .map((unit) => String(unit || '').trim())
+                    .filter(Boolean)
+            )
+        );
         const commonList = [];
         const seen = new Set();
         for (const item of [...favList, ...common]) {
@@ -483,6 +500,13 @@ export class FbShoppingView extends LitElement {
                                           : { base: rawName, qty: 1 };
                                       const itemName = parsed.base || rawName;
                                       const qty = parsed.qty || 1;
+                                      const unit = String(parsed.unit || '').trim();
+                                      const itemUnitOptions = Array.from(
+                                          new Set([
+                                              ...configuredQuantityUnits,
+                                              ...(unit ? [unit] : []),
+                                          ])
+                                      );
                                       const fav = favKeys.has(
                                           String(itemName).toLowerCase()
                                       );
@@ -523,6 +547,23 @@ export class FbShoppingView extends LitElement {
                                                           +
                                                       </button>
                                                   </div>
+                                                  <select
+                                                      class="unitSelect"
+                                                      .value=${unit}
+                                                      @change=${(e) =>
+                                                          card._setShoppingItemUnit?.(
+                                                              it,
+                                                              e.target.value
+                                                          )}
+                                                  >
+                                                      <option value="">quantity</option>
+                                                      ${itemUnitOptions.map(
+                                                          (option) =>
+                                                              html`<option value=${option}>
+                                                                  ${option}
+                                                              </option>`
+                                                      )}
+                                                  </select>
                                               </div>
                                               ${renderActionButtons(
                                                   [
@@ -655,9 +696,7 @@ export class FbShoppingView extends LitElement {
                                                         }}
                                                     >
                                                         <span class="commonText">${item}</span>
-                                                        ${favQty > 1
-                                                            ? html`<span class="commonQty">x${favQty}</span>`
-                                                            : html``}
+                                                        <span class="commonQty">x${favQty}</span>
                                                         <span class="commonPlus" aria-hidden="true">+</span>
                                                         ${fav
                                                             ? html`<button

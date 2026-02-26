@@ -1303,11 +1303,7 @@ export class FbFoodView extends LitElement {
                                                     >
                                                         <span class="shoppingFavText">
                                                             ${item}
-                                                            ${qty > 1
-                                                                ? html`<span class="mutedSmall">
-                                                                      x${qty}
-                                                                  </span>`
-                                                                : html``}
+                                                            <span class="mutedSmall">x${qty}</span>
                                                         </span>
                                                         <span class="shoppingFavPlus" aria-hidden="true">+</span>
                                                         ${isFavourite

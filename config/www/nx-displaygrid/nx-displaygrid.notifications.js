@@ -6,11 +6,25 @@ export function applyNotifications(FamilyBoardCard) {
         _v2NotificationPolicy() {
             const cfg = this._config?.notifications_v2;
             const base = cfg && typeof cfg === 'object' ? cfg : {};
+            const notifyServices = Array.from(
+                new Set(
+                    (
+                        Array.isArray(base.notify_services)
+                            ? base.notify_services
+                            : base.notify_service
+                            ? [base.notify_service]
+                            : []
+                    )
+                        .map((service) => String(service || '').trim())
+                        .filter(Boolean)
+                )
+            );
             return {
-                enabled: base.enabled === true,
-                notifyService: String(base.notify_service || '').trim(),
+                enabled: base.enabled !== false,
+                notifyServices,
+                notifyService: notifyServices[0] || '',
                 minSeverity: String(base.min_severity || 'warn').trim() || 'warn',
-                suppressWhenVisible: base.suppress_when_visible === true,
+                suppressWhenVisible: base.suppress_when_visible !== false,
             };
         },
 
@@ -49,7 +63,12 @@ export function applyNotifications(FamilyBoardCard) {
         } = {}) {
             if (!this._v2FeatureEnabled?.('notification_policy')) return false;
             const policy = this._v2NotificationPolicy?.();
-            if (!policy?.enabled || !policy.notifyService) return false;
+            const notifyServices = Array.isArray(policy?.notifyServices)
+                ? policy.notifyServices
+                : policy?.notifyService
+                ? [policy.notifyService]
+                : [];
+            if (!policy?.enabled || !notifyServices.length) return false;
 
             const currentScreen = this._screen || '';
             if (policy.suppressWhenVisible && visibleScreen && visibleScreen === currentScreen) {
@@ -90,8 +109,7 @@ export function applyNotifications(FamilyBoardCard) {
                 return false;
             }
 
-            const [domain, service] = String(policy.notifyService).split('.');
-            if (!domain || !service || !this._hass) return false;
+            if (!this._hass) return false;
             const lines = [String(message || '').trim()].filter(Boolean);
             if (reason) lines.push(`Reason: ${reason}`);
             lines.push(`Screen: ${currentScreen || 'unknown'}`);
@@ -113,17 +131,29 @@ export function applyNotifications(FamilyBoardCard) {
                     );
                 }
             }
-            try {
-                await this._hass.callService(domain, service, {
-                    title,
-                    message: lines.join('\n'),
-                    data: {
-                        severity,
-                        source: 'nx-displaygrid',
-                        action: action || '',
-                        reason: reason || '',
-                    },
-                });
+            let sentCount = 0;
+            let lastError = null;
+            for (const notifyService of notifyServices) {
+                const [domain, service] = String(notifyService || '').split('.');
+                if (!domain || !service) continue;
+                try {
+                    await this._hass.callService(domain, service, {
+                        title,
+                        message: lines.join('\n'),
+                        data: {
+                            severity,
+                            source: 'nx-displaygrid',
+                            action: action || '',
+                            reason: reason || '',
+                        },
+                    });
+                    sentCount += 1;
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            if (sentCount > 0) {
                 this._v2AuditRecord?.({
                     type: 'notification_sent',
                     component: 'notifications',
@@ -132,26 +162,28 @@ export function applyNotifications(FamilyBoardCard) {
                     reason,
                     context: {
                         action,
-                        notifyService: policy.notifyService,
+                        notifyServices,
                         visibleScreen,
                         currentScreen,
                     },
                 });
                 return true;
-            } catch (error) {
+            }
+
+            if (lastError) {
                 this._v2AuditRecord?.({
                     type: 'notification_failed',
                     component: 'notifications',
                     severity: 'warn',
-                    title: 'Phone notification failed',
-                    reason: String(error?.message || error || 'notify service failed'),
+                    title: 'Phone notifications failed',
+                    reason: String(lastError?.message || lastError || 'notify service failed'),
                     context: {
                         action,
-                        notifyService: policy.notifyService,
+                        notifyServices,
                     },
                 });
-                return false;
             }
+            return false;
         },
 
         _categorizeError(error, categoryOverride = '') {

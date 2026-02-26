@@ -447,7 +447,7 @@ export function applyRefresh(FamilyBoardCard) {
                         lastSuccessTs: this._shoppingLastSuccessTs || 0,
                     },
                 });
-                this._tickV2AdaptivePresentation?.({ force: true });
+                this._tickV2AdaptivePresentation?.();
                 this._refreshInFlight = false;
                 if (this._refreshPending) {
                     this._refreshPending = false;

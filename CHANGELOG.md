@@ -2,6 +2,21 @@
 
 ## 2026-02-26
 
+- Updated Settings IA and controls:
+  - main tabs now `Settings`, `Preferences`, `Admin` with new sub-tab pill rows,
+  - `Audit` moved under `Admin` as a sub-tab,
+  - removed the old Settings-side `Shopping favourites` reset section.
+- Updated Settings entity selectors:
+  - `Heating entities` and `Lighting entities` now use multi-select lists sourced from configured Home Controls entities.
+- Updated notification policy configuration:
+  - `Phone notifications` now default to `On`,
+  - `Notify service` is now a multi-select list from available HA `notify.*` services.
+- Updated notification backend behavior to support multiple notify targets and default-enabled policy semantics.
+- Updated shopping list rows to include quantity-type dropdowns (from configured food units, with `quantity` fallback).
+- Updated shopping favourites display in shopping/food favourites flows to always show stored quantity (including `x1`).
+- Reduced adaptive refresh screen flips by removing forced adaptive auto-screen re-evaluation at the end of refresh cycles.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-190200`.
+
 - Updated topbar overflow menu availability and layout:
   - restored visible 3-dot menu on desktop and mobile headers,
   - kept mobile as a full-height, scrollable slide-out list with one item per row,

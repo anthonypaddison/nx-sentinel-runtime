@@ -104,6 +104,9 @@ export class FbSettingsView extends LitElement {
         _binRotationWeekday: { state: true },
         _binRotationAnchor: { state: true },
         _settingsPanel: { state: true },
+        _settingsSettingsTab: { state: true },
+        _settingsPreferencesTab: { state: true },
+        _settingsAdminTab: { state: true },
     };
 
     static styles = [
@@ -133,6 +136,33 @@ export class FbSettingsView extends LitElement {
             gap: 8px;
             flex-wrap: wrap;
             margin-bottom: 4px;
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: var(--fb-bg);
+            padding-bottom: 6px;
+        }
+        .subTabs {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            background: var(--fb-surface-2);
+            border: 1px solid var(--fb-border);
+            border-radius: 999px;
+            width: fit-content;
+            flex-wrap: wrap;
+        }
+        .subTabs .btn {
+            --fb-btn-border-width: 0;
+            --fb-btn-bg: transparent;
+            --fb-btn-radius: 999px;
+            --fb-btn-padding: 6px 10px;
+            white-space: nowrap;
+        }
+        .subTabs .btn.active {
+            --fb-btn-bg: var(--fb-surface);
+            box-shadow: var(--shadow-sm);
+            font-weight: 700;
         }
         .tabs {
             display: inline-flex;
@@ -312,6 +342,10 @@ export class FbSettingsView extends LitElement {
             color: var(--fb-text);
             min-height: 34px;
         }
+        select.input {
+            color: var(--fb-text);
+            -webkit-text-fill-color: var(--fb-text);
+        }
         .unitRow {
             display: flex;
             align-items: center;
@@ -320,6 +354,14 @@ export class FbSettingsView extends LitElement {
         .unit {
             color: var(--fb-muted);
             font-size: 12px;
+        }
+        .multiSelect {
+            min-height: 88px;
+            height: auto;
+            padding: 6px;
+        }
+        .anchorPad {
+            scroll-margin-top: 60px;
         }
         .status {
             font-weight: 700;
@@ -432,6 +474,9 @@ export class FbSettingsView extends LitElement {
     constructor() {
         super();
         this._settingsPanel = 'settings';
+        this._settingsSettingsTab = 'sources';
+        this._settingsPreferencesTab = 'health';
+        this._settingsAdminTab = 'admin';
         this._shoppingFavouritesResetStep = 0;
         this._shoppingFavouritesResetType = '';
     }
@@ -948,6 +993,82 @@ export class FbSettingsView extends LitElement {
         `;
     }
 
+    _renderAdminReliabilitySettings({ card, adminV2, backupStatus }) {
+        if (!card?._v2FeatureEnabled?.('admin_dashboard')) return html``;
+        return html`
+            <div class="section fb-card" style="margin-top:10px;">
+                <div class="titleRow">
+                    <div class="title">Admin Settings</div>
+                </div>
+                <div class="panelBody">
+                    <div class="subTitle">V2 Admin Reliability</div>
+                    <div class="muted">
+                        Backup freshness indicator and manual snapshot action for the V2 Admin
+                        dashboard.
+                    </div>
+                    <div class="row">
+                        <div>Backup last-success entity</div>
+                        <input
+                            class="input"
+                            placeholder="sensor.last_backup_success"
+                            .value=${adminV2.backup_last_success_entity || ''}
+                            @change=${(e) =>
+                                card._updateConfigPartial({
+                                    admin_v2: {
+                                        ...adminV2,
+                                        backup_last_success_entity: e.target.value,
+                                    },
+                                })}
+                        />
+                    </div>
+                    <div class="row">
+                        <div>Backup stale threshold</div>
+                        <div class="unitRow">
+                            <input
+                                class="input"
+                                type="number"
+                                min="1"
+                                .value=${Number(adminV2.backup_stale_hours || 48)}
+                                @change=${(e) =>
+                                    card._updateConfigPartial({
+                                        admin_v2: {
+                                            ...adminV2,
+                                            backup_stale_hours: Math.max(
+                                                1,
+                                                Number(e.target.value || 48)
+                                            ),
+                                        },
+                                    })}
+                            />
+                            <span class="unit">hours</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div>Snapshot now service</div>
+                        <input
+                            class="input"
+                            placeholder="backup.create"
+                            .value=${adminV2.snapshot_service || ''}
+                            @change=${(e) =>
+                                card._updateConfigPartial({
+                                    admin_v2: {
+                                        ...adminV2,
+                                        snapshot_service: e.target.value,
+                                    },
+                                })}
+                        />
+                    </div>
+                    <div class="muted">
+                        Current backup status:
+                        ${backupStatus.status}
+                        ${backupStatus.entityId ? ` · ${backupStatus.entityId}` : ''}
+                        ${backupStatus.detail ? ` · ${backupStatus.detail}` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     _renderDialogs(card) {
         const cfg = card?._config || {};
         const calendars = Array.isArray(cfg.calendars) ? cfg.calendars : [];
@@ -1096,32 +1217,103 @@ export class FbSettingsView extends LitElement {
         `;
     }
 
+    _scrollToSection(sectionId) {
+        if (!sectionId || !this.renderRoot) return;
+        const target = this.renderRoot.querySelector(`#${sectionId}`);
+        target?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }
+
     _renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel }) {
         const pending = Boolean(card?._hasPendingSettingsChanges?.());
+        const mainPanel = this._settingsPanel || 'settings';
+        const canShowAdmin = Boolean(showAdminPanel || showAuditPanel);
+        const settingsTabs = [
+            { id: 'sources', label: 'Sources', section: 'settings-sources' },
+            { id: 'people', label: 'People', section: 'settings-people' },
+            { id: 'family-panels', label: 'Family Panels', section: 'settings-family-panels' },
+            { id: 'value-config', label: 'Value Config', section: 'settings-value-config' },
+            { id: 'home-controls', label: 'Home Controls', section: 'settings-home-controls' },
+            { id: 'bins', label: 'Bins', section: 'settings-bins' },
+        ];
+        const preferenceTabs = [
+            { id: 'health', label: 'Health & Drift', section: 'prefs-health' },
+            { id: 'styles', label: 'Styles & Config', section: 'prefs-styles' },
+            { id: 'reminders', label: 'Reminders', section: 'prefs-reminders' },
+        ];
         return html`
             <div class="panelTabs">
                 <div class="tabs" role="tablist" aria-label="Settings panels">
                     <button
-                        class="btn ${this._settingsPanel === 'settings' ? 'active' : ''}"
+                        class="btn ${mainPanel === 'settings' ? 'active' : ''}"
                         @click=${() => (this._settingsPanel = 'settings')}
                     >
                         Settings
                     </button>
-                    ${showAdminPanel
+                    <button
+                        class="btn ${mainPanel === 'preferences' ? 'active' : ''}"
+                        @click=${() => (this._settingsPanel = 'preferences')}
+                    >
+                        Preferences
+                    </button>
+                    ${canShowAdmin
                         ? html`<button
-                              class="btn ${this._settingsPanel === 'admin' ? 'active' : ''}"
+                              class="btn ${mainPanel === 'admin' ? 'active' : ''}"
                               @click=${() => (this._settingsPanel = 'admin')}
                           >
                               Admin
                           </button>`
                         : html``}
-                    ${showAuditPanel
-                        ? html`<button
-                              class="btn ${this._settingsPanel === 'audit' ? 'active' : ''}"
-                              @click=${() => (this._settingsPanel = 'audit')}
-                          >
-                              Audit
-                          </button>`
+                </div>
+                <div class="subTabs" role="tablist" aria-label="Settings sub-tabs">
+                    ${mainPanel === 'settings'
+                        ? settingsTabs.map(
+                              (tab) => html`
+                                  <button
+                                      class="btn ${this._settingsSettingsTab === tab.id ? 'active' : ''}"
+                                      @click=${() => {
+                                          this._settingsSettingsTab = tab.id;
+                                          this._scrollToSection(tab.section);
+                                      }}
+                                  >
+                                      ${tab.label}
+                                  </button>
+                              `
+                          )
+                        : html``}
+                    ${mainPanel === 'preferences'
+                        ? preferenceTabs.map(
+                              (tab) => html`
+                                  <button
+                                      class="btn ${this._settingsPreferencesTab === tab.id ? 'active' : ''}"
+                                      @click=${() => {
+                                          this._settingsPreferencesTab = tab.id;
+                                          this._scrollToSection(tab.section);
+                                      }}
+                                  >
+                                      ${tab.label}
+                                  </button>
+                              `
+                          )
+                        : html``}
+                    ${mainPanel === 'admin'
+                        ? html`
+                              <button
+                                  class="btn ${this._settingsAdminTab === 'admin' ? 'active' : ''}"
+                                  @click=${() => (this._settingsAdminTab = 'admin')}
+                              >
+                                  Admin
+                              </button>
+                              ${showAuditPanel
+                                  ? html`<button
+                                        class="btn ${this._settingsAdminTab === 'audit'
+                                            ? 'active'
+                                            : ''}"
+                                        @click=${() => (this._settingsAdminTab = 'audit')}
+                                    >
+                                        Audit
+                                    </button>`
+                                  : html``}
+                          `
                         : html``}
                 </div>
                 <button
@@ -1192,7 +1384,20 @@ export class FbSettingsView extends LitElement {
         const orderedPeople = peopleDisplayFull
             .map((id) => people.find((p) => p.id === id))
             .filter(Boolean);
-        const deviceTheme = card._config?.background_theme || 'default';
+        const rawDeviceTheme =
+            card._deviceBackgroundTheme !== null && card._deviceBackgroundTheme !== undefined
+                ? String(card._deviceBackgroundTheme || '').trim()
+                : String(cfg.background_theme || '').trim();
+        const legacyThemeMap = {
+            mint: 'pale',
+            sand: 'pale',
+            slate: 'pale',
+        };
+        const mappedTheme = legacyThemeMap[rawDeviceTheme] || rawDeviceTheme || 'default';
+        const deviceTheme = ['default', 'pale', 'dark', 'crystal'].includes(mappedTheme)
+            ? mappedTheme
+            : 'default';
+        const themeSelectValue = deviceTheme === 'default' ? '' : deviceTheme;
         const adaptiveV2 =
             cfg.adaptive_v2 && typeof cfg.adaptive_v2 === 'object' ? cfg.adaptive_v2 : {};
         const intentV2 =
@@ -1218,6 +1423,28 @@ export class FbSettingsView extends LitElement {
             cfg.notifications_v2 && typeof cfg.notifications_v2 === 'object'
                 ? cfg.notifications_v2
                 : {};
+        const notifyServices = Object.keys(card._hass?.services?.notify || {})
+            .map((service) => String(service || '').trim())
+            .filter((service) => service && service !== 'reload')
+            .sort((a, b) => a.localeCompare(b))
+            .map((service) => `notify.${service}`);
+        const selectedNotifyServices = Array.from(
+            new Set(
+                (
+                    Array.isArray(notificationsV2.notify_services)
+                        ? notificationsV2.notify_services
+                        : notificationsV2.notify_service
+                        ? [notificationsV2.notify_service]
+                        : []
+                )
+                    .map((service) => String(service || '').trim())
+                    .filter(Boolean)
+            )
+        );
+        const notifyServiceOptions = Array.from(
+            new Set([...notifyServices, ...selectedNotifyServices])
+        ).sort((a, b) => a.localeCompare(b));
+        const notificationsEnabled = notificationsV2.enabled !== false;
         const familyDashboardV3 =
             cfg.family_dashboard_v3 && typeof cfg.family_dashboard_v3 === 'object'
                 ? cfg.family_dashboard_v3
@@ -1261,12 +1488,18 @@ export class FbSettingsView extends LitElement {
             ...familyCollectionDefaults[1],
             ...(familyCollectionById.get('lighting') || {}),
         };
-        const heatingEntitiesCsv = Array.isArray(heatingCollectionCfg.entities)
-            ? heatingCollectionCfg.entities.join(', ')
-            : '';
-        const lightingEntitiesCsv = Array.isArray(lightingCollectionCfg.entities)
-            ? lightingCollectionCfg.entities.join(', ')
-            : '';
+        const heatingEntitiesSelected = Array.isArray(heatingCollectionCfg.entities)
+            ? heatingCollectionCfg.entities.map((entity) => String(entity || '').trim()).filter(Boolean)
+            : [];
+        const lightingEntitiesSelected = Array.isArray(lightingCollectionCfg.entities)
+            ? lightingCollectionCfg.entities.map((entity) => String(entity || '').trim()).filter(Boolean)
+            : [];
+        const homeCollectionEntityOptions = Array.from(
+            new Set([...homeControls, ...heatingEntitiesSelected, ...lightingEntitiesSelected])
+        )
+            .map((entity) => String(entity || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
         const familyMode = card._isFamilyDashboardMode?.() === true;
         const showAdminPanel =
             card._v2FeatureEnabled?.('admin_dashboard') &&
@@ -1323,9 +1556,12 @@ export class FbSettingsView extends LitElement {
                 updates.set(key, { ...updates.get(key), ...entry });
             });
             if (updates.has(id)) {
+                const parsedEntities = Array.isArray(entities)
+                    ? entities.map((entity) => String(entity || '').trim()).filter(Boolean)
+                    : parseTextCsv(entities);
                 updates.set(id, {
                     ...updates.get(id),
-                    entities: parseTextCsv(entities),
+                    entities: parsedEntities,
                 });
             }
             card._updateConfigPartial({
@@ -1361,34 +1597,44 @@ export class FbSettingsView extends LitElement {
             `bin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
         if (!hasAdminAccess) return this._renderAdminLocked({ card, hasPin });
-        if (this._settingsPanel === 'admin' && !showAdminPanel) this._settingsPanel = 'settings';
-        if (this._settingsPanel === 'audit' && !showAuditPanel) this._settingsPanel = 'settings';
+        if (!['settings', 'preferences', 'admin'].includes(this._settingsPanel || '')) {
+            this._settingsPanel = 'settings';
+        }
+        if (this._settingsPanel === 'admin' && !(showAdminPanel || showAuditPanel)) {
+            this._settingsPanel = 'settings';
+        }
 
-        if (this._settingsPanel === 'admin' && showAdminPanel) {
+        if (this._settingsPanel === 'admin' && (showAdminPanel || showAuditPanel)) {
+            const showAudit = this._settingsAdminTab === 'audit' && showAuditPanel;
             return html`
                 <div class="wrap hidden">
                     ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
-                    <fb-admin-view .card=${card} .renderKey=${adminRenderKey}></fb-admin-view>
+                    ${showAudit
+                        ? html`<fb-audit-view .card=${card} .renderKey=${auditRenderKey}></fb-audit-view>`
+                        : html`
+                              <fb-admin-view
+                                  .card=${card}
+                                  .renderKey=${adminRenderKey}
+                              ></fb-admin-view>
+                              ${this._renderAdminReliabilitySettings({
+                                  card,
+                                  adminV2,
+                                  backupStatus,
+                              })}
+                          `}
                 </div>
                 ${this._renderDialogs(card)}
             `;
         }
-
-        if (this._settingsPanel === 'audit' && showAuditPanel) {
-            return html`
-                <div class="wrap hidden">
-                    ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
-                    <fb-audit-view .card=${card} .renderKey=${auditRenderKey}></fb-audit-view>
-                </div>
-                ${this._renderDialogs(card)}
-            `;
-        }
+        const showSettingsColumn = this._settingsPanel === 'settings';
+        const showPreferencesColumn = this._settingsPanel === 'preferences';
 
         return html`
             <div class="wrap hidden">
                 ${this._renderSettingsPanelTabs({ card, showAdminPanel, showAuditPanel })}
                 <div class="layout">
-                    <div class="column">
+                    ${showSettingsColumn
+                        ? html`<div class="column">
                         <div class="section fb-card">
                             <div class="titleRow">
                                 <div class="title">Sources & Dashboard</div>
@@ -1398,7 +1644,7 @@ export class FbSettingsView extends LitElement {
                                     @click=${() => {
                                         this._infoTitle = 'Sources & Dashboard';
                                         this._infoText =
-                                            'Manage sources, people order, admin access, home controls, and shopping favourites. Each person needs at least one calendar or todo list.';
+                                            'Manage sources, people order, admin access, home controls, and bins. Each person needs at least one calendar or todo list.';
                                         this._infoOpen = true;
                                     }}
                                 >
@@ -1406,6 +1652,7 @@ export class FbSettingsView extends LitElement {
                                 </button>
                             </div>
                             <div class="panelBody">
+                                <div id="settings-sources" class="anchorPad"></div>
                                 <div class="subTitle">Sources</div>
                                 <div class="muted">
                                     Connect calendars, todo lists, people, and the shopping entity.
@@ -1455,6 +1702,7 @@ export class FbSettingsView extends LitElement {
                                           ${people.map((p) => html`<li>${p.name || p.id}</li>`)}
                                       </ul>`
                                     : html``}
+                                <div id="settings-people" class="anchorPad"></div>
                                 <div class="subTitle">People</div>
                                 <div class="muted">
                                     People and source mapping are configured through first-run setup.
@@ -1593,6 +1841,7 @@ export class FbSettingsView extends LitElement {
                                       `
                                     : html``}
 
+                                <div id="settings-family-panels" class="anchorPad"></div>
                                 <div class="subTitle">Family dashboard panels</div>
                                 <div class="muted">
                                     Control which admin-only settings panels are visible to admins.
@@ -1709,6 +1958,7 @@ export class FbSettingsView extends LitElement {
                                     </label>
                                 </div>
 
+                                <div id="settings-value-config" class="anchorPad"></div>
                                 <div class="subTitle">Food quantity units</div>
                                 <div class="muted">
                                     Comma-separated units available in recipe ingredients.
@@ -1729,6 +1979,7 @@ export class FbSettingsView extends LitElement {
                                     />
                                 </div>
 
+                                <div id="settings-home-controls" class="anchorPad"></div>
                                 <div class="subTitle">Home control collections</div>
                                 <div class="muted">
                                     Override which entities appear in the Ambient Heating and Lighting
@@ -1736,30 +1987,68 @@ export class FbSettingsView extends LitElement {
                                 </div>
                                 <div class="row">
                                     <div>Heating entities</div>
-                                    <input
-                                        class="input"
-                                        placeholder="climate.house, switch.boiler"
-                                        .value=${heatingEntitiesCsv}
+                                    <select
+                                        class="input multiSelect"
+                                        multiple
                                         @change=${(e) =>
                                             updateHomeControlCollectionEntities(
                                                 'heating',
-                                                e.target.value
+                                                Array.from(e.target.selectedOptions || []).map(
+                                                    (option) => option.value
+                                                )
                                             )}
-                                    />
+                                    >
+                                        ${homeCollectionEntityOptions.map((entityId) => {
+                                            const state = card._hass?.states?.[entityId];
+                                            const name =
+                                                String(
+                                                    state?.attributes?.friendly_name || entityId
+                                                ).trim() || entityId;
+                                            return html`<option
+                                                value=${entityId}
+                                                ?selected=${heatingEntitiesSelected.includes(entityId)}
+                                            >
+                                                ${name} (${entityId})
+                                            </option>`;
+                                        })}
+                                    </select>
                                 </div>
                                 <div class="row">
                                     <div>Lighting entities</div>
-                                    <input
-                                        class="input"
-                                        placeholder="light.kitchen, switch.hall_lamp"
-                                        .value=${lightingEntitiesCsv}
+                                    <select
+                                        class="input multiSelect"
+                                        multiple
                                         @change=${(e) =>
                                             updateHomeControlCollectionEntities(
                                                 'lighting',
-                                                e.target.value
+                                                Array.from(e.target.selectedOptions || []).map(
+                                                    (option) => option.value
+                                                )
                                             )}
-                                    />
+                                    >
+                                        ${homeCollectionEntityOptions.map((entityId) => {
+                                            const state = card._hass?.states?.[entityId];
+                                            const name =
+                                                String(
+                                                    state?.attributes?.friendly_name || entityId
+                                                ).trim() || entityId;
+                                            return html`<option
+                                                value=${entityId}
+                                                ?selected=${lightingEntitiesSelected.includes(entityId)}
+                                            >
+                                                ${name} (${entityId})
+                                            </option>`;
+                                        })}
+                                    </select>
                                 </div>
+                                ${homeCollectionEntityOptions.length
+                                    ? html`<div class="muted">
+                                          Choose from entities currently shown on Home controls.
+                                      </div>`
+                                    : html`<div class="muted">
+                                          Add entities in Home controls first, then assign them to
+                                          Heating or Lighting collections.
+                                      </div>`}
 
                                 <div class="subTitle">Home controls</div>
                                 <div class="muted">Pick entities to show on the Home view.</div>
@@ -1849,6 +2138,7 @@ export class FbSettingsView extends LitElement {
                                       )
                                     : html`<div class="muted">No home controls selected.</div>`}
 
+                                <div id="settings-bins" class="anchorPad"></div>
                                 <div class="subTitle">Bin collections</div>
                                 <div class="muted">
                                     Configure up to 10 bins and set collection schedules.
@@ -2440,98 +2730,13 @@ export class FbSettingsView extends LitElement {
                                           )}
                                       `}
 
-                                <div class="subTitle">Shopping favourites</div>
-                                <div class="muted">
-                                    Reset favourites back to the default list or clear them
-                                    completely.
-                                </div>
-                                <div class="actions">
-                                    ${this._shoppingFavouritesResetStep === 0
-                                        ? html`
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      this._shoppingFavouritesResetType = 'defaults';
-                                                      this._shoppingFavouritesResetStep = 1;
-                                                  }}
-                                              >
-                                                  Reset to defaults
-                                              </button>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      this._shoppingFavouritesResetType = 'clear';
-                                                      this._shoppingFavouritesResetStep = 1;
-                                                  }}
-                                              >
-                                                  Clear all
-                                              </button>
-                                          `
-                                        : html``}
-                                    ${this._shoppingFavouritesResetStep === 1
-                                        ? html`
-                                              <div class="muted">
-                                                  Are you sure you want to
-                                                  ${this._shoppingFavouritesResetType === 'clear'
-                                                      ? 'clear all favourites'
-                                                      : 'reset favourites to defaults'}?
-                                              </div>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      this._shoppingFavouritesResetStep = 0;
-                                                      this._shoppingFavouritesResetType = '';
-                                                  }}
-                                              >
-                                                  Cancel
-                                              </button>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => (this._shoppingFavouritesResetStep = 2)}
-                                              >
-                                                  Yes
-                                              </button>
-                                          `
-                                        : html``}
-                                    ${this._shoppingFavouritesResetStep === 2
-                                        ? html`
-                                              <div class="muted">
-                                                  Yeah, but are you really sure?
-                                              </div>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      if (
-                                                          this._shoppingFavouritesResetType ===
-                                                          'clear'
-                                                      ) {
-                                                          card._clearShoppingFavourites?.();
-                                                      } else {
-                                                          card._resetShoppingFavouritesDefaults?.();
-                                                      }
-                                                      this._shoppingFavouritesResetStep = 0;
-                                                      this._shoppingFavouritesResetType = '';
-                                                  }}
-                                              >
-                                                  Yes, do it
-                                              </button>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => {
-                                                      this._shoppingFavouritesResetStep = 0;
-                                                      this._shoppingFavouritesResetType = '';
-                                                  }}
-                                              >
-                                                  Cancel
-                                              </button>
-                                          `
-                                        : html``}
-                                </div>
                             </div>
                         </div>
-                    </div>
+                    </div>`
+                        : html``}
 
-                    <div class="column">
+                    ${showPreferencesColumn
+                        ? html`<div class="column">
                         <div class="section fb-card">
                             <div class="titleRow">
                                 <div class="title">Preferences</div>
@@ -2549,6 +2754,7 @@ export class FbSettingsView extends LitElement {
                                 </button>
                             </div>
                             <div class="panelBody">
+                                <div id="prefs-styles" class="anchorPad"></div>
                                 <div class="muted">
                                     Saved per user/device unless stated otherwise.
                                 </div>
@@ -2556,16 +2762,13 @@ export class FbSettingsView extends LitElement {
                                     <div>Theme (this device)</div>
                                     <select
                                         class="input"
-                                        .value=${deviceTheme}
+                                        .value=${themeSelectValue}
                                         @change=${(e) =>
                                             card._updateConfigPartial({
-                                                background_theme:
-                                                    e.target.value === 'default'
-                                                        ? ''
-                                                        : e.target.value,
+                                                background_theme: e.target.value || '',
                                             })}
                                     >
-                                        <option value="default">Current</option>
+                                        <option value="">Current</option>
                                         <option value="pale">Pale</option>
                                         <option value="dark">Dark mode</option>
                                         <option value="crystal">Crystal glass</option>
@@ -2969,6 +3172,7 @@ export class FbSettingsView extends LitElement {
                                     : html``}
                                 ${card._v2FeatureEnabled?.('reminder_banners')
                                     ? html`
+                                          <div id="prefs-reminders" class="anchorPad"></div>
                                           <div class="subTitle">V2 Reminders</div>
                                           <div class="muted">
                                               Timed reminder banners with optional countdown and
@@ -3254,7 +3458,7 @@ export class FbSettingsView extends LitElement {
                                               <label>
                                                   <input
                                                       type="checkbox"
-                                                      .checked=${notificationsV2.enabled === true}
+                                                      .checked=${notificationsEnabled}
                                                       @change=${(e) =>
                                                           card._updateConfigPartial({
                                                               notifications_v2: {
@@ -3264,28 +3468,52 @@ export class FbSettingsView extends LitElement {
                                                           })}
                                                   />
                                                   <span class="muted">
-                                                      ${notificationsV2.enabled === true
-                                                          ? 'On'
-                                                          : 'Off'}
+                                                      ${notificationsEnabled ? 'On' : 'Off'}
                                                   </span>
                                               </label>
                                           </div>
                                           <div class="row">
-                                              <div>Notify service</div>
-                                              <input
-                                                  class="input"
-                                                  placeholder="notify.mobile_app_your_phone"
-                                                  .value=${notificationsV2.notify_service || ''}
+                                              <div>Notify services</div>
+                                              <select
+                                                  class="input multiSelect"
+                                                  multiple
                                                   @change=${(e) =>
-                                                      card._updateConfigPartial({
-                                                          notifications_v2: {
-                                                              ...notificationsV2,
-                                                              notify_service:
-                                                                  e.target.value,
-                                                          },
-                                                      })}
-                                              />
+                                                      (() => {
+                                                          const nextServices = Array.from(
+                                                              e.target.selectedOptions || []
+                                                          )
+                                                              .map((option) =>
+                                                                  String(option.value || '').trim()
+                                                              )
+                                                              .filter(Boolean);
+                                                          card._updateConfigPartial({
+                                                              notifications_v2: {
+                                                                  ...notificationsV2,
+                                                                  notify_services: nextServices,
+                                                                  notify_service:
+                                                                      nextServices[0] || '',
+                                                              },
+                                                          });
+                                                      })()}
+                                              >
+                                                  ${notifyServiceOptions.map(
+                                                      (service) => html`<option
+                                                          value=${service}
+                                                          ?selected=${selectedNotifyServices.includes(
+                                                              service
+                                                          )}
+                                                      >
+                                                          ${service}
+                                                      </option>`
+                                                  )}
+                                              </select>
                                           </div>
+                                          ${notifyServiceOptions.length
+                                              ? html``
+                                              : html`<div class="muted">
+                                                    No notify services found. Configure Home
+                                                    Assistant mobile app notification services first.
+                                                </div>`}
                                           <div class="row">
                                               <div>Minimum severity</div>
                                               <select
@@ -3338,83 +3566,7 @@ export class FbSettingsView extends LitElement {
                                     : html``}
                                 ${card._v2FeatureEnabled?.('admin_dashboard')
                                     ? html`
-                                          <div class="subTitle">V2 Admin Reliability</div>
-                                          <div class="muted">
-                                              Backup freshness indicator and manual snapshot action
-                                              for the V2 Admin dashboard.
-                                          </div>
-                                          <div class="row">
-                                              <div>Backup last-success entity</div>
-                                              <input
-                                                  class="input"
-                                                  placeholder="sensor.last_backup_success"
-                                                  .value=${adminV2.backup_last_success_entity || ''}
-                                                  @change=${(e) =>
-                                                      card._updateConfigPartial({
-                                                          admin_v2: {
-                                                              ...adminV2,
-                                                              backup_last_success_entity:
-                                                                  e.target.value,
-                                                          },
-                                                      })}
-                                              />
-                                          </div>
-                                          <div class="row">
-                                              <div>Backup stale threshold</div>
-                                              <div class="unitRow">
-                                                  <input
-                                                      class="input"
-                                                      type="number"
-                                                      min="1"
-                                                      .value=${Number(
-                                                          adminV2.backup_stale_hours || 48
-                                                      )}
-                                                      @change=${(e) =>
-                                                          card._updateConfigPartial({
-                                                              admin_v2: {
-                                                                  ...adminV2,
-                                                                  backup_stale_hours: Math.max(
-                                                                      1,
-                                                                      Number(
-                                                                          e.target.value || 48
-                                                                      )
-                                                                  ),
-                                                              },
-                                                          })}
-                                                  />
-                                                  <span class="unit">hours</span>
-                                              </div>
-                                          </div>
-                                          <div class="row">
-                                              <div>Snapshot now service</div>
-                                              <input
-                                                  class="input"
-                                                  placeholder="backup.create"
-                                                  .value=${adminV2.snapshot_service || ''}
-                                                  @change=${(e) =>
-                                                      card._updateConfigPartial({
-                                                          admin_v2: {
-                                                              ...adminV2,
-                                                              snapshot_service:
-                                                                  e.target.value,
-                                                          },
-                                                      })}
-                                              />
-                                          </div>
-                                          <div class="muted">
-                                              Current backup status:
-                                              ${backupStatus.status}
-                                              ${backupStatus.entityId
-                                                  ? ` · ${backupStatus.entityId}`
-                                                  : ''}
-                                              ${backupStatus.detail
-                                                  ? ` · ${backupStatus.detail}`
-                                                  : ''}
-                                          </div>
-                                      `
-                                    : html``}
-                                ${card._v2FeatureEnabled?.('admin_dashboard')
-                                    ? html`
+                                          <div id="prefs-health" class="anchorPad"></div>
                                           <div class="subTitle">V2 House Health & Drift</div>
                                           <div class="muted">
                                               Dashboard-visible issue list (instead of push alerts)
@@ -3520,7 +3672,8 @@ export class FbSettingsView extends LitElement {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div>`
+                        : html``}
                 </div>
             </div>
             ${this._renderDialogs(card)}

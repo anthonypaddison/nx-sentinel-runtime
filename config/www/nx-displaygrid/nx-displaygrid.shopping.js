@@ -494,6 +494,13 @@ export function applyShopping(FamilyBoardCard) {
             await this._updateShoppingItemText(item, nextText);
         },
 
+        async _setShoppingItemUnit(item, unit = '') {
+            if (!item) return;
+            const parsed = this._parseShoppingText(this._shoppingItemText(item));
+            const nextText = this._formatShoppingText(parsed.base, parsed.qty || 1, unit || '');
+            await this._updateShoppingItemText(item, nextText);
+        },
+
         _clearShoppingRemoval(item) {
             if (!item) return;
             const timer = this._shoppingRemoveTimers?.get(item);
