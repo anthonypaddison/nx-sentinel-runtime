@@ -1069,6 +1069,63 @@ export class FbSettingsView extends LitElement {
         `;
     }
 
+    _renderAdminAccessSettings({ card, isHaAdmin, hasPin }) {
+        return html`
+            <div class="section fb-card" style="margin-top:10px;">
+                <div class="titleRow">
+                    <div class="title">Admin Access</div>
+                </div>
+                <div class="panelBody">
+                    <div class="muted">
+                        ${isHaAdmin
+                            ? 'You are a Home Assistant admin.'
+                            : 'Admin access is unlocked on this device.'}
+                    </div>
+                    <div class="row">
+                        <div>Admin PIN</div>
+                        <div class="unitRow">
+                            <input
+                                class="input"
+                                type="password"
+                                placeholder=${hasPin ? '••••' : 'Set PIN'}
+                                .value=${this._pinSetValue || ''}
+                                ?disabled=${!isHaAdmin}
+                                @input=${(e) => (this._pinSetValue = e.target.value)}
+                            />
+                            <button
+                                class="btn"
+                                ?disabled=${!isHaAdmin}
+                                @click=${() => {
+                                    card._setAdminPin?.(this._pinSetValue);
+                                    this._pinSetValue = '';
+                                }}
+                            >
+                                Save
+                            </button>
+                            <button
+                                class="btn"
+                                ?disabled=${!isHaAdmin}
+                                @click=${() => card._setAdminPin?.('')}
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    ${!isHaAdmin
+                        ? html`
+                              <div class="row">
+                                  <div>Device access</div>
+                                  <button class="btn" @click=${() => card._lockAdminAccess?.()}>
+                                      Lock this device
+                                  </button>
+                              </div>
+                          `
+                        : html``}
+                </div>
+            </div>
+        `;
+    }
+
     _renderDialogs(card) {
         const cfg = card?._config || {};
         const calendars = Array.isArray(cfg.calendars) ? cfg.calendars : [];
@@ -1616,6 +1673,11 @@ export class FbSettingsView extends LitElement {
                                   .card=${card}
                                   .renderKey=${adminRenderKey}
                               ></fb-admin-view>
+                              ${this._renderAdminAccessSettings({
+                                  card,
+                                  isHaAdmin,
+                                  hasPin,
+                              })}
                               ${this._renderAdminReliabilitySettings({
                                   card,
                                   adminV2,
@@ -1790,56 +1852,6 @@ export class FbSettingsView extends LitElement {
                                           )}
                                       </div>`
                                     : html`<div class="muted">No people configured yet.</div>`}
-
-                                <div class="subTitle">Admin access</div>
-                                <div class="muted">
-                                    ${isHaAdmin
-                                        ? 'You are a Home Assistant admin.'
-                                        : 'Admin access is unlocked on this device.'}
-                                </div>
-                                <div class="row">
-                                    <div>Admin PIN</div>
-                                    <div class="unitRow">
-                                        <input
-                                            class="input"
-                                            type="password"
-                                            placeholder=${hasPin ? '••••' : 'Set PIN'}
-                                            .value=${this._pinSetValue || ''}
-                                            ?disabled=${!isHaAdmin}
-                                            @input=${(e) => (this._pinSetValue = e.target.value)}
-                                        />
-                                        <button
-                                            class="btn"
-                                            ?disabled=${!isHaAdmin}
-                                            @click=${() => {
-                                                card._setAdminPin?.(this._pinSetValue);
-                                                this._pinSetValue = '';
-                                            }}
-                                        >
-                                            Save
-                                        </button>
-                                        <button
-                                            class="btn"
-                                            ?disabled=${!isHaAdmin}
-                                            @click=${() => card._setAdminPin?.('')}
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                </div>
-                                ${!isHaAdmin
-                                    ? html`
-                                          <div class="row">
-                                              <div>Device access</div>
-                                              <button
-                                                  class="btn"
-                                                  @click=${() => card._lockAdminAccess?.()}
-                                              >
-                                                  Lock this device
-                                              </button>
-                                          </div>
-                                      `
-                                    : html``}
 
                                 <div id="settings-family-panels" class="anchorPad"></div>
                                 <div class="subTitle">Family dashboard panels</div>

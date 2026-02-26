@@ -5,6 +5,7 @@
 - Updated Settings IA and controls:
   - main tabs now `Settings`, `Preferences`, `Admin` with new sub-tab pill rows,
   - `Audit` moved under `Admin` as a sub-tab,
+  - admin PIN/device-access controls moved into `Admin` tab,
   - removed the old Settings-side `Shopping favourites` reset section.
 - Updated Settings entity selectors:
   - `Heating entities` and `Lighting entities` now use multi-select lists sourced from configured Home Controls entities.
