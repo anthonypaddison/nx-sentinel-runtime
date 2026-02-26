@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Fixed recipe-composer draft durability in Food -> Recipes:
+  - recipe name, ingredient draft rows, step draft rows, and pending ingredient/step inputs now persist per user/device.
+  - draft state now survives view switches and refresh/re-render cycles.
+- Added `Clear draft` action beside `Add recipe`/`Save recipe` to reset composer state intentionally.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-194100`.
+
 - Fixed Food cooking progress durability:
   - added per-user/device local cooking snapshot backup with timestamp,
   - cooking step ticks now update this snapshot immediately on each step toggle,

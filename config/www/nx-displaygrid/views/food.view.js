@@ -77,6 +77,20 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._recipeDraftHydrated = false;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        this._recipeDraftHydrated = false;
+    }
+
+    updated(changedProps) {
+        if (!this.card) return;
+        if (changedProps.has('card')) this._recipeDraftHydrated = false;
+        if (!this._recipeDraftHydrated) {
+            this._hydrateRecipeDraft(this.card);
+        }
     }
 
     static styles = [
@@ -482,6 +496,45 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._persistRecipeDraft();
+    }
+
+    _recipeDraftPayload() {
+        return {
+            recipeId: String(this._recipeId || '').trim(),
+            recipeName: String(this._recipeName || '').trim(),
+            recipeIngredients: Array.isArray(this._recipeIngredients)
+                ? this._recipeIngredients
+                : [],
+            recipeSteps: Array.isArray(this._recipeSteps) ? this._recipeSteps : [],
+            recipeIngredientName: String(this._recipeIngredientName || '').trim(),
+            recipeIngredientQty: String(this._recipeIngredientQty || '1').trim() || '1',
+            recipeIngredientUnit: String(this._recipeIngredientUnit || '').trim(),
+            recipeStepText: String(this._recipeStepText || '').trim(),
+        };
+    }
+
+    _persistRecipeDraft(card = this.card) {
+        if (!card) return;
+        card._foodSaveRecipeDraft?.(this._recipeDraftPayload());
+    }
+
+    _hydrateRecipeDraft(card = this.card) {
+        if (!card || this._recipeDraftHydrated) return;
+        const draft = card._foodLoadRecipeDraft?.();
+        if (draft && typeof draft === 'object') {
+            this._recipeId = String(draft.recipeId || '').trim();
+            this._recipeName = String(draft.recipeName || '').trim();
+            this._recipeIngredients = Array.isArray(draft.recipeIngredients)
+                ? draft.recipeIngredients
+                : [];
+            this._recipeSteps = Array.isArray(draft.recipeSteps) ? draft.recipeSteps : [];
+            this._recipeIngredientName = String(draft.recipeIngredientName || '').trim();
+            this._recipeIngredientQty = String(draft.recipeIngredientQty || '1').trim() || '1';
+            this._recipeIngredientUnit = String(draft.recipeIngredientUnit || '').trim();
+            this._recipeStepText = String(draft.recipeStepText || '').trim();
+        }
+        this._recipeDraftHydrated = true;
     }
 
     _openRecipeEditor(recipe) {
@@ -509,6 +562,7 @@ export class FbFoodView extends LitElement {
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
         this._recipePendingStep = false;
+        this._persistRecipeDraft();
     }
 
     _addRecipeIngredient() {
@@ -534,6 +588,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredientUnit = '';
         this._recipeSaveError = '';
         this._recipePendingIngredient = false;
+        this._persistRecipeDraft();
     }
 
     _removeRecipeIngredient(index) {
@@ -541,6 +596,7 @@ export class FbFoodView extends LitElement {
         if (!Number.isInteger(idx) || idx < 0) return;
         const list = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
         this._recipeIngredients = list.filter((_, i) => i !== idx);
+        this._persistRecipeDraft();
     }
 
     _addRecipeStep() {
@@ -553,6 +609,7 @@ export class FbFoodView extends LitElement {
         this._recipeStepText = '';
         this._recipeSaveError = '';
         this._recipePendingStep = false;
+        this._persistRecipeDraft();
     }
 
     _removeRecipeStep(index) {
@@ -560,6 +617,7 @@ export class FbFoodView extends LitElement {
         if (!Number.isInteger(idx) || idx < 0) return;
         const list = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
         this._recipeSteps = list.filter((_, i) => i !== idx);
+        this._persistRecipeDraft();
     }
 
     async _submitRecipe(card) {
@@ -910,6 +968,7 @@ export class FbFoodView extends LitElement {
                             @input=${(e) => {
                                 this._recipeName = e.target.value;
                                 this._recipeSaveError = '';
+                                this._persistRecipeDraft(card);
                             }}
                         />
                         <div class="subTitle">Ingredients</div>
@@ -922,6 +981,7 @@ export class FbFoodView extends LitElement {
                                     this._recipeIngredientName = e.target.value;
                                     this._recipePendingIngredient = false;
                                     this._recipeSaveError = '';
+                                    this._persistRecipeDraft(card);
                                 }}
                             />
                             <input
@@ -934,6 +994,7 @@ export class FbFoodView extends LitElement {
                                 @input=${(e) => {
                                     this._recipeIngredientQty = e.target.value;
                                     this._recipeSaveError = '';
+                                    this._persistRecipeDraft(card);
                                 }}
                             />
                             <select
@@ -942,6 +1003,7 @@ export class FbFoodView extends LitElement {
                                 @change=${(e) => {
                                     this._recipeIngredientUnit = e.target.value;
                                     this._recipeSaveError = '';
+                                    this._persistRecipeDraft(card);
                                 }}
                             >
                                 <option value="">No quantity type</option>
@@ -981,6 +1043,7 @@ export class FbFoodView extends LitElement {
                                     this._recipeStepText = e.target.value;
                                     this._recipePendingStep = false;
                                     this._recipeSaveError = '';
+                                    this._persistRecipeDraft(card);
                                 }}
                             />
                             <button class="btn" @click=${this._addRecipeStep}>+</button>
@@ -1014,9 +1077,9 @@ export class FbFoodView extends LitElement {
                             >
                                 ${this._recipeId ? 'Save recipe' : 'Add recipe'}
                             </button>
-                            ${this._recipeId
-                                ? html`<button class="btn ghost" @click=${this._resetRecipeDraft}>Cancel</button>`
-                                : html``}
+                            <button class="btn ghost" @click=${this._resetRecipeDraft}>
+                                Clear draft
+                            </button>
                         </div>
                     </div>
                 </div>

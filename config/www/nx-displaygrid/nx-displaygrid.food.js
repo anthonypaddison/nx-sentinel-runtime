@@ -261,6 +261,93 @@ function ingredientToShoppingText(ingredient) {
 
 export function applyFood(FamilyBoardCard) {
     Object.assign(FamilyBoardCard.prototype, {
+        _foodRecipeDraftKey() {
+            const userId = this._hass?.user?.id || 'unknown';
+            return makeScopedKey('nx-displaygrid:food-recipe-draft', userId);
+        },
+
+        _foodLoadRecipeDraft() {
+            const raw = readJsonLocal(this._foodRecipeDraftKey(), null);
+            if (!raw || typeof raw !== 'object') return null;
+            const recipeId = String(raw.recipeId || '').trim();
+            const recipeName = String(raw.recipeName || '').trim();
+            const recipeIngredients = (Array.isArray(raw.recipeIngredients) ? raw.recipeIngredients : [])
+                .map((ingredient) => normaliseIngredient(ingredient))
+                .filter(Boolean);
+            const recipeSteps = normaliseSteps(raw.recipeSteps || []);
+            const recipeIngredientName = String(raw.recipeIngredientName || '').trim();
+            const qtyRaw = Number(raw.recipeIngredientQty || 1);
+            const recipeIngredientQty =
+                Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
+            const recipeIngredientUnit = String(raw.recipeIngredientUnit || '').trim();
+            const recipeStepText = String(raw.recipeStepText || '').trim();
+            const hasDraft = Boolean(
+                recipeId ||
+                    recipeName ||
+                    recipeIngredients.length ||
+                    recipeSteps.length ||
+                    recipeIngredientName ||
+                    recipeStepText
+            );
+            if (!hasDraft) return null;
+            return {
+                recipeId,
+                recipeName,
+                recipeIngredients,
+                recipeSteps,
+                recipeIngredientName,
+                recipeIngredientQty,
+                recipeIngredientUnit,
+                recipeStepText,
+                updatedAt: Number(raw.updatedAt || 0),
+            };
+        },
+
+        _foodSaveRecipeDraft(draft = {}) {
+            const recipeId = String(draft.recipeId || '').trim();
+            const recipeName = String(draft.recipeName || '').trim();
+            const recipeIngredients = (
+                Array.isArray(draft.recipeIngredients) ? draft.recipeIngredients : []
+            )
+                .map((ingredient) => normaliseIngredient(ingredient))
+                .filter(Boolean);
+            const recipeSteps = normaliseSteps(draft.recipeSteps || []);
+            const recipeIngredientName = String(draft.recipeIngredientName || '').trim();
+            const qtyRaw = Number(draft.recipeIngredientQty || 1);
+            const recipeIngredientQty =
+                Number.isFinite(qtyRaw) && qtyRaw > 0 ? String(Math.round(qtyRaw * 100) / 100) : '1';
+            const recipeIngredientUnit = String(draft.recipeIngredientUnit || '').trim();
+            const recipeStepText = String(draft.recipeStepText || '').trim();
+            const hasDraft = Boolean(
+                recipeId ||
+                    recipeName ||
+                    recipeIngredients.length ||
+                    recipeSteps.length ||
+                    recipeIngredientName ||
+                    recipeStepText
+            );
+            const key = this._foodRecipeDraftKey();
+            if (!hasDraft) {
+                removeLocalKey(key);
+                return;
+            }
+            writeJsonLocal(key, {
+                recipeId,
+                recipeName,
+                recipeIngredients,
+                recipeSteps,
+                recipeIngredientName,
+                recipeIngredientQty,
+                recipeIngredientUnit,
+                recipeStepText,
+                updatedAt: Date.now(),
+            });
+        },
+
+        _foodClearRecipeDraft() {
+            removeLocalKey(this._foodRecipeDraftKey());
+        },
+
         _foodCookingSnapshotKey() {
             const userId = this._hass?.user?.id || 'unknown';
             return makeScopedKey('nx-displaygrid:food-cooking', userId);
