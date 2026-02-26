@@ -2,6 +2,12 @@
 
 ## 2026-02-26
 
+- Added recipe-to-recipe embedding in Food -> Recipes:
+  - saved recipe cards now include `Embed in draft`,
+  - embedding appends the selected recipe’s ingredients and steps into the current draft,
+  - self-embed is blocked when editing that same recipe.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260226-235800`.
+
 - Split `x` and `blank` quantity types in Food/Shopping:
   - `x` now remains a visible quantity type in dropdowns and rendered text,
   - `blank` remains invisible in rendered list text,

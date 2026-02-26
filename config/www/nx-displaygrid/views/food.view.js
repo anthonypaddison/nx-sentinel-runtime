@@ -662,6 +662,46 @@ export class FbFoodView extends LitElement {
         this._persistRecipeDraft();
     }
 
+    _makeRecipeIngredientId(index = 0) {
+        return `food_ing_${Date.now().toString(36)}_${Number(index)}_${Math.random()
+            .toString(36)
+            .slice(2, 6)}`;
+    }
+
+    _embedRecipeIntoDraft(recipe) {
+        if (!recipe || typeof recipe !== 'object') return;
+        const sourceId = String(recipe.id || '').trim();
+        if (sourceId && sourceId === String(this._recipeId || '').trim()) {
+            this._recipeSaveError = 'You cannot embed a recipe into itself.';
+            return;
+        }
+        const sourceName = String(recipe.name || '').trim() || 'Recipe';
+        const sourceIngredients = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
+            .map((ingredient) => ({
+                id: this._makeRecipeIngredientId(Math.floor(Math.random() * 1000)),
+                name: String(ingredient?.name || '').trim(),
+                qty: Number(ingredient?.qty || 1),
+                unit: normaliseRecipeUnitValue(ingredient?.unit, DEFAULT_QUANTITY_UNIT),
+            }))
+            .filter((ingredient) => ingredient.name);
+        const sourceSteps = (Array.isArray(recipe.steps) ? recipe.steps : [])
+            .map((step) => String(step || '').trim())
+            .filter(Boolean);
+        if (!sourceIngredients.length && !sourceSteps.length) {
+            this._recipeSaveError = `No ingredients or steps found in ${sourceName}.`;
+            return;
+        }
+        const currentIngredients = Array.isArray(this._recipeIngredients) ? this._recipeIngredients : [];
+        const currentSteps = Array.isArray(this._recipeSteps) ? this._recipeSteps : [];
+        this._recipeIngredients = [...currentIngredients, ...sourceIngredients];
+        this._recipeSteps = [...currentSteps, ...sourceSteps];
+        this._recipeSaveError = '';
+        this._recipePendingIngredient = false;
+        this._recipePendingStep = false;
+        this._persistRecipeDraft();
+        this.card?._showToast?.('Recipe embedded', `${sourceName} added to draft`);
+    }
+
     _addRecipeIngredient() {
         const names = String(this._recipeIngredientName || '')
             .split(/\n|,/g)
@@ -674,7 +714,7 @@ export class FbFoodView extends LitElement {
         this._recipeIngredients = [
             ...(Array.isArray(this._recipeIngredients) ? this._recipeIngredients : []),
             ...names.map((name, idx) => ({
-                id: `food_ing_${Date.now().toString(36)}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+                id: this._makeRecipeIngredientId(idx),
                 name,
                 qty: safeQty,
                 unit,
@@ -1145,7 +1185,8 @@ export class FbFoodView extends LitElement {
                     <div class="panelBody">
                         <div class="sectionHint">
                             Build recipes with itemized ingredients and steps. Ingredient quantity
-                            defaults to 1 and quantity type is optional.
+                            defaults to 1 and quantity type is optional. You can also embed an existing
+                            recipe from the list on the right.
                         </div>
                         <input
                             class="input ${this._recipeSaveError && !String(this._recipeName || '').trim()
@@ -1405,6 +1446,13 @@ export class FbFoodView extends LitElement {
                                                       )}
                                               >
                                                   Add meal to shopping
+                                              </button>
+                                              <button
+                                                  class="btn sm ghost"
+                                                  ?disabled=${String(this._recipeId || '') === String(recipe.id || '')}
+                                                  @click=${() => this._embedRecipeIntoDraft(recipe)}
+                                              >
+                                                  Embed in draft
                                               </button>
                                               <button
                                                   class="btn sm ghost"
