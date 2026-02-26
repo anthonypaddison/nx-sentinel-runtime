@@ -222,7 +222,14 @@ export function applyPersistence(FamilyBoardCard) {
 
         async _callWsSet(config) {
             try {
-                await this._hass.callWS({ type: NX_DISPLAYGRID_WS.SET_CONFIG, config });
+                if (typeof this._queueCallWs === 'function') {
+                    await this._queueCallWs(
+                        { type: NX_DISPLAYGRID_WS.SET_CONFIG, config },
+                        { label: 'Save dashboard config' }
+                    );
+                } else {
+                    await this._hass.callWS({ type: NX_DISPLAYGRID_WS.SET_CONFIG, config });
+                }
                 return true;
             } catch {
                 // Fall back to local persistence.

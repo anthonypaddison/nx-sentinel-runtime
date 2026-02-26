@@ -107,10 +107,12 @@ export function applyShopping(FamilyBoardCard) {
             this.requestUpdate();
         },
 
-        async _addShoppingItem(text) {
+        async _addShoppingItem(text, options = {}) {
             const parsed = this._parseShoppingText(text);
             const base = parsed.base;
             if (!base) return false;
+            const queueWrites = options?.queue !== false;
+            const hass = queueWrites ? this._mutationHass?.() || this._hass : this._hass;
             const existing = this._findShoppingItemByName(base);
             if (existing) {
                 const merged = this._mergeShoppingQuantities(existing.parsed, parsed);
@@ -119,13 +121,15 @@ export function applyShopping(FamilyBoardCard) {
                     merged.qty,
                     merged.unit
                 );
-                return await this._updateShoppingItemText(existing.item, nextText);
+                return await this._updateShoppingItemText(existing.item, nextText, {
+                    queue: queueWrites,
+                });
             }
             const formatted = this._formatShoppingText(base, parsed.qty, parsed.unit);
             const optimistic = this._optimisticShoppingAdd(formatted);
             let success = true;
             try {
-                await this._shoppingService.addItem(this._hass, this._config?.shopping, formatted);
+                await this._shoppingService.addItem(hass, this._config?.shopping, formatted);
             } catch (error) {
                 this._optimisticShoppingRemove(optimistic);
                 this._reportError?.('Add shopping item', error);
@@ -166,11 +170,12 @@ export function applyShopping(FamilyBoardCard) {
         async _clearShoppingList() {
             const list = Array.isArray(this._shoppingItems) ? [...this._shoppingItems] : [];
             if (!list.length) return;
+            const hass = this._mutationHass?.() || this._hass;
             this._shoppingItems = [];
             this.requestUpdate();
             const results = await Promise.allSettled(
                 list.map((item) =>
-                    this._shoppingService.removeItem(this._hass, this._config?.shopping, item)
+                    this._shoppingService.removeItem(hass, this._config?.shopping, item)
                 )
             );
             const failed = [];
@@ -191,6 +196,7 @@ export function applyShopping(FamilyBoardCard) {
 
         async _toggleShoppingItem(item, completed) {
             if (!item) return;
+            const hass = this._mutationHass?.() || this._hass;
             const previousStatus = item.status;
             let ok = false;
             this._optimisticShoppingStatus(item, completed);
@@ -199,7 +205,7 @@ export function applyShopping(FamilyBoardCard) {
             }
             try {
                 await this._shoppingService.setStatus(
-                    this._hass,
+                    hass,
                     this._config?.shopping,
                     item,
                     completed
@@ -233,11 +239,12 @@ export function applyShopping(FamilyBoardCard) {
 
         async _deleteShoppingItem(item) {
             if (!item) return;
+            const hass = this._mutationHass?.() || this._hass;
             const previousList = Array.isArray(this._shoppingItems) ? [...this._shoppingItems] : [];
             this._clearShoppingRemoval(item);
             this._optimisticShoppingRemove(item);
             try {
-                await this._shoppingService.removeItem(this._hass, this._config?.shopping, item);
+                await this._shoppingService.removeItem(hass, this._config?.shopping, item);
             } catch (error) {
                 if (!this._isMissingTodoItemError(error)) {
                     this._restoreShoppingList(previousList);
@@ -450,17 +457,19 @@ export function applyShopping(FamilyBoardCard) {
             };
         },
 
-        async _updateShoppingItemText(item, text) {
+        async _updateShoppingItemText(item, text, options = {}) {
             if (!item || !text) return false;
             const previousText = this._shoppingItemText(item);
             this._optimisticShoppingUpdate(item, text);
             this._shoppingRefreshHoldUntil = Date.now() + 1500;
             const supportsUpdate = this._supportsService('todo', 'update_item');
+            const queueWrites = options?.queue !== false;
+            const hass = queueWrites ? this._mutationHass?.() || this._hass : this._hass;
             let success = true;
             try {
                 if (supportsUpdate) {
                     await this._shoppingService.updateItem(
-                        this._hass,
+                        hass,
                         this._config?.shopping,
                         item ?? previousText,
                         {
@@ -469,11 +478,11 @@ export function applyShopping(FamilyBoardCard) {
                     );
                 } else {
                     await this._shoppingService.removeItem(
-                        this._hass,
+                        hass,
                         this._config?.shopping,
                         item ?? previousText
                     );
-                    await this._shoppingService.addItem(this._hass, this._config?.shopping, text);
+                    await this._shoppingService.addItem(hass, this._config?.shopping, text);
                 }
             } catch (error) {
                 if (this._isMissingTodoItemError(error)) {
@@ -542,7 +551,7 @@ export function applyShopping(FamilyBoardCard) {
                     this._optimisticShoppingRemove(item);
                     try {
                         await this._shoppingService.removeItem(
-                            this._hass,
+                            this._mutationHass?.() || this._hass,
                             this._config?.shopping,
                             item
                         );

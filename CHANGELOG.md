@@ -2,6 +2,17 @@
 
 ## 2026-02-26
 
+- Added a generic persistent mutation job queue for dashboard writes:
+  - queue now supports both HA service calls and websocket config writes,
+  - queued jobs persist per user and resume after refresh/reconnect,
+  - queue runs FIFO with retry/backoff (up to 5 attempts) and failure toasts.
+- Expanded queue coverage beyond Food shopping adds:
+  - calendar create/update/delete, todo add/update/remove/status/clear, shopping item mutations, home-control toggles, house-mode changes, snapshot actions, and settings save (`nx_displaygrid/config/set`) now run through the persistent queue.
+- Added mutation queue test coverage:
+  - service + websocket ordering test,
+  - persisted queue resume test with new card instance.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260227-011800`.
+
 - Added persistent Food->Shopping add queue with retries:
   - queued add jobs now persist in scoped local storage,
   - queue resumes automatically after refresh/reconnect,

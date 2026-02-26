@@ -293,7 +293,18 @@ export function applyAdmin(FamilyBoardCard) {
                 return;
             }
             try {
-                await this._hass.callService(domain, service, { ...(cfg.snapshot_service_data || {}) });
+                if (typeof this._queueCallService === 'function') {
+                    await this._queueCallService(
+                        domain,
+                        service,
+                        { ...(cfg.snapshot_service_data || {}) },
+                        { label: `Snapshot ${domain}.${service}` }
+                    );
+                } else {
+                    await this._hass.callService(domain, service, {
+                        ...(cfg.snapshot_service_data || {}),
+                    });
+                }
                 this._showToast('Snapshot started');
                 this._v2AuditRecord?.({
                     type: 'action',

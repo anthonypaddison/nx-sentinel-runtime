@@ -694,7 +694,7 @@ export function applyFood(FamilyBoardCard) {
                             : 0;
                         for (let index = startIndex; index < items.length; index += 1) {
                             const item = items[index];
-                            const ok = await this._addShoppingItem(item);
+                            const ok = await this._addShoppingItem(item, { queue: false });
                             if (!ok) {
                                 throw new Error(`Failed to add shopping item: ${item}`);
                             }

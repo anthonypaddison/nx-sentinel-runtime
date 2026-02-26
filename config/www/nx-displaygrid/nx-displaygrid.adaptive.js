@@ -357,10 +357,22 @@ export function applyAdaptive(FamilyBoardCard) {
             if (domain === 'input_select' || domain === 'select') {
                 const service = domain === 'input_select' ? 'select_option' : 'select_option';
                 const option = this._v2HouseModes().find((m) => m.id === target)?.label || target;
-                await this._hass.callService(domain, service, {
-                    entity_id: entityId,
-                    option,
-                });
+                if (typeof this._queueCallService === 'function') {
+                    await this._queueCallService(
+                        domain,
+                        service,
+                        {
+                            entity_id: entityId,
+                            option,
+                        },
+                        { label: `Set house mode ${option}` }
+                    );
+                } else {
+                    await this._hass.callService(domain, service, {
+                        entity_id: entityId,
+                        option,
+                    });
+                }
                 this._showToast?.('House mode', `Set to ${option}`);
                 this._v2AuditRecord?.({
                     type: 'mode_change',

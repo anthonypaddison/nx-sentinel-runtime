@@ -10,6 +10,7 @@ export function applyHandlers(FamilyBoardCard) {
             if (!entityId || !summary || !start || !end) return;
             if (!this._calendarSupports(entityId, CALENDAR_FEATURES.CREATE)) return;
             debugLog(this._debug, 'addCalendar', { entityId, summary, start, end, allDay });
+            const hass = this._mutationHass?.() || this._hass;
             const optimistic = this._optimisticCalendarAdd(entityId, {
                 summary,
                 start,
@@ -17,7 +18,7 @@ export function applyHandlers(FamilyBoardCard) {
                 allDay: Boolean(allDay),
             });
             try {
-                await this._calendarService.createEvent(this._hass, entityId, {
+                await this._calendarService.createEvent(hass, entityId, {
                     summary,
                     start,
                     end,
@@ -36,9 +37,10 @@ export function applyHandlers(FamilyBoardCard) {
             const { entityId, text, dueDate, repeat } = ev?.detail || {};
             if (!entityId || !text) return;
             debugLog(this._debug, 'addTodo', { entityId, text, dueDate, repeat });
+            const hass = this._mutationHass?.() || this._hass;
             const optimistic = this._optimisticTodoAdd(entityId, text, dueDate);
             try {
-                await this._todoService.addItem(this._hass, entityId, text, {
+                await this._todoService.addItem(hass, entityId, text, {
                     dueDate: dueDate || '',
                 });
                 if (repeat) {
@@ -82,6 +84,7 @@ export function applyHandlers(FamilyBoardCard) {
             const { entityId, item, text, dueDate, repeat } = ev?.detail || {};
             if (!entityId || !item || !text) return;
             debugLog(this._debug, 'editTodo', { entityId, text, dueDate, repeat });
+            const hass = this._mutationHass?.() || this._hass;
             const previous = {
                 summary: item.summary,
                 name: item.name,
@@ -90,7 +93,7 @@ export function applyHandlers(FamilyBoardCard) {
             const previousText = previous.summary ?? previous.name ?? previous.item ?? '';
             this._optimisticTodoUpdate(entityId, item, text, dueDate);
             try {
-                await this._todoService.renameItem(this._hass, entityId, item, text, {
+                await this._todoService.renameItem(hass, entityId, item, text, {
                     dueDate: dueDate || '',
                 });
                 if (previousText && previousText !== text) {
@@ -139,6 +142,7 @@ export function applyHandlers(FamilyBoardCard) {
                 ev?.detail || {};
             if (!entityId || !event) return;
             if (!this._calendarSupports(entityId, CALENDAR_FEATURES.UPDATE)) return;
+            const hass = this._mutationHass?.() || this._hass;
             debugLog(this._debug, 'eventUpdate', {
                 entityId,
                 summary,
@@ -165,7 +169,7 @@ export function applyHandlers(FamilyBoardCard) {
                 description,
             });
             try {
-                await this._calendarService.updateEvent(this._hass, entityId, event, {
+                await this._calendarService.updateEvent(hass, entityId, event, {
                     summary,
                     start,
                     end,
@@ -193,9 +197,10 @@ export function applyHandlers(FamilyBoardCard) {
             if (!entityId || !event) return;
             if (!this._calendarSupports(entityId, CALENDAR_FEATURES.DELETE)) return;
             debugLog(this._debug, 'eventDelete', { entityId });
+            const hass = this._mutationHass?.() || this._hass;
             this._optimisticCalendarRemove(entityId, event);
             try {
-                await this._calendarService.deleteEvent(this._hass, entityId, event);
+                await this._calendarService.deleteEvent(hass, entityId, event);
             } catch (error) {
                 this._restoreCalendarEvent(entityId, event);
                 this._reportError?.('Delete event', error);
@@ -206,6 +211,7 @@ export function applyHandlers(FamilyBoardCard) {
 
         _toggleTodoItem: async function (entityId, item, completed) {
             if (!entityId || !item) return;
+            const hass = this._mutationHass?.() || this._hass;
             const previous = item.status;
             const previousDone =
                 ['completed', 'done'].includes(String(previous || '').toLowerCase()) ||
@@ -215,7 +221,7 @@ export function applyHandlers(FamilyBoardCard) {
             debugLog(this._debug, 'toggleTodo', { entityId, completed, hasStableId });
             this._optimisticTodoStatus(entityId, item, completed);
             try {
-                await this._todoService.setStatus(this._hass, entityId, item, completed);
+                await this._todoService.setStatus(hass, entityId, item, completed);
                 if (completed) {
                     const repeat = this._repeatForTodo(entityId, item);
                     if (repeat?.cadence) {
@@ -229,7 +235,7 @@ export function applyHandlers(FamilyBoardCard) {
                                 const dd = String(nextDate.getDate()).padStart(2, '0');
                                 const dueDateStr = `${yyyy}-${mm}-${dd}`;
                                 const text = this._todoItemText(item, '(Todo)');
-                                await this._todoService.addItem(this._hass, entityId, text, {
+                                await this._todoService.addItem(hass, entityId, text, {
                                     dueDate: dueDateStr,
                                 });
                                 this._optimisticTodoAdd(entityId, text, dueDateStr);
@@ -246,7 +252,7 @@ export function applyHandlers(FamilyBoardCard) {
                         });
                         if (match) {
                             await this._todoService.setStatus(
-                                this._hass,
+                                hass,
                                 entityId,
                                 match,
                                 completed
@@ -261,7 +267,7 @@ export function applyHandlers(FamilyBoardCard) {
                 if (this._isMissingTodoItemError(error)) {
                     if (!completed && text) {
                         try {
-                            await this._todoService.addItem(this._hass, entityId, text);
+                            await this._todoService.addItem(hass, entityId, text);
                             return;
                         } catch {
                             // fall through to revert + error

@@ -10,6 +10,14 @@ export const CALENDAR_FEATURES = {
     UPDATE: 4,
 };
 
+async function callCalendarService(hass, domain, service, data, label) {
+    if (typeof hass?.queueCallService === 'function') {
+        await hass.queueCallService(domain, service, data, { label });
+        return;
+    }
+    await hass.callService(domain, service, data);
+}
+
 export class CalendarService {
     constructor({ debug = false } = {}) {
         this.debug = debug;
@@ -159,7 +167,7 @@ export class CalendarService {
 
         Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
 
-        await hass.callService('calendar', 'create_event', data);
+        await callCalendarService(hass, 'calendar', 'create_event', data, `Create event in ${entityId}`);
     }
 
     async updateEvent(
@@ -190,7 +198,7 @@ export class CalendarService {
 
         Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
 
-        await hass.callService('calendar', 'update_event', data);
+        await callCalendarService(hass, 'calendar', 'update_event', data, `Update event in ${entityId}`);
     }
 
     async deleteEvent(hass, entityId, event) {
@@ -198,9 +206,15 @@ export class CalendarService {
         const eventId = event.uid || event.id;
         if (!eventId) throw new Error('Missing event id');
 
-        await hass.callService('calendar', 'delete_event', {
-            entity_id: entityId,
-            event_id: eventId,
-        });
+        await callCalendarService(
+            hass,
+            'calendar',
+            'delete_event',
+            {
+                entity_id: entityId,
+                event_id: eventId,
+            },
+            `Delete event in ${entityId}`
+        );
     }
 }

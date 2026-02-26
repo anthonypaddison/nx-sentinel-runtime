@@ -16,6 +16,7 @@ import {
 import { idbFailureState } from './util/idb.util.js';
 import { DEFAULT_COMMON_ITEMS, DEFAULT_CARD_CONFIG } from './nx-displaygrid.defaults.js';
 import { applyPersistence } from './nx-displaygrid.persistence.js';
+import { applyJobs } from './nx-displaygrid.jobs.js';
 import { applyRefresh } from './nx-displaygrid.refresh.js';
 import { applyActions } from './nx-displaygrid.actions.js';
 import { applyNavigation } from './nx-displaygrid.navigation.js';
@@ -448,6 +449,7 @@ class FamilyBoardCard extends LitElement {
             }, 60_000);
         }
         this._queueRefresh({ reason: this._lastRefreshTs ? 'resume' : 'startup' });
+        this._resumeMutationJobQueue?.();
         this._foodResumeShoppingQueue?.();
         this._updateViewportHeight();
         setTimeout(() => this._updateViewportHeight(), 0);
@@ -602,6 +604,7 @@ class FamilyBoardCard extends LitElement {
         this._loadAuditLogAsync?.();
         this._loadStoredConfig();
         this._loadDataCache?.();
+        this._resumeMutationJobQueue?.();
         this._foodResumeShoppingQueue?.();
         this._queueRefresh({ reason: 'startup' });
     }
@@ -1235,19 +1238,23 @@ class FamilyBoardCard extends LitElement {
         if (!entityId || !this._hass) return;
         const domain = entityId.split('.')[0];
         const service = on ? 'turn_on' : 'turn_off';
+        const queueCall = (targetDomain, targetService, data, label) =>
+            this._queueCallService?.(targetDomain, targetService, data, { label }) ||
+            this._hass.callService(targetDomain, targetService, data);
         if (['switch', 'light', 'input_boolean'].includes(domain)) {
-            this._hass.callService(domain, service, { entity_id: entityId });
+            queueCall(domain, service, { entity_id: entityId }, `Set ${entityId} ${service}`);
             return;
         }
         if (this._supportsService('homeassistant', service)) {
-            this._hass.callService('homeassistant', service, { entity_id: entityId });
+            queueCall('homeassistant', service, { entity_id: entityId }, `Set ${entityId} ${service}`);
             return;
         }
-        this._hass.callService('homeassistant', 'toggle', { entity_id: entityId });
+        queueCall('homeassistant', 'toggle', { entity_id: entityId }, `Toggle ${entityId}`);
     }
 }
 
 applyPersistence(FamilyBoardCard);
+applyJobs(FamilyBoardCard);
 applyRefresh(FamilyBoardCard);
 applyActions(FamilyBoardCard);
 applyNavigation(FamilyBoardCard);

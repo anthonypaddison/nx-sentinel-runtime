@@ -4,6 +4,14 @@
 
 import { debugLog } from '../nx-displaygrid.util.js';
 
+async function callTodoService(hass, domain, service, data, label) {
+    if (typeof hass?.queueCallService === 'function') {
+        await hass.queueCallService(domain, service, data, { label });
+        return;
+    }
+    await hass.callService(domain, service, data);
+}
+
 export class TodoListServiceBase {
     constructor({ debug = false, resolveEntityId, entityLabel = 'entity' } = {}) {
         this.debug = debug;
@@ -84,7 +92,7 @@ export class TodoListServiceBase {
         if (options.dueDate) payload.due_date = options.dueDate;
         if (options.dueDateTime) payload.due_datetime = options.dueDateTime;
         if (options.dueString) payload.due_string = options.dueString;
-        await hass.callService('todo', 'add_item', payload);
+        await callTodoService(hass, 'todo', 'add_item', payload, `Add item to ${entityId}`);
     }
 
     async updateItem(hass, source, item, updates = {}) {
@@ -106,7 +114,7 @@ export class TodoListServiceBase {
             keys: this._itemKeys(item),
             payloadKeys: Object.keys(payload),
         });
-        await hass.callService('todo', 'update_item', payload);
+        await callTodoService(hass, 'todo', 'update_item', payload, `Update item in ${entityId}`);
     }
 
     async removeItem(hass, source, item) {
@@ -120,7 +128,13 @@ export class TodoListServiceBase {
             ref,
             keys: this._itemKeys(item),
         });
-        await hass.callService('todo', 'remove_item', { entity_id: entityId, item: ref });
+        await callTodoService(
+            hass,
+            'todo',
+            'remove_item',
+            { entity_id: entityId, item: ref },
+            `Remove item from ${entityId}`
+        );
     }
 
     async setStatus(hass, source, item, completed) {

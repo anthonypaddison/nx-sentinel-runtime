@@ -109,12 +109,13 @@ export function applyTodoHelpers(FamilyBoardCard) {
 
         async _deleteTodoItem(entityId, item) {
             if (!entityId || !item) return;
+            const hass = this._mutationHass?.() || this._hass;
             const previousList = Array.isArray(this._todoItems?.[entityId])
                 ? [...this._todoItems[entityId]]
                 : [];
             this._optimisticTodoRemove(entityId, item);
             try {
-                await this._todoService.removeItem(this._hass, entityId, item);
+                await this._todoService.removeItem(hass, entityId, item);
             } catch (error) {
                 this._restoreTodoList(entityId, previousList);
                 this._reportError?.('Delete chore', error);
@@ -130,6 +131,7 @@ export function applyTodoHelpers(FamilyBoardCard) {
             if (this._todoStatusRetryTimers.has(key)) return;
             const text = this._todoItemText(item);
             const timer = setTimeout(async () => {
+                const hass = this._mutationHass?.() || this._hass;
                 this._todoStatusRetryTimers.delete(key);
                 try {
                     const items = await this._todoService.fetchItems(this._hass, entityId);
@@ -138,7 +140,7 @@ export function applyTodoHelpers(FamilyBoardCard) {
                     });
                     if (match) {
                         await this._todoService.setStatus(
-                            this._hass,
+                            hass,
                             entityId,
                             match,
                             completed
@@ -146,7 +148,7 @@ export function applyTodoHelpers(FamilyBoardCard) {
                         return;
                     }
                     if (!completed && text) {
-                        await this._todoService.addItem(this._hass, entityId, text);
+                        await this._todoService.addItem(hass, entityId, text);
                         return;
                     }
                     throw new Error('Unable to find to-do list item');
@@ -161,8 +163,9 @@ export function applyTodoHelpers(FamilyBoardCard) {
 
         async _clearCompletedTodos(entityId) {
             if (!entityId) return;
+            const hass = this._mutationHass?.() || this._hass;
             try {
-                await this._todoService.clearCompleted(this._hass, entityId);
+                await this._todoService.clearCompleted(hass, entityId);
             } catch (error) {
                 this._reportError?.('Clear completed chores', error);
             } finally {
