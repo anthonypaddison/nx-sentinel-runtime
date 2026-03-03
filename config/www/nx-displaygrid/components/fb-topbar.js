@@ -799,16 +799,25 @@ export class FbTopbar extends LitElement {
         const menu = (() => {
             if (!showOverflowMenu) return html``;
             const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
+            const dedupeScreens = (screens) => {
+                const out = [];
+                const seen = new Set();
+                screens.forEach((item) => {
+                    const key = String(item?.key || '').trim();
+                    if (!key || seen.has(key)) return;
+                    seen.add(key);
+                    out.push({ key, label: item?.label || key });
+                });
+                return out;
+            };
             const menuScreens = familyMode
-                ? [
+                ? dedupeScreens([
                       { key: 'schedule', label: 'Calendar' },
                       { key: 'chores', label: 'Chores' },
-                      { key: 'food', label: 'Food' },
+                      ...extraScreens.map((s) => ({ key: s.key, label: s.label })),
                       { key: 'home', label: 'House mode' },
-                      { key: 'family', label: 'Family Dashboard' },
-                      { key: 'ambient', label: 'Ambient' },
                       ...(this.isAdmin ? [{ key: 'settings', label: 'Settings' }] : []),
-                  ]
+                  ])
                 : [
                       { key: 'schedule', label: 'Schedule' },
                       { key: 'important', label: 'Important' },

@@ -20,9 +20,7 @@ Directory layout:
 - `config/packages/live/` live-only package YAML
 - `config/packages/_env.yaml` environment selector include (`lab` or `live`)
 - `config/packages/_packages.yaml` merges `common + selected env`
-- `config/lovelace/nx-displaygrid.yaml` dashboard YAML
-- `config/lovelace/nx-displaygrid-v2.yaml` dashboard YAML
-- `config/lovelace/nx-family-dashboard.yaml` dashboard YAML (`NX - Family Dashboard`)
+- `config/lovelace/nx-family-dashboard.yaml` active dashboard YAML (`NX - Family Dashboard`)
 - `config/lovelace/resources.yaml` Lovelace resources YAML include
 
 `configuration.yaml` keeps:

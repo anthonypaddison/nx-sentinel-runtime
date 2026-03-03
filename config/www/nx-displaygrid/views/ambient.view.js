@@ -391,6 +391,36 @@ export class FbAmbientView extends LitElement {
             line: 'Bin day: not scheduled',
             bins: [],
         };
+        const familyMode = card._isFamilyDashboardMode?.() === true;
+        const extraScreens = Array.isArray(card._v2NavScreens?.()) ? card._v2NavScreens() : [];
+        const navMenuScreens = (() => {
+            const base = familyMode
+                ? [
+                      { key: 'schedule', label: 'Calendar' },
+                      { key: 'chores', label: 'Chores' },
+                      { key: 'home', label: 'House mode' },
+                  ]
+                : [
+                      { key: 'schedule', label: 'Schedule' },
+                      { key: 'important', label: 'Important' },
+                      { key: 'chores', label: 'Chores' },
+                      { key: 'shopping', label: 'Shopping' },
+                      { key: 'home', label: 'Home' },
+                  ];
+            const seen = new Set();
+            const ordered = [];
+            [...base, ...extraScreens.map((entry) => ({ key: entry?.key, label: entry?.label }))]
+                .forEach((entry) => {
+                    const key = String(entry?.key || '').trim();
+                    if (!key || key === 'ambient' || seen.has(key)) return;
+                    seen.add(key);
+                    ordered.push({ key, label: String(entry?.label || key) });
+                });
+            if (card._hasAdminAccess?.() === true && !seen.has('settings')) {
+                ordered.push({ key: 'settings', label: 'Settings' });
+            }
+            return ordered;
+        })();
 
         return html`
             <div class="canvas">
@@ -512,54 +542,20 @@ export class FbAmbientView extends LitElement {
                         ? html`
                               <div class="dockMenuBackdrop" @click=${this._closeMenu}></div>
                               <div class="dockMenu">
-                                  <button
-                                      class="btn dockMenuItem"
-                                      @click=${() => {
-                                          this._closeMenu();
-                                          card._onNav?.({ detail: { target: 'schedule' } });
-                                      }}
-                                  >
-                                      Calendar
-                                  </button>
-                                  <button
-                                      class="btn dockMenuItem"
-                                      @click=${() => {
-                                          this._closeMenu();
-                                          card._onNav?.({ detail: { target: 'chores' } });
-                                      }}
-                                  >
-                                      Chores
-                                  </button>
-                                  <button
-                                      class="btn dockMenuItem"
-                                      @click=${() => {
-                                          this._closeMenu();
-                                          card._onNav?.({ detail: { target: 'food' } });
-                                      }}
-                                  >
-                                      Food
-                                  </button>
-                                  <button
-                                      class="btn dockMenuItem"
-                                      @click=${() => {
-                                          this._closeMenu();
-                                          card._onNav?.({ detail: { target: 'family' } });
-                                      }}
-                                  >
-                                      Family Dashboard
-                                  </button>
+                                  ${navMenuScreens.map(
+                                      (entry) => html`
+                                          <button
+                                              class="btn dockMenuItem"
+                                              @click=${() => {
+                                                  this._closeMenu();
+                                                  card._onNav?.({ detail: { target: entry.key } });
+                                              }}
+                                          >
+                                              ${entry.label}
+                                          </button>
+                                      `
+                                  )}
                                   <button class="btn dockMenuItem" disabled>Ambient</button>
-                                  ${card._hasAdminAccess?.() === true
-                                      ? html`<button
-                                            class="btn dockMenuItem"
-                                            @click=${() => {
-                                                this._closeMenu();
-                                                card._onNav?.({ detail: { target: 'settings' } });
-                                            }}
-                                        >
-                                            Settings
-                                        </button>`
-                                      : html``}
                                   <div class="dockMenuSection">
                                       <button
                                           class="btn dockMenuItem"

@@ -266,13 +266,20 @@ export class FbSidebar extends LitElement {
     _primaryItems() {
         const extraScreens = Array.isArray(this.extraScreens) ? this.extraScreens : [];
         if (this.familyMode) {
-            return [
+            const items = [
                 { key: 'schedule', label: 'Calendar', icon: 'mdi:calendar-multiselect' },
                 { key: 'chores', label: 'Chores', icon: 'mdi:check-circle-outline' },
-                { key: 'food', label: 'Food', icon: 'mdi:silverware-fork-knife' },
-                { key: 'family', label: 'Family Dashboard', icon: 'mdi:home-heart' },
-                { key: 'ambient', label: 'Ambient', icon: 'mdi:tablet-dashboard' },
+                ...extraScreens.map((s) => ({
+                    key: s?.key,
+                    label: s?.label || s?.key || 'View',
+                    icon: s?.icon || 'mdi:view-grid-outline',
+                })),
+                { key: 'home', label: 'House mode', icon: 'mdi:home-automation' },
             ];
+            return items.filter((item, index, list) => {
+                if (!item.key) return false;
+                return list.findIndex((entry) => entry.key === item.key) === index;
+            });
         }
         return [
             { key: 'schedule', label: 'Schedule', icon: 'mdi:calendar-multiselect' },

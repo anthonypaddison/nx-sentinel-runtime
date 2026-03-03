@@ -12,16 +12,11 @@ Purpose:
 - Optimised for wall display (primary) and mobile (secondary).
 - Instant user feedback on all actions.
 
-Scope is strictly limited to:
-- Calendar.
-- Important.
-- Chores (Todoist).
-- Shopping.
-- Bins (Collections).
-- Home (HA entities).
-- Settings.
-
-No additional integrations or views are permitted.
+Current baseline (2026-03-03):
+- Primary dashboard surface is `NX - Family Dashboard` (`nx-family-dashboard`).
+- Core household views remain: Calendar, Important, Chores, Shopping, Home, Settings.
+- Feature-flagged views now extend the core experience: Food, Family, Ambient, Intent, Admin, Audit.
+- Feature flags under `v2_features` are the contract for enabling/disabling optional screens.
 
 ## 2. Architecture
 
@@ -81,10 +76,9 @@ This applies to:
 
 Menu items:
 - Calendar.
-- Important.
 - Chores.
-- Shopping.
 - Home.
+- Feature-flagged entries (for example: Food, Family Dashboard, Ambient, Intent, Admin, Audit).
 - Settings.
 
 ### 4.2 Header
@@ -120,9 +114,8 @@ If more people exist:
 
 Chip content:
 - Name.
-- Role badge (kid / grownup).
-- Calendar icon + count of today’s events.
-- Todo icon + count of incomplete todos (incl. overdue).
+- Optional role badge (when configured by UI mode).
+- Optional calendar/todo indicators (mode-dependent).
 
 Filtering:
 - People chips filter all views.
@@ -258,6 +251,28 @@ Admin detection:
 - HA user role (preferred).
 - Fallback: admin unlock protected by PIN.
 
+### 5.7 Food View (Feature Flag)
+- Enabled by `v2_features.food_view`.
+- Provides meal planning, recipes, cooking session flow, and shopping handoff workflows.
+- Uses existing Todo/shopping integrations and dashboard-local config/state.
+
+### 5.8 Family View (Feature Flag)
+- Enabled by `v2_features.family_dashboard`.
+- Presents daily household summary, quick actions, and important event/todo rollups.
+
+### 5.9 Ambient View (Feature Flag)
+- Enabled by `v2_features.ambient_view`.
+- Provides glanceable wall mode, upcoming highlights, and quick navigation/system actions.
+
+### 5.10 Intent View (Feature Flag)
+- Enabled by `v2_features.intent_view`.
+- Shows intent/recommendation cards based on current board state and configured house mode signals.
+
+### 5.11 Admin and Audit Views (Feature Flags)
+- Admin surface enabled by `v2_features.admin_dashboard`.
+- Audit timeline enabled by `v2_features.audit_timeline`.
+- Both are admin-gated even when enabled.
+
 Layout:
 - Two columns, full-height, independently scrollable.
 
@@ -314,8 +329,8 @@ Target screens:
 - Primary: 42″ TV.
 - Minimum: iPhone.
 
-- No new integrations.
-- No scope expansion without spec update.
+- New third-party integrations remain out of default scope.
+- Feature-flagged UI expansion on top of the core integrations is in scope.
 
 ## 9. Definition of Done
 - Same layout every day.

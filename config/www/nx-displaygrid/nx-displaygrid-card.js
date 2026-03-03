@@ -210,7 +210,7 @@ class FamilyBoardCard extends LitElement {
                         rgba(4, 14, 10, 0.14) 0%,
                         rgba(4, 14, 10, 0.36) 100%
                     ),
-                    url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80');
+                    url('/local/nx-displaygrid/assets/screensaver-mountain.jpg');
                 background-size: cover;
                 background-position: center;
                 background-repeat: no-repeat;

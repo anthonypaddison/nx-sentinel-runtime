@@ -9,20 +9,6 @@ lovelace:
     resources: !include lovelace/resources.yaml
 
     dashboards:
-        nx-displaygrid:
-            mode: yaml
-            title: nx-displaygrid
-            icon: mdi:calendar-multiselect
-            show_in_sidebar: true
-            require_admin: false
-            filename: lovelace/nx-displaygrid.yaml
-        nx-displaygrid-v2:
-            mode: yaml
-            title: nx-displaygrid v2
-            icon: mdi:calendar-star
-            show_in_sidebar: true
-            require_admin: false
-            filename: lovelace/nx-displaygrid-v2.yaml
         nx-family-dashboard:
             mode: yaml
             title: NX - Family Dashboard

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-03
+
+- Promoted `NX - Family Dashboard` to the only active Lovelace dashboard in `configuration.yaml` and removed legacy `nx-displaygrid` / `nx-displaygrid-v2` YAML dashboard files.
+- Updated dashboard export/restore docs and scripts to target `config/lovelace/nx-family-dashboard.yaml`.
+- Reworked family/ambient navigation to be feature-flag-driven in runtime UI paths:
+  - family-mode allowed views now derive optional screens from `v2_features`,
+  - sidebar and topbar family menus now render from feature-enabled screens,
+  - ambient quick menu now builds navigation entries from the same enabled-screen set.
+- Added regression coverage for feature-flag-driven family-mode allowed-view selection.
+- Vendored the screensaver image into the repo (`/local/nx-displaygrid/assets/screensaver-mountain.jpg`) and removed the external image URL dependency.
+- Updated product docs to reflect the current family-dashboard-first baseline and feature-flag model.
+- Bumped Lovelace resource cache-bust query string to `/local/nx-displaygrid/nx-displaygrid.js?v=20260303-200500`.
+
 ## 2026-02-26
 
 - Added a generic persistent mutation job queue for dashboard writes:

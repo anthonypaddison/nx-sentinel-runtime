@@ -156,18 +156,16 @@ Does not contain business logic or core HA config.
 The current Lovelace dashboard:
 
 - Managed in YAML mode
-- Defined in config/lovelace/nx-displaygrid.yaml
+- Defined in config/lovelace/nx-family-dashboard.yaml
 - Loaded via resource_mode: yaml
 
 Resource:
 
 /local/nx-displaygrid/nx-displaygrid.js
 
-The dashboard surface is conceptually referred to as:
+The active dashboard surface is:
 
-NX Command Deck
-
-(Current dashboard ID remains nx-displaygrid for migration stability.)
+NX - Family Dashboard
 
 ---
 

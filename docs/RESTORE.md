@@ -46,7 +46,7 @@ Use this when HA itself is fine but the board config/resources/integration drift
 Restore files from the export snapshot (paths may be present/absent depending on your environment):
 
 - `config/.storage/nx_displaygrid.config`
-- `config/lovelace/nx-displaygrid.yaml`
+- `config/lovelace/nx-family-dashboard.yaml`
 - `config/lovelace/resources.yaml`
 - `config/custom_components/nx_displaygrid/`
 - `config/www/nx-displaygrid/` (only if you intentionally want to revert frontend assets too)
@@ -55,7 +55,7 @@ Example (restore stored board config + dashboard resources only):
 
 ```bash
 rsync -az backups/ha/<env>/<timestamp>/config/.storage/nx_displaygrid.config root@<host-ip>:/config/.storage/nx_displaygrid.config
-rsync -az backups/ha/<env>/<timestamp>/config/lovelace/nx-displaygrid.yaml root@<host-ip>:/config/lovelace/nx-displaygrid.yaml
+rsync -az backups/ha/<env>/<timestamp>/config/lovelace/nx-family-dashboard.yaml root@<host-ip>:/config/lovelace/nx-family-dashboard.yaml
 rsync -az backups/ha/<env>/<timestamp>/config/lovelace/resources.yaml root@<host-ip>:/config/lovelace/resources.yaml
 ssh root@<host-ip> 'ha core restart'
 ```
@@ -74,7 +74,7 @@ Use the snapshot restore if the live runtime state (`.storage`) also needs to be
 ## Verification after restore
 
 1. Open Home Assistant and confirm it boots cleanly.
-2. Open the `nx-displaygrid` dashboard and verify the card loads.
+2. Open the `NX - Family Dashboard` dashboard and verify the card loads.
 3. Confirm people/sources are present (no onboarding prompt unless expected).
 4. Run `docs/SMOKE_TESTS.md`.
 5. If JS assets were changed recently, confirm `config/lovelace/resources.yaml` points to the intended `v=` cache-buster.

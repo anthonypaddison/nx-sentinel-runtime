@@ -100,7 +100,7 @@ export_nx_displaygrid_setup() {
 
   rsync -az \
     --include '/lovelace/' \
-    --include '/lovelace/nx-displaygrid.yaml' \
+    --include '/lovelace/nx-family-dashboard.yaml' \
     --include '/lovelace/resources.yaml' \
     --include '/packages/' \
     --include '/packages/common/' \

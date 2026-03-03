@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { applyAdaptive } from '../config/www/nx-displaygrid/nx-displaygrid.adaptive.js';
+import { applyConfigHelpers } from '../config/www/nx-displaygrid/nx-displaygrid.config.js';
 import { applyNavigation } from '../config/www/nx-displaygrid/nx-displaygrid.navigation.js';
 
 function withFakeNow(now, fn) {
@@ -94,4 +95,36 @@ test('date navigation also applies adaptive lock to avoid screen jumps', () => {
         card._maybeApplyV2AdaptiveScreen({ force: true });
     });
     assert.equal(card._screen, 'schedule');
+});
+
+test('family mode allowed views follow enabled nav feature flags', () => {
+    class TestCard {}
+    applyConfigHelpers(TestCard);
+    applyAdaptive(TestCard);
+
+    const card = new TestCard();
+    card._config = {
+        family_dashboard_v3: {
+            enabled: true,
+            admin_menu: { settings: true },
+        },
+        v2_features: {
+            food_view: false,
+            family_dashboard: true,
+            ambient_view: false,
+        },
+    };
+    card._hasAdminAccess = () => true;
+
+    assert.deepEqual(card._allowedViews(), ['schedule', 'chores', 'home', 'settings', 'family']);
+
+    card._config = {
+        ...card._config,
+        v2_features: {
+            ...card._config.v2_features,
+            family_dashboard: false,
+            ambient_view: true,
+        },
+    };
+    assert.deepEqual(card._allowedViews(), ['schedule', 'chores', 'home', 'settings', 'ambient']);
 });
